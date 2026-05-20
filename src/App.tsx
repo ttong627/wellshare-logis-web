@@ -1,0 +1,265 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { AppProvider, useApp } from './context/AppContext';
+import Navbar, { TabId } from './components/layout/Navbar';
+import Toast from './components/layout/Toast';
+import WorkflowGuide from './components/layout/WorkflowGuide';
+import ConflictModal from './components/layout/ConflictModal';
+import LoginForm from './components/auth/LoginForm';
+import ErrorBoundary from './components/ErrorBoundary';
+
+// Tab components
+import ProfileTab from './components/tabs/ProfileTab';
+import AccountTab from './components/tabs/AccountTab';
+import PricesTab from './components/tabs/PricesTab';
+import OrdersTab from './components/tabs/OrdersTab';
+import PerformanceTab from './components/tabs/PerformanceTab';
+import DeliveryCompletionTab from './components/tabs/DeliveryCompletionTab';
+import BillingTab from './components/tabs/BillingTab';
+import PaymentTab from './components/tabs/PaymentTab';
+import PartnerBillingTab from './components/tabs/PartnerBillingTab';
+import ContactsTab from './components/tabs/ContactsTab';
+import UsersTab from './components/tabs/UsersTab';
+import BackupTab from './components/tabs/BackupTab';
+import ScheduleTab from './components/tabs/ScheduleTab';
+import DocsTab from './components/tabs/DocsTab';
+
+declare global {
+  interface Window { XLSX: any; }
+}
+
+function WaterDrops() {
+  const drops = [
+    { s: 90,  x: 7,  dur: 13, delay: 0  },
+    { s: 55,  x: 19, dur: 9,  delay: 3  },
+    { s: 130, x: 42, dur: 16, delay: 7  },
+    { s: 65,  x: 63, dur: 11, delay: 1  },
+    { s: 100, x: 77, dur: 14, delay: 5  },
+    { s: 45,  x: 88, dur: 8,  delay: 9  },
+    { s: 78,  x: 32, dur: 12, delay: 2  },
+    { s: 58,  x: 54, dur: 10, delay: 6  },
+  ];
+  return (
+    <>
+      {drops.map((d, i) => (
+        <div key={i} className="wdrop" style={{
+          width: d.s, height: d.s * 1.12,
+          left: `${d.x}%`,
+          animationDuration: `${d.dur}s`,
+          animationDelay: `${d.delay}s`,
+        }} />
+      ))}
+    </>
+  );
+}
+
+function AppContent() {
+  const {
+    user, isAdmin, partnerCompany, authLoading, isDbLoaded,
+    pendingUsers, partnerAccountsDB, signOut,
+    currentMonth, setCurrentMonth, savedMonths, isClosed,
+    myNotifications, clearMyNotifications,
+    toastMessage, showToast,
+    handleToggleClose,
+  } = useApp();
+
+  const [activeTab, setActiveTab] = useState<TabId>('orders');
+  const [showWorkflowGuide, setShowWorkflowGuide] = useState(false);
+  const [loginCount, setLoginCount] = useState(0);
+  const [resolvingRegion, setResolvingRegion] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  // Prevents default-tab routing from firing again on Firestore re-snapshots
+  const [hasRouted, setHasRouted] = useState(false);
+
+  // Load XLSX script once
+  useEffect(() => {
+    if (window.XLSX) return;
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.async = true;
+    document.head.appendChild(script);
+  }, []);
+
+  // Cursor water-drop ripple effect
+  useEffect(() => {
+    let lastTime = 0;
+    const handleMove = (e: MouseEvent) => {
+      const now = Date.now();
+      if (now - lastTime < 55) return;
+      lastTime = now;
+      const drop = document.createElement('div');
+      drop.className = 'cursor-ripple';
+      const size = Math.random() * 18 + 7;
+      const hue = Math.random() > 0.6 ? 'rgba(56,189,248,0.55)' : 'rgba(14,165,233,0.45)';
+      drop.style.cssText = `left:${e.clientX}px;top:${e.clientY}px;width:${size}px;height:${size}px;background:radial-gradient(circle,${hue} 0%,rgba(14,165,233,0.1) 65%,transparent 100%);border:1px solid rgba(56,189,248,0.35);`;
+      document.body.appendChild(drop);
+      setTimeout(() => drop.remove(), 700);
+    };
+    document.addEventListener('mousemove', handleMove);
+    return () => document.removeEventListener('mousemove', handleMove);
+  }, []);
+
+  // Reset routing flag on logout
+  useEffect(() => {
+    if (!user) setHasRouted(false);
+  }, [user]);
+
+  // Route to appropriate default tab once per login
+  useEffect(() => {
+    if (!user || !isDbLoaded || hasRouted) return;
+    if (isAdmin) { setActiveTab('orders'); setHasRouted(true); }
+    else if (partnerCompany) { setActiveTab('performance'); setHasRouted(true); }
+  }, [isAdmin, partnerCompany, isDbLoaded, user, hasRouted]);
+
+  // Show workflow guide once after login data loads
+  useEffect(() => {
+    if (!user || !isDbLoaded || hasRouted) return;
+    const count = parseInt(localStorage.getItem('loginCount') || '0', 10) + 1;
+    setLoginCount(count);
+    localStorage.setItem('loginCount', String(count));
+    const hide = localStorage.getItem('hideWorkflowGuide') === 'true';
+    if (!hide) setShowWorkflowGuide(true);
+  }, [user, isDbLoaded, hasRouted]);
+
+  const handleReload = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  const validPendingUsers = pendingUsers.filter(email => !partnerAccountsDB[email]);
+
+  // ─── Auth states ─────────────────────────────────────────────────────
+  const loadingScreen = (icon: string, msg: string, spin = false) => (
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+      <WaterDrops />
+      <div className="glass rounded-3xl p-12 text-center max-w-sm mx-4 relative z-10 anim-in">
+        <div className={`text-6xl mb-5 ${spin ? 'animate-spin' : 'animate-pulse'}`}>{icon}</div>
+        <div className="w-12 h-1 rounded-full mx-auto mb-4"
+          style={{ background: 'linear-gradient(90deg,#0ea5e9,#38bdf8)' }} />
+        <p className="text-sky-700 font-black text-lg">{msg}</p>
+      </div>
+    </div>
+  );
+
+  if (authLoading) return loadingScreen('💧', '시스템 초기화 중...', true);
+
+  if (!user) {
+    if (pendingEmail) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+          <WaterDrops />
+          <div className="glass rounded-3xl p-10 max-w-md w-full text-center relative z-10 anim-in">
+            <div className="text-5xl mb-5">⏳</div>
+            <h2 className="text-xl font-black text-sky-800 mb-3">승인 대기 중</h2>
+            <p className="text-sky-600 font-bold text-sm mb-2">
+              <span className="text-sky-500">{pendingEmail}</span> 계정이 생성되었습니다.
+            </p>
+            <p className="text-sky-400 text-xs mb-8">관리자 승인 후 로그인이 가능합니다. 잠시 기다려 주세요.</p>
+            <button onClick={() => setPendingEmail(null)}
+              className="btn-sky w-full py-3 px-6 rounded-2xl text-sm">
+              로그인 화면으로 돌아가기
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return <LoginForm onPendingRegistered={(email) => setPendingEmail(email)} />;
+  }
+
+  if (!isDbLoaded) return loadingScreen('🌊', '데이터 로딩 중...');
+
+  if (!isAdmin && !partnerCompany) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+        <WaterDrops />
+        <div className="glass rounded-3xl p-10 max-w-md w-full text-center relative z-10 anim-in">
+          <div className="text-5xl mb-5">🔐</div>
+          <h2 className="text-xl font-black text-sky-800 mb-3">접근 권한 없음</h2>
+          <p className="text-sky-600 font-bold text-sm mb-2">
+            <span className="text-sky-500">{user.email}</span> 계정은 아직 승인되지 않았습니다.
+          </p>
+          <p className="text-sky-400 text-xs mb-8">관리자에게 계정 승인을 요청해 주세요.</p>
+          <button onClick={signOut} className="btn-sky w-full py-3 px-6 rounded-2xl text-sm">
+            로그아웃
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Main App ──────────────────────────────────────────────────────
+  const renderTab = () => {
+    switch (activeTab) {
+      case 'profile': return <ProfileTab />;
+      case 'account': return <AccountTab />;
+      case 'prices': return <PricesTab />;
+      case 'orders': return <OrdersTab onOpenConflict={setResolvingRegion} />;
+      case 'performance': return <PerformanceTab />;
+      case 'delivery': return <DeliveryCompletionTab />;
+      case 'billing': return <BillingTab />;
+      case 'payment': return <PaymentTab />;
+      case 'partner_billing': return <PartnerBillingTab />;
+      case 'contacts': return <ContactsTab />;
+      case 'users': return <UsersTab />;
+      case 'backup': return <BackupTab />;
+
+      case 'schedule': return <ScheduleTab />;
+      case 'docs': return <DocsTab />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen font-sans relative">
+      <WaterDrops />
+      <div className="relative z-10 py-4 sm:py-6 px-2 sm:px-4">
+        <Navbar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isAdmin={isAdmin}
+          partnerCompany={partnerCompany}
+          user={{ email: user.email }}
+          isClosed={isClosed}
+          currentMonth={currentMonth}
+          setCurrentMonth={setCurrentMonth}
+          savedMonths={savedMonths}
+          onReload={handleReload}
+          onToggleClose={handleToggleClose}
+          onShowGuide={() => setShowWorkflowGuide(true)}
+          notifications={myNotifications}
+          onClearNotifications={clearMyNotifications}
+          validPendingUsers={validPendingUsers}
+          onSignOut={signOut}
+        />
+
+        <div className="max-w-[1400px] mx-auto px-2 sm:px-4">
+          <ErrorBoundary fallback="탭 로딩 중 오류가 발생했습니다. 다시 시도해주세요.">
+            {renderTab()}
+          </ErrorBoundary>
+        </div>
+      </div>
+
+      <Toast message={toastMessage} />
+
+      {showWorkflowGuide && (
+        <WorkflowGuide
+          loginCount={loginCount}
+          onClose={() => setShowWorkflowGuide(false)}
+        />
+      )}
+
+      {resolvingRegion && (
+        <ConflictModal
+          resolvingRegion={resolvingRegion}
+          onClose={() => setResolvingRegion(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
+  );
+}

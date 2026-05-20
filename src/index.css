@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+/* ══════════════════════════════════════════════════════════
+   WELLSHARE — Sky Blue Water Drop Theme
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  --sky-deep:    #0284c7;
+  --sky-mid:     #0ea5e9;
+  --sky-light:   #38bdf8;
+  --sky-pale:    #7dd3fc;
+  --sky-crystal: #bae6fd;
+  --glass-bg:    rgba(255, 255, 255, 0.82);
+  --glass-border:rgba(255, 255, 255, 0.5);
+  --shadow-sky:  0 8px 32px rgba(14, 165, 233, 0.16), 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.7);
+}
+
+/* ── Background ─────────────────────────────────────────── */
+html, body {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 12% 8%,  rgba(56,189,248,.32) 0%, transparent 42%),
+    radial-gradient(ellipse at 88% 85%, rgba(14,165,233,.22) 0%, transparent 42%),
+    radial-gradient(ellipse at 55% 50%, rgba(125,211,252,.14) 0%, transparent 58%),
+    linear-gradient(168deg, #dff4ff 0%, #f0f9ff 45%, #e8f5ff 100%);
+}
+
+/* ── Custom scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar              { width: 5px; height: 5px; }
+::-webkit-scrollbar-track        { background: rgba(186,230,253,.25); border-radius: 10px; }
+::-webkit-scrollbar-thumb        { background: rgba(14,165,233,.45); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover  { background: rgba(14,165,233,.7); }
+
+/* ── Glass card ─────────────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-sky);
+}
+.glass-dark {
+  background: rgba(2, 132, 199, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow: 0 8px 32px rgba(2,132,199,.4), 0 2px 8px rgba(0,0,0,0.12);
+}
+
+/* ── Sky button — 3D pressed effect ────────────────────── */
+.btn-sky {
+  background: linear-gradient(160deg, #38bdf8 0%, #0ea5e9 40%, #0284c7 100%);
+  box-shadow:
+    0 7px 0 rgba(1,96,155,.72),
+    0 9px 20px rgba(14,165,233,.45),
+    inset 0 1px 0 rgba(255,255,255,.35),
+    inset 0 -1px 0 rgba(0,0,0,.08);
+  color: white;
+  font-weight: 800;
+  transition: all 0.14s cubic-bezier(.4,0,.2,1);
+  transform: translateY(0);
+  position: relative;
+}
+.btn-sky:hover {
+  background: linear-gradient(160deg, #48c8ff 0%, #1ab5f9 40%, #0390d7 100%);
+  box-shadow:
+    0 9px 0 rgba(1,96,155,.72),
+    0 14px 32px rgba(14,165,233,.6),
+    inset 0 1px 0 rgba(255,255,255,.35);
+  transform: translateY(-2px);
+}
+.btn-sky:active {
+  box-shadow:
+    0 2px 0 rgba(1,96,155,.72),
+    0 4px 10px rgba(14,165,233,.3),
+    inset 0 2px 4px rgba(0,0,0,.12);
+  transform: translateY(5px);
+}
+
+/* ── Sky hero banner (shared by all tabs) ───────────────── */
+.sky-hero {
+  background: linear-gradient(135deg, #0369a1 0%, #0284c7 28%, #0ea5e9 62%, #38bdf8 100%);
+  box-shadow: 0 8px 40px rgba(2,132,199,.42), inset 0 1px 0 rgba(255,255,255,.2);
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.sky-hero::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
+  pointer-events: none;
+}
+
+/* ── Cursor water-drop ripple ───────────────────────────── */
+@keyframes cursorRipple {
+  0%   { transform: translate(-50%,-50%) scale(0);   opacity: 0.85; }
+  40%  { opacity: 0.55; }
+  100% { transform: translate(-50%,-50%) scale(4.5); opacity: 0; }
+}
+.cursor-ripple {
+  position: fixed;
+  pointer-events: none;
+  border-radius: 50%;
+  z-index: 9998;
+  will-change: transform, opacity;
+  animation: cursorRipple 0.65s ease-out forwards;
+  transform: translate(-50%, -50%) scale(0);
+}
+
+/* ── Active tab ─────────────────────────────────────────── */
+.tab-active {
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 55%, #38bdf8 100%);
+  box-shadow: 0 4px 20px rgba(14,165,233,.52), 0 1px 3px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.3);
+  color: #fff !important;
+}
+
+/* ── Water drop floating decorations ───────────────────── */
+@keyframes wdrop {
+  0%   { transform: translateY(110vh) rotate(-5deg) scale(.75); opacity: 0; }
+  6%   { opacity: .55; }
+  92%  { opacity: .3; }
+  100% { transform: translateY(-12vh) rotate(12deg) scale(1.15); opacity: 0; }
+}
+.wdrop {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 55% 45% 50% 50% / 58% 42% 58% 42%;
+  background: radial-gradient(ellipse at 32% 32%,
+    rgba(255,255,255,.65) 0%,
+    rgba(125,211,252,.35) 38%,
+    rgba(14,165,233,.12) 100%);
+  border: 1px solid rgba(255,255,255,.42);
+  animation: wdrop linear infinite;
+}
+
+/* ── Focus rings ────────────────────────────────────────── */
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 0 0 3px rgba(14,165,233,.18) !important;
+}
+
+/* ── Animate-in utility (already in Tailwind v4 but kept) ─ */
+@keyframes fade-in  { from { opacity:0 } to { opacity:1 } }
+@keyframes slide-up { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
+.anim-in { animation: slide-up .4s cubic-bezier(.4,0,.2,1) both; }
+
+/* ── Code textarea (HTML editor) ────────────────────────── */
+.code-editor {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  background: #0f172a;
+  color: #7dd3fc;
+  border: 1px solid #1e3a5f;
+  border-radius: 10px;
+  padding: 14px;
+  resize: vertical;
+  caret-color: #38bdf8;
+}
+.code-editor:focus {
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 0 0 3px rgba(14,165,233,.25) !important;
+}
+
+/* ── 인쇄: [인쇄] 버튼 → 새 창 출력, Ctrl+P 직접 인쇄 차단 ─ */
+@media print {
+  body > * { display: none !important; }
+  body::after {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-family: '맑은 고딕', 'Malgun Gothic', sans-serif;
+    font-size: 14pt;
+    color: #555;
+    content: '상단의 [인쇄] 버튼을 사용해 주세요.';
+  }
+}

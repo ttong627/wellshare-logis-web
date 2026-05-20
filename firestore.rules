@@ -1,0 +1,157 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── 기본 차단 ─────────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ── 공통 헬퍼 ────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // 서버사이드 관리자 이메일 검증 (클라이언트 코드 우회 불가)
+    function isAdminEmail() {
+      return isSignedIn() && (
+        request.auth.token.email == 'ttong@wssc.kr' ||
+        request.auth.token.email == 'ttong627@gmail.com' ||
+        request.auth.token.email == 'goodp1@hanmail.net'
+      );
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ROLE_ADMIN';
+    }
+
+    function isEditor() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ROLE_EDITOR';
+    }
+
+    // ── wellshare-logis-web 메인 앱 데이터 ───────────────────────────────
+    // artifacts/{appId}/public/data/** 경로
+    match /artifacts/{appId}/public/data/{document=**} {
+      // 인증된 사용자 전체 읽기 허용
+      allow read: if isSignedIn();
+      // 쓰기는 관리자 이메일만 (서버사이드 검증)
+      allow write: if isAdminEmail();
+    }
+
+    // notifications는 인증 사용자 모두 읽기/쓰기 (알림 전송용)
+    match /artifacts/{appId}/public/data/notifications/{notifId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // ── 테스트 연결 ──────────────────────────────────────────────────────
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // ── ttong 프로젝트 컬렉션 (기존 규칙 유지) ───────────────────────────
+
+    match /drivers/{driverId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(driverId) && isValidDriver(incoming(), true);
+      allow update: if isSignedIn() && isValidDriver(incoming(), false) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['id', 'name', 'phone', 'emergency', 'updatedAt'])
+      );
+      allow delete: if isSignedIn();
+    }
+
+    function isValidDriver(data, isCreate) {
+      return (!isCreate || data.keys().hasAll(['id', 'name'])) &&
+             (!('id' in data)        || (data.id is string && data.id.size() <= 128)) &&
+             (!('name' in data)      || (data.name is string && data.name.size() <= 100)) &&
+             (!('phone' in data)     || (data.phone is string && data.phone.size() <= 100)) &&
+             (!('emergency' in data) || (data.emergency is string && data.emergency.size() <= 100)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string));
+    }
+
+    match /schedules/{scheduleId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(scheduleId) && isValidSchedule(incoming(), true);
+      allow update: if isSignedIn() && isValidSchedule(incoming(), false) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['items', 'lastUpdated', 'year', 'month', 'sido', 'sigungu'])
+      );
+      allow delete: if isSignedIn();
+    }
+
+    function isValidSchedule(data, isCreate) {
+      return (!isCreate || data.keys().hasAll(['year', 'month', 'items'])) &&
+             (!('year' in data)        || data.year is number) &&
+             (!('month' in data)       || data.month is number) &&
+             (!('items' in data)       || (data.items is list && data.items.size() <= 2000)) &&
+             (!('lastUpdated' in data) || (data.lastUpdated is string));
+    }
+
+    match /officialDocs/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(docId);
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(settingId);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming(), true);
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'photoUrl', 'lastActive', 'pushToken', 'displayName', 'lastLoginAt']) &&
+          isValidUser(incoming(), false)) ||
+        (isAdmin() && isValidUser(incoming(), false))
+      );
+      allow delete: if isAdmin();
+
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    function isValidUser(data, isCreate) {
+      return (!isCreate || data.keys().hasAll(['uid', 'email'])) &&
+             (!('uid' in data)         || data.uid is string) &&
+             (!('email' in data)       || data.email is string) &&
+             (!('role' in data)        || data.role is string) &&
+             (!('status' in data)      || data.status is string) &&
+             (!('displayName' in data) || data.displayName is string) &&
+             (!('createdAt' in data)   || data.createdAt is string) &&
+             (!('lastLoginAt' in data) || data.lastLoginAt is string);
+    }
+
+    match /invites/{inviteId} {
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn() && (isAdmin() || isEditor());
+      allow update: if isSignedIn();
+    }
+
+    match /emergencyContacts/{contactId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidEmergencyContact(incoming());
+      allow update: if isSignedIn() && isValidEmergencyContact(incoming());
+      allow delete: if isSignedIn() && (isAdmin() || isEditor());
+    }
+
+    function isValidEmergencyContact(data) {
+      return data.keys().hasAll(['sido', 'sigungu', 'phone']) &&
+             data.sido is string && data.sido.size() <= 100 &&
+             data.sigungu is string && data.sigungu.size() <= 100 &&
+             data.phone is string && data.phone.size() <= 100;
+    }
+  }
+}
