@@ -47,6 +47,13 @@ service cloud.firestore {
       allow write: if isAdminEmail();
     }
 
+    // 파트너 실적/배송 입력: 인증된 모든 사용자 쓰기 허용
+    // (billing_records는 파트너도 자신의 partnerInputs·deliveryDates 입력 필요)
+    match /artifacts/{appId}/public/data/billing_records/{monthId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
     // notifications는 인증 사용자 모두 읽기/쓰기 (알림 전송용)
     match /artifacts/{appId}/public/data/notifications/{notifId} {
       allow read: if isSignedIn();
