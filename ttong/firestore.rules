@@ -1,0 +1,144 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Drivers (Shared) ---
+    match /drivers/{driverId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(driverId) && isValidDriver(incoming(), true);
+      allow update: if isSignedIn() && isValidDriver(incoming(), false) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['id', 'name', 'phone', 'emergency', 'updatedAt'])
+      );
+      allow delete: if isSignedIn();
+    }
+
+    function isValidDriver(data, isCreate) {
+      return (!isCreate || data.keys().hasAll(['id', 'name'])) && 
+             (!('id' in data) || (data.id is string && data.id.size() <= 128)) &&
+             (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 100)) &&
+             (!('emergency' in data) || (data.emergency is string && data.emergency.size() <= 100)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string));
+    }
+
+    // --- Schedules (Shared) ---
+    match /schedules/{scheduleId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(scheduleId) && isValidSchedule(incoming(), true);
+      allow update: if isSignedIn() && isValidSchedule(incoming(), false) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['items', 'lastUpdated', 'year', 'month', 'sido', 'sigungu'])
+      );
+      allow delete: if isSignedIn();
+    }
+
+    function isValidSchedule(data, isCreate) {
+      return (!isCreate || data.keys().hasAll(['year', 'month', 'items'])) &&
+             (!('year' in data) || data.year is number) &&
+             (!('month' in data) || data.month is number) &&
+             (!('items' in data) || (data.items is list && data.items.size() <= 2000)) &&
+             (!('lastUpdated' in data) || (data.lastUpdated is string));
+    }
+
+    // --- Official Docs History (Shared) ---
+    match /officialDocs/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(docId);
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    // --- Settings (Shared) ---
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(settingId);
+    }
+
+    // --- Users ---
+    function isValidUser(data, isCreate) {
+      return (!isCreate || data.keys().hasAll(['uid', 'email'])) &&
+             (!('uid' in data) || data.uid is string) &&
+             (!('email' in data) || data.email is string) &&
+             (!('role' in data) || data.role is string) &&
+             (!('status' in data) || data.status is string) &&
+             (!('displayName' in data) || data.displayName is string) &&
+             (!('createdAt' in data) || data.createdAt is string) &&
+             (!('lastLoginAt' in data) || data.lastLoginAt is string);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming(), true);
+      allow update: if isSignedIn() && (
+        // Allow self update for basic fields
+        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'photoUrl', 'lastActive', 'pushToken', 'displayName', 'lastLoginAt']) && isValidUser(incoming(), false)) ||
+        // Allow admins to update roles and status
+        (isAdmin() && isValidUser(incoming(), false))
+      );
+      allow delete: if isAdmin();
+
+      // Legacy subcollections for migration
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // --- Invites ---
+    match /invites/{inviteId} {
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn() && (isAdmin() || isEditor());
+      allow update: if isSignedIn();
+    }
+
+    // --- Emergency Contacts ---
+    match /emergencyContacts/{contactId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidEmergencyContact(incoming());
+      allow update: if isSignedIn() && isValidEmergencyContact(incoming());
+      allow delete: if isSignedIn() && (isAdmin() || isEditor());
+    }
+
+    function isValidEmergencyContact(data) {
+      return data.keys().hasAll(['sido', 'sigungu', 'phone']) &&
+             data.sido is string && data.sido.size() <= 100 &&
+             data.sigungu is string && data.sigungu.size() <= 100 &&
+             data.phone is string && data.phone.size() <= 100;
+    }
+
+    // --- RBAC Helpers ---
+    function isAdmin() {
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ROLE_ADMIN';
+    }
+
+    function isEditor() {
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ROLE_EDITOR';
+    }
+    
+    // Test collection
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

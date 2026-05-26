@@ -1,0 +1,35 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+const firebaseConfig = {
+  apiKey: "AIzaSyBFjT9H2z4KXLDx6AJfOMEA2lHlJx055_A",
+  authDomain: "gen-lang-client-0075547354.firebaseapp.com",
+  projectId: "gen-lang-client-0075547354",
+  storageBucket: "gen-lang-client-0075547354.firebasestorage.app",
+  messagingSenderId: "673351301105",
+  appId: "1:673351301105:web:e769905019a4413b593650"
+};
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app, 'ai-studio-810d2250-4afc-4969-8c38-bab98b29a73d');
+export const auth = getAuth(app);
+export const storage = getStorage(app, 'gs://gen-lang-client-0075547354.firebasestorage.app');
+
+// Connectivity check
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log("Firebase connection successful");
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration.");
+    }
+  }
+}
+testConnection();

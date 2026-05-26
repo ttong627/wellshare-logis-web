@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "웰쉐어 물류",
+    "slug": "wellshare-logis-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e293b"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "kr.wssc.wellshare.logis"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1e293b"
+      },
+      "package": "kr.wssc.wellshare.logis"
+    },
+    "plugins": ["expo-font"]
+  }
+}

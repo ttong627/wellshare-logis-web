@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "Driver": {
+      "title": "Driver",
+      "description": "Driver information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "emergency": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "ScheduleData": {
+      "title": "Monthly Schedule",
+      "description": "Full schedule for a month and region",
+      "type": "object",
+      "properties": {
+        "year": { "type": "number" },
+        "month": { "type": "number" },
+        "sido": { "type": "string" },
+        "sigungu": { "type": "string" },
+        "items": { "type": "array" }
+      }
+    },
+    "DocHistoryItem": {
+      "title": "Document History Item",
+      "description": "Saved official document record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string" },
+        "receiver": { "type": "string" },
+        "subject": { "type": "string" },
+        "docNo": { "type": "object" },
+        "data": { "type": "object" }
+      }
+    },
+    "AppSetting": {
+      "title": "App Setting",
+      "description": "Generic application setting",
+      "type": "object",
+      "properties": {
+        "value": { "type": "object" }
+      }
+    },
+    "EmergencyContact": {
+      "title": "Regional Emergency Contact",
+      "description": "Emergency contact for a specific region",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sido": { "type": "string" },
+        "sigungu": { "type": "string" },
+        "phone": { "type": "string" },
+        "description": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "sido", "sigungu", "phone"]
+    }
+  },
+  "firestore": {
+    "drivers": {
+      "schema": "Driver",
+      "description": "Collection of all drivers"
+    },
+    "schedules": {
+      "schema": "ScheduleData",
+      "description": "Monthly delivery schedules. Docs keyed by {year}_{month}_{sido}_{sigungu}"
+    },
+    "officialDocs": {
+      "schema": "DocHistoryItem",
+      "description": "History of generated official documents"
+    },
+    "settings": {
+      "schema": "AppSetting",
+      "description": "Application level settings like docFormatSettings, defaultSido, etc."
+    },
+    "emergencyContacts": {
+      "schema": "EmergencyContact",
+      "description": "Regional emergency contacts"
+    }
+  }
+}
