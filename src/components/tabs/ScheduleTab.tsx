@@ -265,18 +265,28 @@ interface DatePickerProps {
 
 function DeliveryDatePicker({ value, year, month, readOnly, legacyDate, onChange }: DatePickerProps) {
   const [open, setOpen] = useState(false);
+  const [viewYr, setViewYr] = useState(parseInt(year, 10));
+  const [viewMo, setViewMo] = useState(parseInt(month, 10));
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const yr = parseInt(year, 10);
-  const mo = parseInt(month, 10);
-  const daysInMonth = new Date(yr, mo, 0).getDate();
-  const firstDayOfWeek = new Date(yr, mo - 1, 1).getDay();
+  const daysInMonth = new Date(viewYr, viewMo, 0).getDate();
+  const firstDayOfWeek = new Date(viewYr, viewMo - 1, 1).getDay();
   const selected = new Set(value);
 
   const padded = (n: number) => String(n).padStart(2, '0');
 
+  const goPrev = () => {
+    if (viewMo === 1) { setViewYr(y => y - 1); setViewMo(12); }
+    else { setViewMo(m => m - 1); }
+  };
+
+  const goNext = () => {
+    if (viewMo === 12) { setViewYr(y => y + 1); setViewMo(1); }
+    else { setViewMo(m => m + 1); }
+  };
+
   const toggleDay = (day: number) => {
-    const dateStr = `${year}-${padded(mo)}-${padded(day)}`;
+    const dateStr = `${viewYr}-${padded(viewMo)}-${padded(day)}`;
     const next = selected.has(dateStr)
       ? value.filter(d => d !== dateStr)
       : [...value, dateStr].sort();
@@ -312,7 +322,23 @@ function DeliveryDatePicker({ value, year, month, readOnly, legacyDate, onChange
 
       {open && (
         <div className="absolute top-full left-0 z-[9999] mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl p-3 w-60">
-          <div className="text-center text-xs font-bold text-slate-700 mb-2">{mo}월 배송일 선택</div>
+          <div className="flex items-center justify-between mb-2">
+            <button
+              type="button"
+              onClick={goPrev}
+              className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 font-bold text-sm transition-colors"
+            >
+              ‹
+            </button>
+            <span className="text-xs font-bold text-slate-700">{viewYr}년 {viewMo}월</span>
+            <button
+              type="button"
+              onClick={goNext}
+              className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 font-bold text-sm transition-colors"
+            >
+              ›
+            </button>
+          </div>
           <div className="grid grid-cols-7 gap-px text-center text-[10px] text-slate-400 font-bold mb-1">
             {['일','월','화','수','목','금','토'].map(d => <div key={d}>{d}</div>)}
           </div>
@@ -320,7 +346,7 @@ function DeliveryDatePicker({ value, year, month, readOnly, legacyDate, onChange
             {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`b${i}`} />)}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
-              const dateStr = `${year}-${padded(mo)}-${padded(day)}`;
+              const dateStr = `${viewYr}-${padded(viewMo)}-${padded(day)}`;
               const isSel = selected.has(dateStr);
               const isSun = (firstDayOfWeek + i) % 7 === 0;
               const isSat = (firstDayOfWeek + i) % 7 === 6;
