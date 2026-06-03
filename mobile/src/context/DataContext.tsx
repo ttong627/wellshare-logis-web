@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { doc, getDoc, setDoc, updateDoc, deleteField, collection, query, onSnapshot } from 'firebase/firestore';
 import { db, APP_ID } from '../firebase';
 import { useAuth } from './AuthContext';
+import { INITIAL_ZONES, INITIAL_REGIONS_DATA } from '../constants';
 
 export interface RegionData { basicQty: number | ''; povertyQty: number | '' }
 export interface DeliveryData { date?: string; delayDays?: number | '' }
@@ -14,12 +15,16 @@ interface DataContextType {
   publishRequests: Record<string, Record<string, string>>;
   publishDates: Record<string, Record<string, string>>;
   orders: Record<string, { basicQty?: number | ''; povertyQty?: number | '' }>;
+  zonePrices: Record<string, { billing: number }>;
+  regions: Record<string, string>;
   isClosed: boolean;
   isLoading: boolean;
   savedMonths: string[];
   savePerformance: (company: string, region: string, data: RegionData) => Promise<void>;
   saveDelivery: (company: string, region: string, date: string, delayDays?: number | '') => Promise<void>;
   clearDelivery: (company: string, region: string) => Promise<void>;
+  saveOrder: (region: string, data: { basicQty: number | ''; povertyQty: number | '' }) => Promise<void>;
+  setClosed: (closed: boolean) => Promise<void>;
   loadMonth: (month: string) => Promise<void>;
 }
 
@@ -37,6 +42,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [publishRequests, setPublishRequests] = useState<Record<string, Record<string, string>>>({});
   const [publishDates, setPublishDates] = useState<Record<string, Record<string, string>>>({});
   const [orders, setOrders] = useState<Record<string, any>>({});
+  const [zonePrices, setZonePrices] = useState<Record<string, { billing: number }>>(INITIAL_ZONES);
+  const [regions, setRegions] = useState<Record<string, string>>(INITIAL_REGIONS_DATA);
   const [isClosed, setIsClosed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [savedMonths, setSavedMonths] = useState<string[]>([]);
@@ -82,6 +89,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setPublishRequests(data.publishRequests || {});
         setPublishDates(data.publishDates || {});
         setOrders(data.orders || {});
+        setZonePrices(data.zonePrices || INITIAL_ZONES);
+        setRegions(data.regions || INITIAL_REGIONS_DATA);
         setIsClosed(data.isClosed || false);
       } else {
         setPartnerInputs({});
@@ -89,6 +98,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setPublishRequests({});
         setPublishDates({});
         setOrders({});
+        setZonePrices(INITIAL_ZONES);
+        setRegions(INITIAL_REGIONS_DATA);
         setIsClosed(false);
       }
     } finally {
@@ -144,12 +155,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     });
   }, [currentMonth, deliveryDates, user]);
 
+  // 관리자 월 마감/마감취소 — 마감되면 파트너 입력 잠김
+  const setClosed = useCallback(async (closed: boolean) => {
+    setIsClosed(closed);
+    const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
+    await setDoc(ref, {
+      isClosed: closed,
+      updatedAt: new Date().toISOString(),
+      updatedBy: user?.email,
+    }, { merge: true });
+  }, [currentMonth, user]);
+
+  // 관리자 포수입력(orders) 저장 — 지역별 기초/차상위 수량
+  const saveOrder = useCallback(async (region: string, data: { basicQty: number | ''; povertyQty: number | '' }) => {
+    setOrders(prev => ({ ...prev, [region]: data }));
+    const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
+    await setDoc(ref, {
+      [`orders.${region}`]: data,
+      updatedAt: new Date().toISOString(),
+      updatedBy: user?.email,
+    }, { merge: true });
+  }, [currentMonth, user]);
+
   return (
     <DataContext.Provider value={{
       currentMonth, setCurrentMonth,
       partnerInputs, deliveryDates, publishRequests, publishDates, orders,
+      zonePrices, regions,
       isClosed, isLoading, savedMonths,
-      savePerformance, saveDelivery, clearDelivery, loadMonth,
+      savePerformance, saveDelivery, clearDelivery, saveOrder, setClosed, loadMonth,
     }}>
       {children}
     </DataContext.Provider>

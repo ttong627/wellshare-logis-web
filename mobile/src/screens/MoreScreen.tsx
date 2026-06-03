@@ -7,22 +7,23 @@ import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../constants';
 
 type FeatherName = React.ComponentProps<typeof Feather>['name'];
-interface MenuItem { key: string; label: string; icon: FeatherName }
+interface MenuItem { key: string; label: string; icon: FeatherName; route?: string }
 
 const ADMIN_MENU: MenuItem[] = [
-  { key: 'orders', label: '포수 입력', icon: 'clipboard' },
-  { key: 'payment', label: '결제 내역', icon: 'credit-card' },
+  { key: 'performance', label: '지역 포수', icon: 'edit-3', route: 'Performance' },
+  { key: 'payment', label: '결제 내역', icon: 'credit-card', route: 'Payment' },
+  { key: 'statement', label: '내역 확인', icon: 'list', route: 'Statement' },
+  { key: 'schedule', label: '배송 일정', icon: 'calendar', route: 'Schedule' },
+  { key: 'contacts', label: '주소록', icon: 'book-open', route: 'Contacts' },
   { key: 'docs', label: '공문 작성', icon: 'file-text' },
-  { key: 'contacts', label: '주소록', icon: 'book-open' },
   { key: 'users', label: '사용자 관리', icon: 'users' },
   { key: 'prices', label: '단가 설정', icon: 'tag' },
-  { key: 'schedule', label: '배송 일정', icon: 'calendar' },
   { key: 'backup', label: '백업', icon: 'database' },
 ];
 
 const PARTNER_MENU: MenuItem[] = [
-  { key: 'schedule', label: '배송 일정', icon: 'calendar' },
-  { key: 'contacts', label: '주소록', icon: 'book-open' },
+  { key: 'schedule', label: '배송 일정', icon: 'calendar', route: 'Schedule' },
+  { key: 'contacts', label: '주소록', icon: 'book-open', route: 'Contacts' },
 ];
 
 export default function MoreScreen() {
@@ -76,8 +77,8 @@ export default function MoreScreen() {
         {menu.map((m, i) => (
           <Pressable
             key={m.key}
-            onPress={() => m.key === 'contacts'
-              ? navigation.navigate('Contacts')
+            onPress={() => m.route
+              ? navigation.navigate(m.route)
               : Alert.alert(m.label, '다음 업데이트에서 제공 예정입니다.')}
             style={({ pressed }) => [styles.menuRow, i > 0 && styles.divider, pressed && styles.pressed]}
             accessibilityRole="button"

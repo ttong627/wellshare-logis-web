@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Image, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -13,9 +13,18 @@ export default function HomeScreen() {
   const {
     currentMonth, setCurrentMonth, savedMonths,
     partnerInputs, deliveryDates, publishDates, publishRequests,
-    isClosed, isLoading,
+    isClosed, isLoading, setClosed,
   } = useData();
   const navigation = useNavigation<any>();
+
+  const handleToggleClose = () => {
+    const next = !isClosed;
+    Alert.alert(
+      next ? '월 마감' : '마감 취소',
+      next ? `${currentMonth} 작업을 마감할까요?\n마감하면 파트너 입력이 잠깁니다.` : `${currentMonth} 마감을 취소할까요?`,
+      [{ text: '취소', style: 'cancel' }, { text: next ? '마감' : '마감취소', onPress: () => setClosed(next) }],
+    );
+  };
 
   // ── 상태 판정 헬퍼 ──────────────────────────────
   const hasInput = (c: string, r: string) => {
@@ -52,16 +61,37 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* 헤더 */}
+      {/* 헤더 — WS 로고 + 브랜드 */}
       <View style={styles.headerCard}>
-        <Text style={styles.greeting}>{isAdmin ? '관리자' : (partnerCompany || '')}</Text>
-        <Text style={styles.monthLabel}>{formattedMonth} 업무 현황</Text>
-        {isClosed && (
-          <View style={styles.closedBadge}>
-            <Feather name="lock" size={12} color={COLORS.white} />
-            <Text style={styles.closedText}>이번 달 마감 완료</Text>
+        <View style={styles.brandRow}>
+          <View style={styles.logoBadge}>
+            <Image source={require('../../assets/logo.png')} style={styles.logoImg} resizeMode="contain" />
           </View>
-        )}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.brandName}>정부양곡정산</Text>
+            <Text style={styles.brandSub}>웰쉐어 · 배송비 정산 포털</Text>
+          </View>
+        </View>
+        <View style={styles.headerDivider} />
+        <View style={styles.headerBottom}>
+          <View>
+            <Text style={styles.greeting}>{isAdmin ? '관리자' : (partnerCompany || '')}</Text>
+            <Text style={styles.monthLabel}>{formattedMonth} 업무 현황</Text>
+          </View>
+          {isAdmin ? (
+            <Pressable onPress={handleToggleClose}
+              style={({ pressed }) => [styles.closeBtn, isClosed && styles.closeBtnDone, pressed && { opacity: 0.7 }]}
+              accessibilityRole="button" accessibilityLabel={isClosed ? '마감 취소' : '월 마감'}>
+              <Feather name={isClosed ? 'lock' : 'check-circle'} size={13} color={COLORS.white} />
+              <Text style={styles.closedText}>{isClosed ? '마감됨' : '마감하기'}</Text>
+            </Pressable>
+          ) : isClosed ? (
+            <View style={styles.closedBadge}>
+              <Feather name="lock" size={12} color={COLORS.white} />
+              <Text style={styles.closedText}>마감 완료</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
 
       {/* 월 선택 */}
@@ -122,14 +152,14 @@ export default function HomeScreen() {
       <View style={styles.quickGrid}>
         {(isAdmin
           ? [
-              { icon: 'truck' as FeatherName, label: '배송', to: 'Delivery' },
-              { icon: 'file-text' as FeatherName, label: '계산서', to: 'Billing' },
-              { icon: 'credit-card' as FeatherName, label: '정산', to: 'Settlement' },
+              { icon: 'clipboard' as FeatherName, label: '포수입력', to: 'OrdersTab' },
+              { icon: 'truck' as FeatherName, label: '배송완료', to: 'DeliveryTab' },
+              { icon: 'file-text' as FeatherName, label: '계산서', to: 'BillingTab' },
             ]
           : [
-              { icon: 'edit-3' as FeatherName, label: '실적입력', to: 'Performance' },
-              { icon: 'truck' as FeatherName, label: '배송완료', to: 'Delivery' },
-              { icon: 'list' as FeatherName, label: '내역확인', to: 'Statement' },
+              { icon: 'edit-3' as FeatherName, label: '지역포수', to: 'PerformanceTab' },
+              { icon: 'truck' as FeatherName, label: '배송완료', to: 'DeliveryTab' },
+              { icon: 'list' as FeatherName, label: '내역확인', to: 'StatementTab' },
             ]
         ).map((q) => (
           <Pressable key={q.to} onPress={() => navigation.navigate(q.to)}
@@ -164,14 +194,33 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 12, paddingBottom: 32 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: COLORS.bg },
   loadingText: { color: COLORS.textMuted, fontWeight: '600' },
-  headerCard: { backgroundColor: COLORS.primary, borderRadius: 20, padding: 22, gap: 4 },
-  greeting: { color: COLORS.white, fontSize: 18, fontWeight: '900' },
-  monthLabel: { color: '#bae6fd', fontSize: 13, fontWeight: '600' },
+  headerCard: {
+    backgroundColor: COLORS.primary, borderRadius: 22, padding: 20,
+    shadowColor: COLORS.brandDark, shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6,
+  },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logoBadge: {
+    width: 46, height: 46, borderRadius: 13, backgroundColor: COLORS.white,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3,
+  },
+  logoImg: { width: 32, height: 30 },
+  brandName: { color: COLORS.white, fontSize: 19, fontWeight: '900', letterSpacing: -0.3 },
+  brandSub: { color: '#bae6fd', fontSize: 12, fontWeight: '600', marginTop: 2 },
+  headerDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginVertical: 14 },
+  headerBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  greeting: { color: COLORS.white, fontSize: 17, fontWeight: '900' },
+  monthLabel: { color: '#bae6fd', fontSize: 13, fontWeight: '600', marginTop: 2 },
   closedBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#00000030',
-    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, alignSelf: 'flex-start', marginTop: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, alignSelf: 'flex-start',
   },
   closedText: { color: COLORS.white, fontSize: 12, fontWeight: '700' },
+  closeBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.success,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, minHeight: 36,
+  },
+  closeBtnDone: { backgroundColor: COLORS.danger },
   sectionCard: { backgroundColor: COLORS.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: COLORS.border },
   sectionTitle: { fontSize: 12, fontWeight: '800', color: COLORS.textMuted, letterSpacing: 0.5, marginLeft: 2 },
   monthChip: {
