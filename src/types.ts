@@ -63,6 +63,7 @@ export interface Notification {
   message: string;
   target: string;
   timestamp: string;
+  readBy?: string[]; // 읽은 사용자 uid 목록 (다중 관리자 유실 방지 — 삭제 대신 읽음처리)
 }
 
 // ─── 공문 작성 (ttong) ───────────────────────────────────────────────

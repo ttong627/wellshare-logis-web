@@ -54,10 +54,21 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
-    // notifications는 인증 사용자 모두 읽기/쓰기 (알림 전송용)
+    // 알림: 내 타겟만 읽기 / 타겟별 생성 검증 / 읽음(readBy)만 수정 / 삭제는 관리자만
     match /artifacts/{appId}/public/data/notifications/{notifId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      // ADMIN 알림은 관리자만 읽음(파트너→관리자 알림 노출 차단). 회사 알림은 인증자 읽기
+      allow read: if isSignedIn() && (existing().target == 'ADMIN' ? isAdminEmail() : true);
+      // 생성: 형식 검증 + 특정 회사 지정(target!=ADMIN)은 관리자만(스푸핑 차단)
+      allow create: if isSignedIn()
+        && incoming().message is string && incoming().message.size() <= 500
+        && incoming().target is string && incoming().target.size() <= 100
+        && incoming().timestamp is string
+        && (incoming().target == 'ADMIN' || isAdminEmail());
+      // 읽음처리: readBy 필드만 변경 가능
+      allow update: if isSignedIn()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['readBy']);
+      // 하드 삭제는 관리자만 (파트너는 읽음처리로 정리)
+      allow delete: if isAdminEmail();
     }
 
     // ── 테스트 연결 ──────────────────────────────────────────────────────

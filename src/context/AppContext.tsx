@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { collection, query, onSnapshot, addDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, doc, setDoc, where, arrayUnion } from 'firebase/firestore';
 import { db, APP_ID } from '../firebase';
 import { useAuth, AuthState } from '../hooks/useAuth';
 import { useMonthData } from '../hooks/useMonthData';
@@ -13,7 +13,6 @@ import {
 } from '../constants/regions';
 import { PARTNER_REGIONS, PARTNER_REGIONS_INVERSE } from '../constants/members';
 import { parseNumber, CLOSED_MSG } from '../lib/utils';
-import { initKakao, sendKakaoNotification } from '../lib/kakao';
 
 // ─── Computed Helpers ─────────────────────────────────────────────────
 
@@ -92,51 +91,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => setToastMessage(null), 3000);
   }, []);
 
-  const seenNotiIds = useRef(new Set<string>());
-  const isFirstNotiSnap = useRef(true);
+  // 내 알림 타겟: 관리자=ADMIN, 파트너=회사명
+  const myTarget = auth.isAdmin ? 'ADMIN' : auth.partnerCompany;
 
-  // Load notifications + Kakao forward for admin
+  // 내 타겟 알림만 구독 (where 필터 — 전체 컬렉션 노출/비용 방지)
   useEffect(() => {
-    if (!auth.user) {
-      seenNotiIds.current.clear();
-      isFirstNotiSnap.current = true;
-      return;
-    }
-    initKakao();
-    const q = query(collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'));
+    if (!auth.user || !myTarget) { setNotifications([]); return; }
+    const q = query(
+      collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'),
+      where('target', '==', myTarget),
+    );
     const unsub = onSnapshot(q, (snap) => {
       const notis = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Notification))
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 50);
-
-      if (isFirstNotiSnap.current) {
-        notis.forEach(n => seenNotiIds.current.add(n.id));
-        isFirstNotiSnap.current = false;
-      } else if (auth.isAdmin) {
-        notis
-          .filter(n => n.target === 'ADMIN' && !seenNotiIds.current.has(n.id))
-          .forEach(n => {
-            seenNotiIds.current.add(n.id);
-            sendKakaoNotification(n.message).catch(() => {});
-          });
-      }
-
       setNotifications(notis);
     });
     return () => unsub();
-  }, [auth.user, auth.isAdmin]);
+  }, [auth.user, myTarget]);
 
+  // 안 읽은 알림만 표시 (읽음 = readBy에 내 uid). 삭제 대신 읽음처리 → 다중 관리자 유실 방지
   const myNotifications = useMemo(() => {
-    if (!auth.user) return [];
-    return notifications.filter(n => n.target === (auth.isAdmin ? 'ADMIN' : auth.partnerCompany));
-  }, [notifications, auth.isAdmin, auth.partnerCompany, auth.user]);
+    const uid = auth.user?.uid;
+    if (!uid) return [];
+    return notifications.filter(n => !(n.readBy || []).includes(uid));
+  }, [notifications, auth.user]);
 
   const clearMyNotifications = useCallback(async () => {
-    for (const n of myNotifications) {
-      await deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'notifications', n.id));
-    }
-  }, [myNotifications]);
+    const uid = auth.user?.uid;
+    if (!uid) return;
+    await Promise.all(
+      myNotifications.map(n =>
+        setDoc(
+          doc(db, 'artifacts', APP_ID, 'public', 'data', 'notifications', n.id),
+          { readBy: arrayUnion(uid) },
+          { merge: true },
+        ),
+      ),
+    );
+  }, [myNotifications, auth.user]);
 
   // Computed: partner aggregated orders
   const partnerAggregatedOrders = useMemo(() => {

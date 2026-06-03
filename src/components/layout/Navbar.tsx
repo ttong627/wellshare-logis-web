@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Notification } from '../../types';
 import { safeRender } from '../../lib/utils';
+import { useConfirm } from '../shared/useConfirm';
 
 export type TabId =
   | 'profile' | 'account' | 'prices' | 'orders' | 'performance'
@@ -32,6 +33,7 @@ export default function Navbar({
 }: NavbarProps) {
   const [showNoti, setShowNoti] = useState(false);
   const [isGearOpen, setIsGearOpen] = useState(false);
+  const { confirm, dialog } = useConfirm();
 
   const ALL_TABS: Tab[] = [
     { id: 'profile',        label: '내 정보',   icon: <LayoutDashboard size={16} />, visible: !isAdmin && partnerCompany !== null },
@@ -158,9 +160,15 @@ export default function Navbar({
                   <div className="glass absolute right-0 top-full mt-2 w-72 sm:w-80 rounded-2xl z-[100000] overflow-hidden shadow-2xl">
                     <div className="px-4 py-2.5 flex justify-between items-center border-b border-sky-100">
                       <span className="text-xs font-black text-sky-700">실시간 알림</span>
-                      <button onClick={onClearNotifications}
+                      <button
+                        onClick={async () => {
+                          if (await confirm({ title: '알림 모두 읽음', message: '표시된 알림을 모두 읽음 처리합니다.', confirmText: '모두 읽음' })) {
+                            onClearNotifications();
+                            setShowNoti(false);
+                          }
+                        }}
                         className="text-[10px] font-bold text-sky-600 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 px-2 py-1 rounded-lg border border-sky-200 transition-colors">
-                        모두 지우기
+                        모두 읽음
                       </button>
                     </div>
                     <div className="max-h-60 overflow-y-auto p-2 space-y-1.5">
@@ -175,6 +183,7 @@ export default function Navbar({
                     </div>
                   </div>
                 )}
+                {dialog}
               </div>
 
               {/* Pending users */}
