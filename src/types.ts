@@ -336,6 +336,16 @@ export interface BillingReport {
   grandTotal: BillingTotal;
 }
 
+// ECOUNT 발행 내역 (회사코드 → 지자체 → 발행 결과) — billing_records 영구 저장
+export interface EcountSaleRecord {
+  status: 'done' | 'cached';
+  slipNos: string[];
+  comCode: string;
+  total: number;
+  sentAt: string;
+}
+export type EcountSales = Record<string, Record<string, EcountSaleRecord>>;
+
 export interface PartnerBillingRegion {
   region: string;
   qty: number;

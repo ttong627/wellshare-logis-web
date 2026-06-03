@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, onSnapshot, collection, query } from 'firebase/fir
 import { db, APP_ID } from '../firebase';
 import {
   ZonePrices, RegionsData, Orders, PartnerInputs,
-  DeliveryDates, PublishDates, PublishRequests,
+  DeliveryDates, PublishDates, PublishRequests, EcountSales,
 } from '../types';
 import { INITIAL_ZONES, INITIAL_REGIONS_DATA } from '../constants/regions';
 import { PARTNER_REGIONS_INVERSE } from '../constants/members';
@@ -30,6 +30,7 @@ export function useMonthData(user: User | null) {
   const [publishDates, setPublishDates] = useState<PublishDates>({});
   const [publishRequests, setPublishRequests] = useState<PublishRequests>({});
   const [deliveryDates, setDeliveryDates] = useState<DeliveryDates>({});
+  const [ecountSales, setEcountSales] = useState<EcountSales>({});
   const [isClosed, setIsClosed] = useState(false);
   const [savedMonths, setSavedMonths] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -75,6 +76,7 @@ export function useMonthData(user: User | null) {
         setPublishDates(data.publishDates || {});
         setPublishRequests(data.publishRequests || {});
         setDeliveryDates(data.deliveryDates || {});
+        setEcountSales(data.ecountSales || {});
         setIsClosed(data.isClosed || false);
       } else {
         setZonePrices(INITIAL_ZONES);
@@ -84,6 +86,7 @@ export function useMonthData(user: User | null) {
         setPublishDates({});
         setPublishRequests({});
         setDeliveryDates({});
+        setEcountSales({});
         setIsClosed(false);
       }
     } catch (e) {
@@ -154,6 +157,7 @@ export function useMonthData(user: User | null) {
     publishDates, setPublishDates,
     publishRequests, setPublishRequests,
     deliveryDates, setDeliveryDates,
+    ecountSales, setEcountSales,
     isClosed, setIsClosed,
     savedMonths,
     isSaving, setIsSaving,

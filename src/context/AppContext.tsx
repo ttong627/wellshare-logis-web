@@ -6,7 +6,7 @@ import { useMonthData } from '../hooks/useMonthData';
 import {
   Orders, PartnerInputs, DeliveryDates, PublishDates, PublishRequests,
   Notification, ZonePrices, RegionsData,
-  BillingReport, BillingSummary, OrderSummaries,
+  BillingReport, BillingSummary, OrderSummaries, EcountSales,
 } from '../types';
 import {
   REGION_ORDER, SEOUL_REGIONS, INITIAL_ZONES, INITIAL_REGIONS_DATA,
@@ -40,6 +40,8 @@ interface AppContextType extends AuthState {
   setPublishDates: React.Dispatch<React.SetStateAction<PublishDates>>;
   publishRequests: PublishRequests;
   setPublishRequests: React.Dispatch<React.SetStateAction<PublishRequests>>;
+  ecountSales: EcountSales;
+  setEcountSales: React.Dispatch<React.SetStateAction<EcountSales>>;
   isClosed: boolean;
   setIsClosed: React.Dispatch<React.SetStateAction<boolean>>;
   savedMonths: string[];

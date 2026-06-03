@@ -3,62 +3,64 @@ import { FileSpreadsheet, Send, AlertTriangle, ReceiptText } from 'lucide-react'
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatCur } from '../../lib/utils';
 import { getRegionBgColorClass, getRegionTheme } from '../../constants/regions';
-import { BillingItem } from '../../types';
+import { BillingItem, EcountSaleRecord } from '../../types';
 import ExcelIcon from '../shared/ExcelIcon';
-import StatusBadge, { BadgeVariant } from '../shared/StatusBadge';
+import StatusBadge from '../shared/StatusBadge';
 import { useConfirm } from '../shared/useConfirm';
 import { auth } from '../../firebase';
 import { sendRegion, buildRegionPayload, ECOUNT_COMPANIES, DEFAULT_COMCODE } from '../../lib/ecountGateway';
 
-type EcountRegState = 'wait' | 'sending' | 'done' | 'cached' | 'error';
-const ECOUNT_BADGE: Record<EcountRegState, { variant: BadgeVariant; label: string } | null> = {
-  wait: { variant: 'wait', label: '대기' },
-  sending: { variant: 'requested', label: '전송중' },
-  done: { variant: 'issued', label: '등록완료' },
-  cached: { variant: 'paid', label: '이미등록' },
-  error: null,
-};
-
 export default function BillingTab() {
-  const { billingReport, formattedMonthStr, currentMonth, showToast, regions, zonePrices } = useApp();
+  const {
+    billingReport, formattedMonthStr, currentMonth, showToast, regions, zonePrices,
+    ecountSales, setEcountSales, handleSaveField,
+  } = useApp();
   const { confirm, dialog } = useConfirm();
-  const [ecountStatus, setEcountStatus] = useState<Record<string, { state: EcountRegState; info?: string }>>({});
   const [sendingRegion, setSendingRegion] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({}); // `${comCode}|${region}` → 메시지
   const [showGuide, setShowGuide] = useState(false);
   const [selectedComCode, setSelectedComCode] = useState(DEFAULT_COMCODE);
 
-  // 지자체별 개별 발행 — 담당자가 각 카드의 [발행] 버튼으로 하나씩 등록
+  // 지자체별 개별 발행 — 결과는 billing_records(ecountSales: 회사코드→지자체→전표)에 영구 저장
   const handleSendRegion = async (item: BillingItem) => {
     const companyLabel = ECOUNT_COMPANIES.find((c) => c.comCode === selectedComCode)?.label ?? selectedComCode;
+    const already = ecountSales[selectedComCode]?.[item.region];
     const ok = await confirm({
-      title: `${item.region} 매출 발행`,
-      message: `[${companyLabel}] '${item.region}' 매출전표(${formatNumber(item.sum.amount)}원)를 ECOUNT에 등록합니다.\n비가역 작업 — 되돌리려면 ECOUNT 화면에서 직접 삭제해야 합니다.\n계속할까요?`,
+      title: already ? `${item.region} 재발행` : `${item.region} 매출 발행`,
+      message: `[${companyLabel}] '${item.region}' 매출전표(${formatNumber(item.sum.amount)}원)를 ECOUNT에 등록합니다.\n${already ? '이미 발행된 건입니다 — 멱등성으로 중복 전표는 생성되지 않습니다.\n' : ''}비가역 작업 — 되돌리려면 ECOUNT 화면에서 직접 삭제해야 합니다.\n계속할까요?`,
       tone: 'danger',
-      confirmText: '발행',
+      confirmText: already ? '재발행' : '발행',
     });
     if (!ok) return;
     const user = auth.currentUser;
     if (!user) { showToast('로그인이 필요합니다.'); return; }
 
+    const errKey = `${selectedComCode}|${item.region}`;
     setSendingRegion(item.region);
-    setEcountStatus((s) => ({ ...s, [item.region]: { state: 'sending' } }));
+    setErrors((e) => { const n = { ...e }; delete n[errKey]; return n; });
     const month = Number(currentMonth.split('-')[1]);
     try {
       const token = await user.getIdToken();
       const res = await sendRegion(token, buildRegionPayload(item, month, regions, zonePrices, selectedComCode));
-      if (res.ok && res.cached) {
-        setEcountStatus((s) => ({ ...s, [item.region]: { state: 'cached', info: '이미 등록됨' } }));
-        showToast(`${item.region} — 이미 등록되어 있습니다 (중복 차단)`);
-      } else if (res.ok) {
-        setEcountStatus((s) => ({ ...s, [item.region]: { state: 'done', info: res.slipNos?.[0] } }));
-        showToast(`${item.region} 매출 등록 완료`);
+      if (res.ok) {
+        const rec: EcountSaleRecord = {
+          status: res.cached ? 'cached' : 'done',
+          slipNos: res.slipNos && res.slipNos.length ? res.slipNos : (already?.slipNos ?? []),
+          comCode: selectedComCode,
+          total: item.sum.amount,
+          sentAt: new Date().toISOString(),
+        };
+        const next = { ...ecountSales, [selectedComCode]: { ...(ecountSales[selectedComCode] || {}), [item.region]: rec } };
+        setEcountSales(next);
+        await handleSaveField('ecountSales', next);
+        showToast(res.cached ? `${item.region} — 이미 등록됨 (저장)` : `${item.region} 발행완료 (전표 ${rec.slipNos[0] ?? '-'})`);
         setShowGuide(true);
       } else {
-        setEcountStatus((s) => ({ ...s, [item.region]: { state: 'error', info: res.message } }));
+        setErrors((e) => ({ ...e, [errKey]: res.message ?? '실패' }));
         showToast(`${item.region} 발행 실패: ${res.message}`);
       }
     } catch {
-      setEcountStatus((s) => ({ ...s, [item.region]: { state: 'error', info: '인증 토큰 발급 실패' } }));
+      setErrors((e) => ({ ...e, [errKey]: '인증 토큰 발급 실패' }));
       showToast('인증 토큰 발급에 실패했습니다.');
     } finally {
       setSendingRegion(null);
@@ -157,10 +159,9 @@ export default function BillingTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {billingReport.report.map((item) => {
               const theme = getRegionTheme(item.region);
-              const st = ecountStatus[item.region]?.state;
-              const badge = st ? ECOUNT_BADGE[st] : null;
+              const rec = ecountSales[selectedComCode]?.[item.region]; // 영구 저장된 발행 내역
+              const err = errors[`${selectedComCode}|${item.region}`];
               const isSending = sendingRegion === item.region;
-              const finished = st === 'done' || st === 'cached';
               return (
                 <div
                   key={item.region}
@@ -181,29 +182,35 @@ export default function BillingTab() {
                     <span className="text-[11px] text-slate-400 font-bold ml-0.5">원</span>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 min-h-[28px]">
-                    {st &&
-                      (badge ? (
-                        <StatusBadge variant={badge.variant} label={badge.label} />
-                      ) : (
-                        <span
-                          className="fin-badge"
-                          style={{ background: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}
-                          title={ecountStatus[item.region]?.info}
-                        >
-                          <AlertTriangle size={12} /> 실패
-                        </span>
-                      ))}
-                    {!finished && (
-                      <button
-                        onClick={() => handleSendRegion(item)}
-                        disabled={isSending}
-                        className="ml-auto px-3 py-1.5 rounded-lg font-bold text-[11px] text-white shadow-sm transition-all disabled:cursor-wait flex items-center gap-1"
-                        style={{ background: isSending ? '#94a3b8' : `linear-gradient(160deg, ${theme.dot}, ${theme.text})` }}
+                    {rec ? (
+                      <StatusBadge
+                        variant={rec.status === 'cached' ? 'paid' : 'issued'}
+                        label={rec.status === 'cached' ? '이미등록' : '발행완료'}
+                      />
+                    ) : err ? (
+                      <span
+                        className="fin-badge"
+                        style={{ background: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}
+                        title={err}
                       >
-                        <Send size={12} /> {isSending ? '발행중…' : st === 'error' ? '재발행' : '발행'}
-                      </button>
-                    )}
+                        <AlertTriangle size={12} /> 실패
+                      </span>
+                    ) : null}
+                    <button
+                      onClick={() => handleSendRegion(item)}
+                      disabled={isSending}
+                      className="ml-auto px-3 py-1.5 rounded-lg font-bold text-[11px] text-white shadow-sm transition-all disabled:cursor-wait flex items-center gap-1"
+                      style={{ background: isSending ? '#94a3b8' : `linear-gradient(160deg, ${theme.dot}, ${theme.text})` }}
+                    >
+                      <Send size={12} /> {isSending ? '발행중…' : rec ? '재발행' : '발행'}
+                    </button>
                   </div>
+                  {rec && (
+                    <div className="text-[10px] text-slate-500 fin-num flex items-center gap-2 flex-wrap pt-1 border-t border-slate-100">
+                      {rec.slipNos[0] && <span className="font-bold text-slate-600">전표 {rec.slipNos.join(', ')}</span>}
+                      <span className="text-slate-400">회사 {rec.comCode}</span>
+                    </div>
+                  )}
                 </div>
               );
             })}
