@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Trash2, Printer, History, X, Settings, Upload,
   ChevronDown, ChevronUp, Edit3, FileText, Save, RotateCcw,
-  Code, Eye, Minus, Type, Palette, Layout, Layers,
+  Code, Eye, Minus, Type, Palette, Layout, Layers, ClipboardPaste,
 } from 'lucide-react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -1558,7 +1558,7 @@ export default function DocsTab() {
                 </button>
                 <button onClick={() => setForm(f => ({ ...f, pasteMode: true, htmlMode: false }))}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${form.pasteMode ? 'bg-white text-sky-700 shadow-sm border border-sky-100' : 'text-sky-400 hover:text-sky-600'}`}>
-                  📋 붙여넣기
+                  <ClipboardPaste size={12} /> 붙여넣기
                 </button>
               </div>
             </div>
