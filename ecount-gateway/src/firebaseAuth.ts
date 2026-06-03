@@ -31,11 +31,10 @@ export function initAuth(config: AppConfig) {
       return;
     }
 
-    if (decoded.email_verified !== true) {
-      res.status(403).json({ ok: false, error: 'email_not_verified', message: '이메일 미인증' });
-      return;
-    }
-
+    // 인가 경계 = 관리자 이메일 allowlist (앱 useAuth.isAdmin과 동일 모델).
+    // email_verified는 요구하지 않는다: 관리자 이메일 3개는 이미 가입돼 있어 공격자가
+    // 같은 이메일로 재가입 불가(Firebase email-already-in-use)이므로 allowlist가 곧 경계다.
+    // (이 앱은 email/password 가입 + 관리자 승인 방식이라 email_verified가 false일 수 있음)
     const email = (decoded.email || '').toLowerCase();
     if (!email || !config.adminEmails.has(email)) {
       res.status(403).json({ ok: false, error: 'forbidden', message: '관리자 권한이 없습니다' });
