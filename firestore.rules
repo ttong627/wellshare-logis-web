@@ -80,6 +80,12 @@ service cloud.firestore {
              .hasOnly(['partnerAccounts', 'pendingUsers', 'updatedAt', 'updatedBy']);
     }
 
+    // 앱 버전(강제 업데이트 게이트): 공개 읽기(로그인 전에도 버전 확인 가능), 쓰기는 관리자만.
+    match /artifacts/{appId}/public/data/settings/app_version {
+      allow read: if true;
+      allow write: if isAdminEmail();
+    }
+
     // 알림: 내 타겟만 읽기 / 타겟별 생성 검증 / 읽음(readBy)만 수정 / 삭제는 관리자만
     match /artifacts/{appId}/public/data/notifications/{notifId} {
       // ADMIN 알림은 관리자만 읽음(파트너→관리자 알림 노출 차단). 회사 알림은 인증자 읽기
