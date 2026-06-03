@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Truck, Save } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { REGION_ORDER, getRegionTheme } from '../../constants/regions';
@@ -20,8 +20,6 @@ export default function OrdersTab({ onOpenConflict }: OrdersTabProps) {
     getEffectiveOrder, orderSummaries, isClosed, isSaving,
     showToast, handleSaveField, currentMonth, setIsSaving,
   } = useApp();
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleOrderChange = (r: string, f: string, v: string) => {
     if (isClosed) return showToast(CLOSED_MSG);
@@ -49,44 +47,6 @@ export default function OrdersTab({ onOpenConflict }: OrdersTabProps) {
       showToast(`[${region}] 포수 입력이 저장되었습니다.`);
     } catch (e) { showToast('저장 오류: ' + (e as Error).message); }
     finally { setIsSaving(false); }
-  };
-
-  const downloadUploadTemplate = () => {
-    if (!window.XLSX) return showToast('라이브러리 로딩 중...');
-    const headers = ['지역명', '차상위수량', '수급자수량'];
-    const data = [headers, ...REGION_ORDER.map(r => [r, 0, 0])];
-    const ws = window.XLSX.utils.aoa_to_sheet(data);
-    const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, '정산통합양식');
-    window.XLSX.writeFile(wb, `수량_및_배분_통합양식.xlsx`);
-  };
-
-  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (isClosed) { showToast(CLOSED_MSG); e.target.value = ''; return; }
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const bstr = evt.target?.result;
-      const wb = window.XLSX.read(bstr, { type: 'binary' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const data = window.XLSX.utils.sheet_to_json(ws);
-      const nextOrders = { ...orders };
-      data.forEach((row: any) => {
-        const rName = row['지역명'];
-        if (REGION_ORDER.includes(rName)) {
-          nextOrders[rName] = {
-            ...nextOrders[rName],
-            povertyQty: parseNumber(row['차상위수량'] || 0),
-            basicQty: parseNumber(row['수급자수량'] || 0),
-          };
-        }
-      });
-      setOrders(nextOrders);
-      showToast('엑셀 데이터가 업로드되었습니다. 확인 후 저장해 주세요.');
-      e.target.value = '';
-    };
-    reader.readAsBinaryString(file);
   };
 
   const handleDownloadOrdersExcel = () => {
@@ -133,17 +93,10 @@ export default function OrdersTab({ onOpenConflict }: OrdersTabProps) {
           </div>
         </div>
         <div className="xl:w-80 glass rounded-xl p-3 sm:p-4 flex flex-col justify-center gap-2">
-          <h4 className="text-sky-700 font-bold text-xs sm:text-sm flex items-center gap-1 sm:gap-2 mb-1">포수 데이터 및 양식 연동</h4>
-          <div className="flex flex-col gap-2 w-full mt-2 sm:mt-0">
-            <button onClick={handleDownloadOrdersExcel} className="w-full flex items-center justify-center gap-1 bg-[#107C41] hover:bg-[#185C37] text-white py-1.5 sm:py-2 rounded-md text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap shadow-sm">
-              <ExcelIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> 엑셀
-            </button>
-            <div className="flex gap-2 w-full">
-              <button onClick={downloadUploadTemplate} className="flex-1 flex items-center justify-center gap-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 py-1.5 sm:py-2 rounded-md text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap">양식받기</button>
-              <button onClick={() => fileInputRef.current?.click()} disabled={isClosed} className="flex-1 flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 sm:py-2 rounded-md text-[10px] sm:text-xs font-bold shadow-sm transition-all disabled:opacity-50 whitespace-nowrap">엑셀업로드</button>
-            </div>
-          </div>
-          <input type="file" ref={fileInputRef} onChange={handleExcelUpload} className="hidden" accept=".xlsx, .xls" />
+          <h4 className="text-sky-700 font-bold text-xs sm:text-sm flex items-center gap-1 sm:gap-2 mb-1">포수 데이터 다운로드</h4>
+          <button onClick={handleDownloadOrdersExcel} className="w-full flex items-center justify-center gap-1 bg-[#107C41] hover:bg-[#185C37] text-white py-1.5 sm:py-2 rounded-md text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap shadow-sm">
+            <ExcelIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> 엑셀 다운로드
+          </button>
         </div>
       </div>
 
