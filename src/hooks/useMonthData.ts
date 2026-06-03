@@ -7,7 +7,6 @@ import {
   DeliveryDates, PublishDates, PublishRequests, EcountSales,
 } from '../types';
 import { INITIAL_ZONES, INITIAL_REGIONS_DATA } from '../constants/regions';
-import { PARTNER_REGIONS_INVERSE } from '../constants/members';
 
 const getCurrentMonth = () => {
   const now = new Date();
@@ -53,26 +52,13 @@ export function useMonthData(user: User | null) {
       const snap = await getDoc(ref);
       if (snap.exists()) {
         const data = snap.data();
-        let loadedOrders: Orders = data.orders || {};
-        let loadedPartnerInputs: PartnerInputs = data.partnerInputs || {};
-
-        // Auto-fill single-partner regions
-        Object.keys(loadedOrders).forEach(r => {
-          const o = loadedOrders[r];
-          const partners = PARTNER_REGIONS_INVERSE[r] || [];
-          if (partners.length === 1 && ((o.basicQty && +o.basicQty > 0) || (o.povertyQty && +o.povertyQty > 0))) {
-            const comp = partners[0];
-            if (!loadedPartnerInputs[comp]) loadedPartnerInputs[comp] = {};
-            if (!loadedPartnerInputs[comp][r]) {
-              loadedPartnerInputs[comp][r] = { basicQty: o.basicQty, povertyQty: o.povertyQty };
-            }
-          }
-        });
 
         setZonePrices(data.zonePrices || INITIAL_ZONES);
         setRegions(data.regions || INITIAL_REGIONS_DATA);
-        setOrders(loadedOrders);
-        setPartnerInputs(loadedPartnerInputs);
+        // 단일 회원사 지역의 포수입력(orders)은 비워두면 지역포수(partnerInputs) 합으로 자동 대체된다(getEffectiveOrder).
+        // 과거의 역방향 자동채움(orders→partnerInputs)은 회원사가 입력한 지역포수를 본사값으로 덮어써 제거함.
+        setOrders(data.orders || {});
+        setPartnerInputs(data.partnerInputs || {});
         setPublishDates(data.publishDates || {});
         setPublishRequests(data.publishRequests || {});
         setDeliveryDates(data.deliveryDates || {});

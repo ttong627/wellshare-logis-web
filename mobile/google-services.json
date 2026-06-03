@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "528541497350",
+    "project_id": "wellshare-logis",
+    "storage_bucket": "wellshare-logis.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:528541497350:android:64a4b6d387ee8c601a2b87",
+        "android_client_info": {
+          "package_name": "kr.wssc.wellshare.logis"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "528541497350-bh1bvipi9k013o251cqig8agc3erqd8v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHepXHVYjPX_IrONDMn-f90RfF0aJYIuA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "528541497350-bh1bvipi9k013o251cqig8agc3erqd8v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

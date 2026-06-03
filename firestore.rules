@@ -97,6 +97,16 @@ service cloud.firestore {
       allow delete: if isAdminUser(appId);
     }
 
+    // 푸시 토큰: 본인(uid) 문서만 본인이 생성/수정. 읽기는 본인 또는 관리자.
+    // 발송은 Cloud Function이 admin SDK로 수행(규칙 우회)하므로 클라이언트 광범위 읽기 불필요.
+    match /artifacts/{appId}/public/data/pushTokens/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdminUser(appId));
+      allow create, update: if isSignedIn() && request.auth.uid == uid
+        && incoming().token is string && incoming().token.size() <= 4096
+        && incoming().target is string && incoming().target.size() <= 100;
+      allow delete: if isSignedIn() && (request.auth.uid == uid || isAdminUser(appId));
+    }
+
     // ── 테스트 연결 ──────────────────────────────────────────────────────
     match /test/connection {
       allow read: if true;

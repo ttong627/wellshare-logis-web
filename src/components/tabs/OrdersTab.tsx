@@ -16,7 +16,7 @@ interface OrdersTabProps {
 
 export default function OrdersTab({ onOpenConflict }: OrdersTabProps) {
   const {
-    orders, setOrders, partnerInputs, setPartnerInputs, partnerAggregatedOrders,
+    orders, setOrders, partnerInputs, partnerAggregatedOrders,
     getEffectiveOrder, orderSummaries, isClosed, isSaving,
     showToast, handleSaveField, currentMonth, setIsSaving,
   } = useApp();
@@ -31,18 +31,8 @@ export default function OrdersTab({ onOpenConflict }: OrdersTabProps) {
     if (isClosed) return showToast(CLOSED_MSG);
     setIsSaving(true);
     try {
-      const partners = PARTNER_REGIONS_INVERSE[region] || [];
-      let nextPartnerInputs = partnerInputs;
-      if (partners.length === 1) {
-        const comp = partners[0];
-        const o = orders[region] || {};
-        nextPartnerInputs = {
-          ...partnerInputs,
-          [comp]: { ...(partnerInputs[comp] || {}), [region]: { basicQty: o.basicQty, povertyQty: o.povertyQty } },
-        };
-        setPartnerInputs(nextPartnerInputs);
-        await handleSaveField('partnerInputs', nextPartnerInputs);
-      }
+      // 단일 회원사 지역은 본사 입력을 비우면 지역포수 합으로 자동 확정된다(getEffectiveOrder).
+      // 과거엔 여기서 orders→partnerInputs로 역기록해 회원사가 입력한 지역포수를 덮어썼으나 제거함.
       await handleSaveField('orders', orders);
       showToast(`[${region}] 포수 입력이 저장되었습니다.`);
     } catch (e) { showToast('저장 오류: ' + (e as Error).message); }
@@ -148,7 +138,7 @@ export default function OrdersTab({ onOpenConflict }: OrdersTabProps) {
                   </button>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-4 text-right">
-                  {isSinglePartner && hasAdminInput ? (
+                  {isSinglePartner && allPartnersHaveInput ? (
                     <div className="flex items-center gap-1 sm:gap-2 font-bold px-2 sm:px-4 py-1 sm:py-1.5 rounded-md text-[10px] sm:text-xs border bg-emerald-50 text-emerald-700 border-emerald-200">
                       ✅ 자동 확인 (총 {formatNumber(tr)}포)
                     </div>

@@ -2,7 +2,7 @@
   "expo": {
     "name": "정부양곡정산",
     "slug": "wellshare-logis-mobile",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -31,18 +31,27 @@
         "backgroundColor": "#ffffff"
       },
       "package": "kr.wssc.wellshare.logis",
-      "versionCode": 8,
+      "versionCode": 9,
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "plugins": [
       "expo-font",
       "expo-updates",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/adaptive-icon.png",
+          "color": "#0284c7"
+        }
+      ]
     ],
     "extra": {
       "eas": {
