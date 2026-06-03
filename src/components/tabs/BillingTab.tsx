@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FileSpreadsheet, Send, AlertTriangle, ReceiptText } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatCur } from '../../lib/utils';
-import { getRegionBgColorClass } from '../../constants/regions';
+import { getRegionBgColorClass, getRegionTheme } from '../../constants/regions';
+import { BillingItem } from '../../types';
 import ExcelIcon from '../shared/ExcelIcon';
 import StatusBadge, { BadgeVariant } from '../shared/StatusBadge';
 import { useConfirm } from '../shared/useConfirm';
@@ -21,78 +22,45 @@ const ECOUNT_BADGE: Record<EcountRegState, { variant: BadgeVariant; label: strin
 export default function BillingTab() {
   const { billingReport, formattedMonthStr, currentMonth, showToast, regions, zonePrices } = useApp();
   const { confirm, dialog } = useConfirm();
-  const [ecountSending, setEcountSending] = useState(false);
   const [ecountStatus, setEcountStatus] = useState<Record<string, { state: EcountRegState; info?: string }>>({});
-  const [ecountSummary, setEcountSummary] = useState<{ done: number; cached: number; error: number } | null>(null);
+  const [sendingRegion, setSendingRegion] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
-  const [selectedRegions, setSelectedRegions] = useState<Set<string>>(new Set());
 
-  // 지자체 목록이 바뀌면(월 변경/로딩) 전체 선택으로 초기화 + 상태 리셋
-  const regionKey = billingReport.report.map((it) => it.region).join('|');
-  useEffect(() => {
-    setSelectedRegions(new Set(billingReport.report.map((it) => it.region)));
-    setEcountStatus({});
-    setEcountSummary(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [regionKey]);
-
-  const toggleRegion = (r: string) =>
-    setSelectedRegions((s) => { const n = new Set(s); if (n.has(r)) n.delete(r); else n.add(r); return n; });
-
-  const allRegionNames = billingReport.report.map((it) => it.region);
-  const allSelected = allRegionNames.length > 0 && allRegionNames.every((r) => selectedRegions.has(r));
-  const toggleAll = () => setSelectedRegions(allSelected ? new Set() : new Set(allRegionNames));
-  const selectedSum = billingReport.report
-    .filter((it) => selectedRegions.has(it.region))
-    .reduce((s, it) => s + it.sum.amount, 0);
-
-  const handleEcountSend = async (testOnly = false) => {
-    const selected = billingReport.report.filter((it) => selectedRegions.has(it.region));
-    const targets = testOnly ? selected.slice(0, 1) : selected;
-    if (targets.length === 0) { showToast('선택된 지자체가 없습니다.'); return; }
+  // 지자체별 개별 발행 — 담당자가 각 카드의 [발행] 버튼으로 하나씩 등록
+  const handleSendRegion = async (item: BillingItem) => {
     const ok = await confirm({
-      title: testOnly ? 'ECOUNT 테스트 전송 (1건)' : 'ECOUNT 매출 전송',
-      message: testOnly
-        ? `테스트로 '${targets[0].region}' 1건만 ECOUNT에 등록합니다.\n비가역 — 등록 후 ECOUNT 화면에서 금액을 확인하세요.\n계속할까요?`
-        : `운영 ECOUNT에 ${targets.length}개 행정구의 매출전표를 등록합니다.\n비가역 작업입니다 — 되돌리려면 ECOUNT 화면에서 직접 삭제해야 합니다.\n계속할까요?`,
+      title: `${item.region} 매출 발행`,
+      message: `'${item.region}' 매출전표(${formatNumber(item.sum.amount)}원)를 운영 ECOUNT에 등록합니다.\n비가역 작업 — 되돌리려면 ECOUNT 화면에서 직접 삭제해야 합니다.\n계속할까요?`,
       tone: 'danger',
-      confirmText: testOnly ? '테스트 전송' : '전송',
+      confirmText: '발행',
     });
     if (!ok) return;
     const user = auth.currentUser;
     if (!user) { showToast('로그인이 필요합니다.'); return; }
 
-    setEcountSending(true);
-    setEcountSummary(null);
-    setShowGuide(false);
+    setSendingRegion(item.region);
+    setEcountStatus((s) => ({ ...s, [item.region]: { state: 'sending' } }));
     const month = Number(currentMonth.split('-')[1]);
-    const init: Record<string, { state: EcountRegState }> = {};
-    targets.forEach((it) => { init[it.region] = { state: 'wait' }; });
-    setEcountStatus(init);
-
-    let done = 0, cached = 0, error = 0;
-    for (const item of targets) {
-      setEcountStatus((s) => ({ ...s, [item.region]: { state: 'sending' } }));
-      // 토큰은 행정구마다 재취득 — Firebase SDK가 유효시 캐시 반환, 만료 임박시에만 갱신(루프 중 만료 방지)
-      let token: string;
-      try { token = await user.getIdToken(); }
-      catch { error++; setEcountStatus((s) => ({ ...s, [item.region]: { state: 'error', info: '인증 토큰 발급 실패' } })); continue; }
+    try {
+      const token = await user.getIdToken();
       const res = await sendRegion(token, buildRegionPayload(item, month, regions, zonePrices));
       if (res.ok && res.cached) {
-        cached++;
         setEcountStatus((s) => ({ ...s, [item.region]: { state: 'cached', info: '이미 등록됨' } }));
+        showToast(`${item.region} — 이미 등록되어 있습니다 (중복 차단)`);
       } else if (res.ok) {
-        done++;
         setEcountStatus((s) => ({ ...s, [item.region]: { state: 'done', info: res.slipNos?.[0] } }));
+        showToast(`${item.region} 매출 등록 완료`);
+        setShowGuide(true);
       } else {
-        error++;
         setEcountStatus((s) => ({ ...s, [item.region]: { state: 'error', info: res.message } }));
+        showToast(`${item.region} 발행 실패: ${res.message}`);
       }
+    } catch {
+      setEcountStatus((s) => ({ ...s, [item.region]: { state: 'error', info: '인증 토큰 발급 실패' } }));
+      showToast('인증 토큰 발급에 실패했습니다.');
+    } finally {
+      setSendingRegion(null);
     }
-    setEcountSending(false);
-    setEcountSummary({ done, cached, error });
-    showToast(`ECOUNT 전송 완료 — 등록 ${done} · 중복 ${cached} · 실패 ${error}`);
-    if (error === 0) setShowGuide(true);
   };
 
   const generateAdvancedBillingExcel = () => {
@@ -155,89 +123,79 @@ export default function BillingTab() {
         </button>
       </div>
 
-      {/* ── ECOUNT 매출 발행 (지자체 선택) ── */}
+      {/* ── ECOUNT 매출 발행 (지자체별 개별 발행) ── */}
       {billingReport.report.length > 0 && (
         <div className="fin-card p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div className="flex items-center justify-between gap-2 mb-3">
             <h3 className="font-black text-sm text-slate-700 flex items-center gap-1.5">
-              <Send size={15} className="text-sky-500" /> ECOUNT 매출 발행 <span className="text-slate-400 font-bold">(지자체 선택)</span>
+              <Send size={15} className="text-sky-500" /> ECOUNT 매출 발행 <span className="text-slate-400 font-bold">(지자체별)</span>
             </h3>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={toggleAll}
-                disabled={ecountSending}
-                className="px-2.5 py-1.5 rounded-lg font-bold text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors disabled:opacity-50"
-              >
-                {allSelected ? '전체 해제' : '전체 선택'}
-              </button>
-              <button
-                onClick={() => handleEcountSend(true)}
-                disabled={ecountSending || selectedRegions.size === 0}
-                title="선택한 지자체 중 첫 1건만 시범 전송"
-                className="px-2.5 py-1.5 rounded-lg font-bold text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-700 ring-1 ring-amber-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                🧪 테스트
-              </button>
-              <button
-                onClick={() => handleEcountSend(false)}
-                disabled={ecountSending || selectedRegions.size === 0}
-                className="px-3 py-1.5 rounded-lg font-bold text-[11px] text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                style={{ background: 'linear-gradient(160deg,#38bdf8,#0284c7)' }}
-              >
-                <Send size={13} /> {ecountSending ? '전송중…' : `선택 전송 (${selectedRegions.size})`}
-              </button>
-            </div>
+            <button
+              onClick={() => setShowGuide(true)}
+              className="text-[11px] font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 shrink-0"
+            >
+              <ReceiptText size={13} /> 발행 후 작업 안내
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {billingReport.report.map((item) => {
-              const checked = selectedRegions.has(item.region);
+              const theme = getRegionTheme(item.region);
               const st = ecountStatus[item.region]?.state;
               const badge = st ? ECOUNT_BADGE[st] : null;
+              const isSending = sendingRegion === item.region;
+              const finished = st === 'done' || st === 'cached';
               return (
-                <label
+                <div
                   key={item.region}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer transition-colors ${checked ? 'bg-sky-50 ring-1 ring-sky-200' : 'bg-slate-50 hover:bg-slate-100'}`}
-                  title={ecountStatus[item.region]?.info || ''}
+                  className="rounded-xl border bg-white p-3 flex flex-col gap-2 transition-shadow hover:shadow-md"
+                  style={{ borderColor: theme.border, borderLeft: `4px solid ${theme.dot}` }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleRegion(item.region)}
-                    disabled={ecountSending}
-                    className="w-4 h-4 accent-sky-500 shrink-0"
-                  />
-                  <span className="text-[12px] font-bold text-slate-700 flex-1 truncate">{item.region}</span>
-                  <span className="fin-num text-[11px] text-slate-500">{formatNumber(item.sum.amount)}원</span>
-                  {st &&
-                    (badge ? (
-                      <StatusBadge variant={badge.variant} label={badge.label} />
-                    ) : (
-                      <span className="fin-badge" style={{ background: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}>
-                        <AlertTriangle size={12} /> 실패
-                      </span>
-                    ))}
-                </label>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="text-[10px] font-black px-1.5 py-0.5 rounded-md shrink-0"
+                      style={{ background: theme.bg, color: theme.text }}
+                    >
+                      {theme.group}
+                    </span>
+                    <span className="text-[13px] font-black text-slate-800 truncate">{item.region}</span>
+                  </div>
+                  <div className="fin-num text-lg font-black text-slate-700 leading-none">
+                    {formatNumber(item.sum.amount)}
+                    <span className="text-[11px] text-slate-400 font-bold ml-0.5">원</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 min-h-[28px]">
+                    {st &&
+                      (badge ? (
+                        <StatusBadge variant={badge.variant} label={badge.label} />
+                      ) : (
+                        <span
+                          className="fin-badge"
+                          style={{ background: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}
+                          title={ecountStatus[item.region]?.info}
+                        >
+                          <AlertTriangle size={12} /> 실패
+                        </span>
+                      ))}
+                    {!finished && (
+                      <button
+                        onClick={() => handleSendRegion(item)}
+                        disabled={isSending}
+                        className="ml-auto px-3 py-1.5 rounded-lg font-bold text-[11px] text-white shadow-sm transition-all disabled:cursor-wait flex items-center gap-1"
+                        style={{ background: isSending ? '#94a3b8' : `linear-gradient(160deg, ${theme.dot}, ${theme.text})` }}
+                      >
+                        <Send size={12} /> {isSending ? '발행중…' : st === 'error' ? '재발행' : '발행'}
+                      </button>
+                    )}
+                  </div>
+                </div>
               );
             })}
           </div>
 
-          <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-            <span className="font-bold text-slate-500">
-              선택 {selectedRegions.size}개 · 합계 <span className="fin-num text-sky-700">{formatNumber(selectedSum)}원</span>
-            </span>
-            {ecountSummary && (
-              <span className="font-bold text-slate-500">
-                결과 — 등록 {ecountSummary.done} · 중복 {ecountSummary.cached} ·{' '}
-                <span className={ecountSummary.error ? 'text-red-500' : ''}>실패 {ecountSummary.error}</span>
-              </span>
-            )}
-          </div>
-          {ecountSummary && ecountSummary.error > 0 && (
-            <p className="mt-2 text-[11px] font-bold text-red-500">
-              실패한 지자체는 다시 '선택 전송'을 누르면 재전송됩니다 (이미 등록된 곳은 자동 건너뜀).
-            </p>
-          )}
+          <p className="mt-3 text-[11px] text-slate-400 font-medium break-keep">
+            ⓘ 지자체별로 [발행]을 누르면 ECOUNT에 매출전표가 등록됩니다. 비가역이며, 이미 등록된 곳은 다시 눌러도 중복되지 않습니다.
+          </p>
         </div>
       )}
 
