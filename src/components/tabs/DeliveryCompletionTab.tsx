@@ -4,6 +4,8 @@ import { addDoc, collection, setDoc, doc } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { MEMBERS, PARTNER_REGIONS } from '../../constants/members';
+import { getRegionTheme } from '../../constants/regions';
+import StatusBadge from '../shared/StatusBadge';
 import { formatNumber, safeRender, CLOSED_MSG } from '../../lib/utils';
 
 export default function DeliveryCompletionTab() {
@@ -128,20 +130,19 @@ export default function DeliveryCompletionTab() {
         return (
           <tr key={region} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
             <td className="p-1 sm:p-2 font-bold text-slate-800 border-r border-slate-200 bg-slate-50 text-center whitespace-nowrap text-[10px] sm:text-sm">
-              {safeRender(region)}
+              <span className="inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: getRegionTheme(region).dot }} />
+                {safeRender(region)}
+              </span>
             </td>
             <td className="p-1 sm:p-2 border-r border-slate-200 text-center font-black text-slate-700 whitespace-nowrap text-[10px] sm:text-sm">
               {formatNumber(pQty)} 포
             </td>
             <td className="p-1 sm:p-2 border-r border-slate-200 text-center whitespace-nowrap">
               {isSavedInDB ? (
-                <span className="bg-blue-50 border border-blue-200 text-blue-700 font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-[8px] sm:text-xs inline-flex items-center gap-1 shadow-sm">
-                  ✅ {dbData.date} {dbData.delayDays && `(지체 ${dbData.delayDays}일)`}
-                </span>
+                <StatusBadge variant="done" label={`${dbData.date}${dbData.delayDays ? ` 지체${dbData.delayDays}일` : ''}`} />
               ) : (
-                <span className="bg-red-50 border border-red-200 text-red-600 font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-[8px] sm:text-xs inline-flex items-center gap-1 shadow-sm">
-                  ❌ 미완료
-                </span>
+                <StatusBadge variant="wait" label="미완료" />
               )}
             </td>
             <td className="p-1 sm:p-2 bg-white text-center flex flex-col sm:flex-row items-center gap-1 justify-center">
