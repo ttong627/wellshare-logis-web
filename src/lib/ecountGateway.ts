@@ -10,8 +10,8 @@ const GATEWAY_URL =
 
 // 발행 회사(COM_CODE) — 게이트웨이 ECOUNT_COMPANIES와 동일하게 유지
 export const ECOUNT_COMPANIES = [
-  { comCode: '631989', label: '웰쉐어 (운영)' },
-  { comCode: '156855', label: '웰쉐어 테스트' },
+  { comCode: '631989', label: '웰쉐어 (631989)' },
+  { comCode: '156855', label: '웰쉐어 (156855)' },
 ];
 export const DEFAULT_COMCODE = '631989';
 
