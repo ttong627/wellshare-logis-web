@@ -4,14 +4,17 @@
   },
   "build": {
     "preview": {
+      "channel": "preview",
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
       }
     },
     "production": {
+      "channel": "production",
+      "autoIncrement": true,
       "android": {
-        "buildType": "aab"
+        "buildType": "apk"
       },
       "ios": {
         "resourceClass": "m-medium"

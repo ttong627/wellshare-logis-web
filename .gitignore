@@ -20,6 +20,12 @@ dist
 dist-ssr
 *.local
 
+# 모바일 빌드 산출물 — 배포(Firebase Hosting)에만 사용, git 미포함(로컬 재빌드)
+public/wellshare-narami.apk
+mobile/android/
+mobile/ios/
+mobile/.expo/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

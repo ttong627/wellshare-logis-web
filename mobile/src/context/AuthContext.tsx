@@ -5,6 +5,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db, APP_ID } from '../firebase';
+import { ADMIN_EMAILS } from '../constants';
 
 interface AuthContextType {
   user: User | null;
@@ -28,12 +29,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (u) {
         setUser(u);
         try {
-          const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'partnerAccounts'));
-          const data = snap.exists() ? snap.data() : {};
-          const role = data[u.email || ''];
-          setIsAdmin(role === 'ADMIN');
-          setPartnerCompany(role && role !== 'ADMIN' ? role : null);
-        } catch {
+          // 웹 useAuth.ts와 동일 경로: settings/master_settings.partnerAccounts[email]
+          const snap = await getDoc(
+            doc(db, 'artifacts', APP_ID, 'public', 'data', 'settings', 'master_settings')
+          );
+          const accounts: Record<string, string> =
+            snap.exists() ? (snap.data().partnerAccounts || {}) : {};
+          const email = (u.email || '').toLowerCase();
+          const role = accounts[u.email || ''] ?? accounts[email];
+          // 하드코딩 관리자(ADMIN_EMAILS) OR 동적 관리자(role==='ADMIN')
+          const admin = ADMIN_EMAILS.includes(email) || role === 'ADMIN';
+          setIsAdmin(admin);
+          setPartnerCompany(!admin && role && role !== 'ADMIN' ? role : null);
+        } catch (e) {
+          console.warn('역할 조회 실패:', e);
           setIsAdmin(false);
           setPartnerCompany(null);
         }

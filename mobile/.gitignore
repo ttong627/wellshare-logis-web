@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# 네이티브 프로젝트 — prebuild로 로컬 재생성(커밋하지 않음)
+/android
+/ios
+
+# Metro
+.metro-health-check*
+
+# debug / logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS / 키
+.DS_Store
+*.pem
+
+# 로컬 env
+.env*.local

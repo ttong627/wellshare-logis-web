@@ -12,21 +12,36 @@ export const PARTNER_REGIONS: Record<string, string[]> = {
   '(주)한울': ['동대문구'],
 };
 
+// 하드코딩 관리자 (웹 src/constants/members.ts와 일치)
+export const ADMIN_EMAILS = ['ttong@wssc.kr', 'ttong627@gmail.com', 'goodp1@hanmail.net'];
+
+// 웹앱과 동일한 sky-blue 브랜드 + 서울 violet / 경기 emerald 색 시스템.
+// 모든 화면이 이 토큰만 사용한다(raw hex 금지). 흰 텍스트 대비 4.5:1 충족.
 export const COLORS = {
-  primary: '#1e293b',
-  primaryLight: '#334155',
-  accent: '#10b981',
+  primary: '#0284c7',      // sky-600 — 헤더/로그인 배경(흰 텍스트 대비 4.5:1+)
+  primaryLight: '#38bdf8', // sky-400
+  brand: '#0ea5e9',        // sky-500 — 강조
+  brandDark: '#0369a1',    // sky-700 — 본문 강조 텍스트
+  accent: '#10b981',       // emerald — 보조 강조(= 경기)
   accentLight: '#d1fae5',
-  danger: '#ef4444',
+  success: '#16a34a',
+  successLight: '#dcfce7',
+  danger: '#dc2626',
   dangerLight: '#fee2e2',
-  warning: '#f59e0b',
+  warning: '#d97706',
   warningLight: '#fef3c7',
-  info: '#3b82f6',
+  info: '#0284c7',
   infoLight: '#dbeafe',
-  bg: '#f1f5f9',
+  bg: '#f0f9ff',           // sky-50
   card: '#ffffff',
-  border: '#e2e8f0',
-  text: '#1e293b',
-  textMuted: '#94a3b8',
+  surfaceAlt: '#f8fafc',
+  border: '#e0f2fe',       // sky-100
+  text: '#0c4a6e',         // sky-900
+  textMuted: '#64748b',    // slate-500 — 흰 배경 대비 4.5:1
   white: '#ffffff',
+  // 지역 색 시스템 (웹 getRegionTheme와 동일)
+  seoul: '#8b5cf6',        // violet — 서울
+  seoulBg: '#f5f3ff',
+  gyeonggi: '#10b981',     // emerald — 경기
+  gyeonggiBg: '#ecfdf5',
 };

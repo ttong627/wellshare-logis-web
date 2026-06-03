@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>웰쉐어 나라미 앱 다운로드</title>
+<meta name="description" content="웰쉐어 나라미 물류 정산 포털 안드로이드 앱 설치" />
+<style>
+  :root{
+    --brand:#0284c7; --brand-l:#38bdf8; --brand-d:#0369a1;
+    --ink:#0c4a6e; --muted:#64748b; --bg:#f0f9ff; --card:#fff; --line:#e0f2fe;
+    --ok:#16a34a; --warn:#d97706;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Pretendard','Malgun Gothic',-apple-system,system-ui,sans-serif;
+    color:var(--ink);min-height:100dvh;
+    background:linear-gradient(160deg,#e0f2fe 0%,#f0f9ff 45%,#fff 100%);
+    display:flex;align-items:flex-start;justify-content:center;padding:24px 16px 48px;
+  }
+  .wrap{width:100%;max-width:440px}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:24px;
+    box-shadow:0 18px 50px rgba(2,132,199,.12);padding:32px 24px;text-align:center;
+    animation:rise .5s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .icon{
+    width:96px;height:96px;border-radius:24px;margin:0 auto 16px;display:block;
+    box-shadow:0 10px 24px rgba(2,132,199,.28);
+  }
+  h1{font-size:24px;font-weight:900;letter-spacing:-.4px;margin-bottom:6px}
+  .sub{color:var(--muted);font-size:14px;font-weight:600;margin-bottom:14px}
+  .ver{
+    display:inline-flex;align-items:center;gap:6px;background:#dbeafe;color:var(--brand-d);
+    font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;margin-bottom:24px;
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    background:linear-gradient(135deg,var(--brand) 0%,var(--brand-l) 100%);color:#fff;
+    font-size:17px;font-weight:800;text-decoration:none;padding:18px;border-radius:16px;
+    box-shadow:0 8px 20px rgba(2,132,199,.35);transition:transform .15s,box-shadow .15s;
+  }
+  .btn:active{transform:scale(.97);box-shadow:0 4px 12px rgba(2,132,199,.3)}
+  .btn svg{width:22px;height:22px}
+  .hint{font-size:12px;color:var(--muted);font-weight:600;margin-top:10px}
+  .sec{margin-top:28px;text-align:left}
+  .sec h2{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .steps{list-style:none;display:flex;flex-direction:column;gap:10px}
+  .steps li{display:flex;gap:12px;align-items:flex-start;font-size:13.5px;font-weight:600;color:#334155;line-height:1.5}
+  .num{
+    flex:none;width:24px;height:24px;border-radius:8px;background:#e0f2fe;color:var(--brand-d);
+    font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;
+  }
+  .note{
+    margin-top:18px;background:#fef3c7;border:1px solid #fde68a;border-radius:12px;
+    padding:12px 14px;font-size:12.5px;font-weight:700;color:#92400e;line-height:1.55;
+    display:flex;gap:8px;align-items:flex-start;
+  }
+  .qr{
+    margin-top:28px;padding-top:24px;border-top:1px dashed var(--line);text-align:center;
+  }
+  .qr img{width:160px;height:160px;border-radius:14px;border:1px solid var(--line);padding:8px;background:#fff}
+  .qr p{font-size:12.5px;color:var(--muted);font-weight:700;margin-top:10px}
+  .foot{text-align:center;color:#94a3b8;font-size:11px;font-weight:600;margin-top:22px;line-height:1.6}
+  .platform{
+    display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;
+    color:var(--ok);background:#dcfce7;padding:4px 10px;border-radius:999px;margin-bottom:18px;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <img class="icon" src="/app-icon.png" alt="웰쉐어 나라미 앱 아이콘" />
+      <span class="platform">● 안드로이드 전용</span>
+      <h1>웰쉐어 나라미</h1>
+      <p class="sub">물류 정산 포털 · 모바일 앱</p>
+      <div class="ver"><span class="dot"></span> 버전 1.0.1</div>
+
+      <a class="btn" href="/wellshare-narami.apk" download>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        APK 다운로드
+      </a>
+      <p class="hint">버튼이 안 눌리면 길게 눌러 “링크 다운로드”를 선택하세요.</p>
+
+      <div class="sec">
+        <h2>📲 설치 방법 (3단계)</h2>
+        <ol class="steps">
+          <li><span class="num">1</span><span>위 <b>APK 다운로드</b> 버튼을 눌러 파일을 받습니다.</span></li>
+          <li><span class="num">2</span><span>받은 파일을 열면 “출처를 알 수 없는 앱” 경고가 뜹니다 → <b>설정 → 이 출처 허용</b>을 켭니다.</span></li>
+          <li><span class="num">3</span><span>다시 <b>설치</b>를 누르면 완료. 홈 화면에서 앱을 실행하세요.</span></li>
+        </ol>
+        <div class="note">
+          <span>⚠️</span>
+          <span>구글 Play 스토어가 아닌 직접 설치 방식이라 경고가 표시될 수 있습니다. 웰쉐어 공식 앱이니 안심하고 설치하세요.</span>
+        </div>
+      </div>
+
+      <div class="qr">
+        <img src="/app-qr.png" alt="다운로드 페이지 QR 코드" />
+        <p>PC에서 보는 중이라면<br/>휴대폰 카메라로 QR을 스캔하세요.</p>
+      </div>
+
+      <p class="foot">웰쉐어 · 나라미 물류 정산 포털<br/>문의는 관리자에게 연락 주세요.</p>
+    </div>
+  </div>
+</body>
+</html>
