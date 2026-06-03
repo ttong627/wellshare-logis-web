@@ -4,6 +4,7 @@ import { addDoc, collection, setDoc, doc } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatCur, CLOSED_MSG } from '../../lib/utils';
+import { getRegionTheme } from '../../constants/regions';
 import ExcelIcon from '../shared/ExcelIcon';
 import StatusBadge from '../shared/StatusBadge';
 import { useConfirm } from '../shared/useConfirm';
@@ -212,7 +213,10 @@ export default function PaymentTab() {
                 return (
                   <div key={r.region} className="px-4 py-3">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-black text-slate-800 text-sm">{r.region.split(' ').pop() || r.region}</span>
+                      <span className="font-black text-slate-800 text-sm flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: getRegionTheme(r.region).dot }} />
+                        {r.region.split(' ').pop() || r.region}
+                      </span>
                       <span className="fin-num font-black text-sky-800 text-base">{formatNumber(r.finalRowTotal)}<span className="text-[10px] font-bold text-slate-400 ml-0.5">원</span></span>
                     </div>
                     <div className="flex items-center gap-2 text-[11px] text-slate-500 mb-2 fin-num">
@@ -291,7 +295,12 @@ export default function PaymentTab() {
                         {shortName}
                       </td>
                     )}
-                    <td className="border border-sky-100 p-1.5 bg-white text-center font-bold">{r.region.split(' ').pop() || r.region}</td>
+                    <td className="border border-sky-100 p-1.5 bg-white text-center font-bold">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: getRegionTheme(r.region).dot }} />
+                        {r.region.split(' ').pop() || r.region}
+                      </span>
+                    </td>
                     <td className="border border-sky-100 p-1.5 bg-white text-slate-500">10Kg</td>
                     <td className="border border-sky-100 p-1.5 bg-white text-slate-500">배송비</td>
                     <td className="fin-num border border-sky-100 p-1.5 bg-white text-right font-black text-sky-700">{formatNumber(r.qty)}</td>
