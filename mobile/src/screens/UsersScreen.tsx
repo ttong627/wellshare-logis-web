@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -30,25 +30,31 @@ export default function UsersScreen() {
   const [pendingUsers, setPendingUsers] = useState<string[]>([]);
   // per-email 역할 선택 상태(승인 대기 / 권한 변경 공용). 기본값은 첫 회원사.
   const [roleByEmail, setRoleByEmail] = useState<Record<string, string>>({});
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const snap = await getDoc(SETTINGS_DOC());
+      const data = snap.exists() ? snap.data() : {};
+      setPartnerAccounts((data?.partnerAccounts as Record<string, string>) || {});
+      setPendingUsers((data?.pendingUsers as string[]) || []);
+    } catch (e) {
+      console.error('사용자 설정 조회 실패:', e);
+      Alert.alert('불러오기 실패', '사용자 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+    }
+  }, []);
 
   useEffect(() => {
     let alive = true;
-    (async () => {
-      try {
-        const snap = await getDoc(SETTINGS_DOC());
-        const data = snap.exists() ? snap.data() : {};
-        if (!alive) return;
-        setPartnerAccounts((data?.partnerAccounts as Record<string, string>) || {});
-        setPendingUsers((data?.pendingUsers as string[]) || []);
-      } catch (e) {
-        console.error('사용자 설정 조회 실패:', e);
-        if (alive) Alert.alert('불러오기 실패', '사용자 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
+    (async () => { await load(); if (alive) setLoading(false); })();
     return () => { alive = false; };
-  }, []);
+  }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   // 이미 승인된 이메일은 대기 목록에서 제외(웹과 동일)
   const validPending = useMemo(
@@ -183,7 +189,8 @@ export default function UsersScreen() {
   }
 
   return (
-    <ScrollView style={styles.bg} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.bg} contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.brand]} tintColor={COLORS.brand} />}>
       {/* 헤더 카드 */}
       <View style={styles.header}>
         <View style={styles.headerIcon}>

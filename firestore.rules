@@ -60,12 +60,24 @@ service cloud.firestore {
     }
 
     // billing_records: 관리자는 전체. 파트너는 자기 입력 필드만(orders/prices/마감/ecountSales 보호)
+    // + 마감된 달(isClosed==true)은 파트너 쓰기 차단(관리자만 수정 가능)
     match /artifacts/{appId}/public/data/billing_records/{monthId} {
       allow read: if isSignedIn();
       allow create, delete: if isAdminUser(appId);
       allow update: if isAdminUser(appId)
-        || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['partnerInputs', 'deliveryDates', 'publishDates', 'updatedAt', 'updatedBy']));
+        || (isSignedIn()
+              && existing().get('isClosed', false) != true
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['partnerInputs', 'deliveryDates', 'publishDates', 'updatedAt', 'updatedBy']));
+    }
+
+    // master_settings: 계정 승인·권한 관리(partnerAccounts/pendingUsers)는 동적 관리자(ROLE ADMIN)도 가능.
+    // 그 외 설정 전체 쓰기는 상위 {document=**} 규칙대로 하드코딩 관리자만.
+    match /artifacts/{appId}/public/data/settings/master_settings {
+      allow read: if isSignedIn();
+      allow update: if isAdminUser(appId)
+        && incoming().diff(existing()).affectedKeys()
+             .hasOnly(['partnerAccounts', 'pendingUsers', 'updatedAt', 'updatedBy']);
     }
 
     // 알림: 내 타겟만 읽기 / 타겟별 생성 검증 / 읽음(readBy)만 수정 / 삭제는 관리자만

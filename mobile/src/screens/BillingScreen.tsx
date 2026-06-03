@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   totalCell: { flex: 1 },
   totalCellLabel: { color: '#bae6fd', fontSize: 10, fontWeight: '700', marginBottom: 3 },
   totalCellValue: { color: COLORS.white, fontSize: 13, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  subTotals: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.15)' },
+  subTotals: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.overlayWhite },
   subTotalText: { color: '#e0f2fe', fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
   row: { backgroundColor: COLORS.card, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border, borderLeftWidth: 4 },
   rowTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },

@@ -79,6 +79,8 @@ export const COLORS = {
   text: '#0c4a6e',         // sky-900
   textMuted: '#64748b',    // slate-500 — 흰 배경 대비 4.5:1
   white: '#ffffff',
+  overlayWhite: 'rgba(255,255,255,0.15)', // 브랜드 배경 위 구분선·보더
+  scrimDark: 'rgba(0,0,0,0.2)',           // 어두운 배지 배경
   // 지역 색 시스템 (웹 getRegionTheme와 동일)
   seoul: '#8b5cf6',        // violet — 서울
   seoulBg: '#f5f3ff',
