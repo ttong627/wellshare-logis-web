@@ -15,7 +15,8 @@ import BillingScreen from '../screens/BillingScreen';
 import MoreScreen from '../screens/MoreScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 import StatementScreen from '../screens/StatementScreen';
-import { SettlementScreen } from '../screens/PlaceholderScreen';
+import SettlementScreen from '../screens/SettlementScreen';
+import ContactsScreen from '../screens/ContactsScreen';
 
 export type RootStackParamList = { Login: undefined; Main: undefined };
 
@@ -61,6 +62,7 @@ function MoreStack() {
       <MoreStackNav.Screen name="MoreHome" component={MoreScreen} options={{ title: '더보기' }} />
       <MoreStackNav.Screen name="NotificationSettings" component={NotificationSettingsScreen}
         options={{ title: '알림 설정' }} />
+      <MoreStackNav.Screen name="Contacts" component={ContactsScreen} options={{ title: '주소록' }} />
     </MoreStackNav.Navigator>
   );
 }

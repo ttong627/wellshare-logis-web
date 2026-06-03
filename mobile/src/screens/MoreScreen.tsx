@@ -76,7 +76,9 @@ export default function MoreScreen() {
         {menu.map((m, i) => (
           <Pressable
             key={m.key}
-            onPress={() => Alert.alert(m.label, '다음 업데이트에서 제공 예정입니다.')}
+            onPress={() => m.key === 'contacts'
+              ? navigation.navigate('Contacts')
+              : Alert.alert(m.label, '다음 업데이트에서 제공 예정입니다.')}
             style={({ pressed }) => [styles.menuRow, i > 0 && styles.divider, pressed && styles.pressed]}
             accessibilityRole="button"
             accessibilityLabel={m.label}

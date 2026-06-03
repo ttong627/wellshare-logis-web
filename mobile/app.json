@@ -2,7 +2,7 @@
   "expo": {
     "name": "웰쉐어 물류",
     "slug": "wellshare-logis-mobile",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -29,7 +29,7 @@
         "backgroundColor": "#0284c7"
       },
       "package": "kr.wssc.wellshare.logis",
-      "versionCode": 3
+      "versionCode": 4
     },
     "plugins": [
       "expo-font",
