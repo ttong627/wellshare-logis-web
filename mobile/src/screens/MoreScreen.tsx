@@ -15,8 +15,8 @@ const ADMIN_MENU: MenuItem[] = [
   { key: 'statement', label: '내역 확인', icon: 'list', route: 'Statement' },
   { key: 'schedule', label: '배송 일정', icon: 'calendar', route: 'Schedule' },
   { key: 'contacts', label: '주소록', icon: 'book-open', route: 'Contacts' },
+  { key: 'users', label: '사용자 관리', icon: 'users', route: 'Users' },
   { key: 'docs', label: '공문 작성', icon: 'file-text' },
-  { key: 'users', label: '사용자 관리', icon: 'users' },
   { key: 'prices', label: '단가 설정', icon: 'tag' },
   { key: 'backup', label: '백업', icon: 'database' },
 ];

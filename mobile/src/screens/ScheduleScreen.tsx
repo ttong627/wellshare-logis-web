@@ -1,166 +1,179 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, APP_ID } from '../firebase';
 import { useData } from '../context/DataContext';
-import { COLORS, REGION_ORDER, getFullRegionName, isSeoulRegion } from '../constants';
+import { useAuth } from '../context/AuthContext';
+import { REGION_ORDER, PARTNER_REGIONS, getFullRegionName, isSeoulRegion, COLORS } from '../constants';
 
-// "YYYY-MM" → "YYYY년 M월"
-function formatMonth(month: string): string {
-  const [y, m] = month.split('-');
-  const mNum = Number(m);
-  if (!y || !Number.isFinite(mNum)) return month;
-  return `${y}년 ${mNum}월`;
-}
-
-// "YYYY-MM-DD" → "M월 D일" (없으면 '-')
-function formatDate(date?: string): string {
-  if (!date) return '-';
-  const parts = date.split('-');
-  if (parts.length < 3) return date;
-  const mNum = Number(parts[1]);
-  const dNum = Number(parts[2]);
-  if (!Number.isFinite(mNum) || !Number.isFinite(dNum)) return date;
-  return `${mNum}월 ${dNum}일`;
-}
-
-// 어떤 회사든 해당 지역에 찍힌 첫 배송완료일을 찾는다(가장 이른 날짜 우선).
-function findDeliveryDate(
-  deliveryDates: Record<string, Record<string, { date?: string }>>,
-  region: string,
-): string | undefined {
-  let earliest: string | undefined;
-  Object.values(deliveryDates || {}).forEach((byRegion) => {
-    const d = byRegion?.[region]?.date;
-    if (d && (!earliest || d < earliest)) earliest = d;
-  });
-  return earliest;
-}
-
-// 어떤 회사든 해당 지역에 찍힌 계산서 발행일을 찾는다(가장 이른 날짜 우선).
-function findPublishDate(
-  publishDates: Record<string, Record<string, string>>,
-  region: string,
-): string | undefined {
-  let earliest: string | undefined;
-  Object.values(publishDates || {}).forEach((byRegion) => {
-    const d = byRegion?.[region];
-    if (d && (!earliest || d < earliest)) earliest = d;
-  });
-  return earliest;
-}
-
-interface ScheduleRow {
-  region: string;
-  delivery?: string;
-  publish?: string;
-}
-
-// 일정 한 칸(배송/발행).
-function DateCell({ icon, label, value }: { icon: React.ComponentProps<typeof Feather>['name']; label: string; value?: string }) {
-  const has = !!value;
-  return (
-    <View style={styles.dateCell}>
-      <View style={styles.dateLabelRow}>
-        <Feather name={icon} size={13} color={has ? COLORS.brand : COLORS.textMuted} />
-        <Text style={styles.dateLabel}>{label}</Text>
-      </View>
-      <Text style={[styles.dateValue, !has && styles.dateValueEmpty]}>{formatDate(value)}</Text>
-    </View>
-  );
+// schedule_records/{월-지역}.items — 동별 배송 일정(기사·예정일·완료). 배송완료/내역확인과 다른 데이터.
+interface ScheduleItem {
+  id?: string; no?: number; dong?: string;
+  driverName?: string; driverPhone?: string; emergencyPhone?: string;
+  deliveryDate?: string; isCompleted?: boolean; notes?: string;
 }
 
 export default function ScheduleScreen() {
-  const { currentMonth, deliveryDates, publishDates, isLoading } = useData();
+  const { currentMonth } = useData();
+  const { isAdmin, partnerCompany } = useAuth();
+  const myRegions = isAdmin ? REGION_ORDER : (PARTNER_REGIONS[partnerCompany || ''] || []);
 
-  const rows: ScheduleRow[] = useMemo(
-    () => REGION_ORDER.map((region) => ({
-      region,
-      delivery: findDeliveryDate(deliveryDates, region),
-      publish: findPublishDate(publishDates, region),
-    })),
-    [deliveryDates, publishDates],
-  );
+  const [region, setRegion] = useState(myRegions[0] || '');
+  const [items, setItems] = useState<ScheduleItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingBox}>
-        <ActivityIndicator size="large" color={COLORS.brand} />
-        <Text style={styles.loadingText}>배송 일정을 불러오는 중…</Text>
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (!region) { setLoading(false); return; }
+    let active = true;
+    setLoading(true);
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'schedule_records', `${currentMonth}-${region}`));
+        const data: ScheduleItem[] = snap.exists() ? (snap.data().items || []) : [];
+        if (active) setItems([...data].sort((a, b) => (a.dong || '').localeCompare(b.dong || '', 'ko')));
+      } catch {
+        if (active) setItems([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [region, currentMonth]);
+
+  const call = (phone?: string) => {
+    const digits = (phone || '').replace(/[^0-9]/g, '');
+    if (digits) Linking.openURL('tel:' + digits).catch(() => {});
+  };
+
+  const [y, m] = currentMonth.split('-');
+  const completed = items.filter(i => i.isCompleted).length;
 
   return (
     <ScrollView style={styles.bg} contentContainerStyle={styles.content}>
-      {/* 헤더 카드 */}
       <View style={styles.header}>
-        <View style={styles.headerIcon}>
-          <Feather name="calendar" size={18} color={COLORS.white} />
-        </View>
+        <View style={styles.headerIcon}><Feather name="calendar" size={18} color={COLORS.white} /></View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>배송 일정</Text>
-          <Text style={styles.headerSub}>{formatMonth(currentMonth)} · 지역별 배송·발행일</Text>
+          <Text style={styles.headerMonth}>{y}년 {parseInt(m || '0', 10)}월 배송 일정</Text>
+          <Text style={styles.headerSub}>지역별 동·기사 배송 예정</Text>
         </View>
       </View>
 
-      {rows.map((row) => {
-        const seoul = isSeoulRegion(row.region);
-        const tone = seoul
-          ? { border: COLORS.seoul, tint: COLORS.seoulBg, label: '서울' }
-          : { border: COLORS.gyeonggi, tint: COLORS.gyeonggiBg, label: '경기' };
-        return (
-          <View key={row.region} style={[styles.card, { borderLeftColor: tone.border }]}>
-            <View style={styles.cardHead}>
-              <Text style={styles.regionName}>{getFullRegionName(row.region)}</Text>
-              <View style={[styles.regionBadge, { backgroundColor: tone.tint }]}>
-                <Text style={[styles.regionBadgeText, { color: tone.border }]}>{tone.label}</Text>
-              </View>
+      {/* 지역 선택 */}
+      {myRegions.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.regionScroll} contentContainerStyle={{ gap: 8 }}>
+          {myRegions.map((r) => {
+            const active = r === region;
+            return (
+              <Pressable key={r} onPress={() => setRegion(r)}
+                style={[styles.regionChip, active && styles.regionChipActive]}
+                accessibilityRole="button" accessibilityLabel={`${r} 일정`}>
+                <Text style={[styles.regionChipText, active && styles.regionChipTextActive]}>{r}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {loading ? (
+        <View style={styles.loadingBox}><ActivityIndicator size="large" color={COLORS.brand} /><Text style={styles.loadingText}>일정 불러오는 중…</Text></View>
+      ) : (
+        <>
+          {region ? (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryRegion}>{getFullRegionName(region)}</Text>
+              <Text style={styles.summaryCount}>완료 {completed}/{items.length}</Text>
             </View>
-            <View style={styles.dateRow}>
-              <DateCell icon="truck" label="배송완료" value={row.delivery} />
-              <View style={styles.cellSep} />
-              <DateCell icon="file-text" label="계산서발행" value={row.publish} />
+          ) : null}
+
+          {items.length === 0 ? (
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}><Feather name="calendar" size={28} color={COLORS.brand} /></View>
+              <Text style={styles.emptyTitle}>등록된 배송 일정이 없습니다</Text>
+              <Text style={styles.emptyDesc}>이 달·지역의 일정이 등록되면 표시됩니다.</Text>
             </View>
-          </View>
-        );
-      })}
+          ) : (
+            items.map((it, i) => {
+              const tone = isSeoulRegion(region) ? COLORS.seoul : COLORS.gyeonggi;
+              return (
+                <View key={it.id || i} style={[styles.card, { borderLeftColor: tone }]}>
+                  <View style={styles.cardTop}>
+                    <View style={styles.noBadge}><Text style={styles.noText}>{it.no ?? i + 1}</Text></View>
+                    <Text style={styles.dong}>{it.dong || '-'}</Text>
+                    <View style={[styles.statusBadge, it.isCompleted ? styles.statusDone : styles.statusWait]}>
+                      <Feather name={it.isCompleted ? 'check-circle' : 'clock'} size={12} color={it.isCompleted ? COLORS.success : COLORS.warning} />
+                      <Text style={[styles.statusText, { color: it.isCompleted ? COLORS.success : COLORS.warning }]}>{it.isCompleted ? '완료' : '예정'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.metaRow}>
+                    <Feather name="calendar" size={13} color={COLORS.textMuted} />
+                    <Text style={styles.metaText}>배송예정 {it.deliveryDate || '-'}</Text>
+                  </View>
+
+                  {it.driverName || it.driverPhone ? (
+                    <View style={styles.driverRow}>
+                      <View style={{ flex: 1 }}>
+                        <View style={styles.metaRow}>
+                          <Feather name="user" size={13} color={COLORS.textMuted} />
+                          <Text style={styles.metaText}>{it.driverName || '기사 미지정'}</Text>
+                        </View>
+                      </View>
+                      {it.driverPhone ? (
+                        <Pressable onPress={() => call(it.driverPhone)} style={({ pressed }) => [styles.callBtn, pressed && { opacity: 0.7 }]}
+                          accessibilityRole="button" accessibilityLabel={`기사 전화 ${it.driverName || ''}`}>
+                          <Feather name="phone" size={14} color={COLORS.white} />
+                          <Text style={styles.callText}>{it.driverPhone}</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  ) : null}
+
+                  {it.notes ? <Text style={styles.notes}>{it.notes}</Text> : null}
+                </View>
+              );
+            })
+          )}
+        </>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: COLORS.bg },
-  content: { padding: 16, paddingBottom: 48 },
-
-  loadingBox: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { fontSize: 14, fontWeight: '700', color: COLORS.textMuted },
-
-  header: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: COLORS.card, borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: COLORS.border, marginBottom: 16,
-  },
-  headerIcon: {
-    width: 40, height: 40, borderRadius: 12, backgroundColor: COLORS.brand,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: { fontSize: 18, fontWeight: '900', color: COLORS.text },
+  content: { padding: 16, paddingBottom: 40 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: COLORS.border, marginBottom: 12 },
+  headerIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: COLORS.brand, alignItems: 'center', justifyContent: 'center' },
+  headerMonth: { fontSize: 18, fontWeight: '900', color: COLORS.text },
   headerSub: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted, marginTop: 2 },
-
-  card: {
-    backgroundColor: COLORS.card, borderRadius: 16, padding: 16, marginBottom: 12,
-    borderWidth: 1, borderColor: COLORS.border, borderLeftWidth: 4,
-  },
-  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
-  regionName: { fontSize: 16, fontWeight: '900', color: COLORS.text },
-  regionBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  regionBadgeText: { fontSize: 11, fontWeight: '800' },
-
-  dateRow: { flexDirection: 'row', alignItems: 'center' },
-  dateCell: { flex: 1, alignItems: 'center' },
-  dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
-  dateLabel: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted },
-  dateValue: { fontSize: 17, fontWeight: '900', color: COLORS.text, fontVariant: ['tabular-nums'] },
-  dateValueEmpty: { color: COLORS.textMuted, fontWeight: '700' },
-  cellSep: { width: 1, alignSelf: 'stretch', backgroundColor: COLORS.border, marginVertical: 2 },
+  regionScroll: { marginBottom: 12 },
+  regionChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, minHeight: 40, justifyContent: 'center' },
+  regionChipActive: { backgroundColor: COLORS.brand, borderColor: COLORS.brand },
+  regionChipText: { fontSize: 13, fontWeight: '700', color: COLORS.textMuted },
+  regionChipTextActive: { color: COLORS.white },
+  loadingBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, gap: 12 },
+  loadingText: { color: COLORS.textMuted, fontWeight: '700' },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginLeft: 2 },
+  summaryRegion: { fontSize: 15, fontWeight: '900', color: COLORS.brandDark },
+  summaryCount: { fontSize: 13, fontWeight: '800', color: COLORS.textMuted, fontVariant: ['tabular-nums'] },
+  card: { backgroundColor: COLORS.card, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border, borderLeftWidth: 4 },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  noBadge: { width: 26, height: 26, borderRadius: 8, backgroundColor: COLORS.infoLight, alignItems: 'center', justifyContent: 'center' },
+  noText: { fontSize: 12, fontWeight: '900', color: COLORS.brandDark },
+  dong: { flex: 1, fontSize: 15, fontWeight: '800', color: COLORS.text },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
+  statusDone: { backgroundColor: COLORS.successLight },
+  statusWait: { backgroundColor: COLORS.warningLight },
+  statusText: { fontSize: 11, fontWeight: '800' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  metaText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  driverRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  callBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.brand, borderRadius: 10, paddingHorizontal: 12, minHeight: 40 },
+  callText: { color: COLORS.white, fontSize: 13, fontWeight: '800' },
+  notes: { fontSize: 12.5, fontWeight: '600', color: COLORS.textMuted, marginTop: 8, lineHeight: 18 },
+  empty: { alignItems: 'center', paddingVertical: 44 },
+  emptyIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.infoLight, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyTitle: { fontSize: 16, fontWeight: '900', color: COLORS.text, marginBottom: 6 },
+  emptyDesc: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, textAlign: 'center' },
 });
