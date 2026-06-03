@@ -10,6 +10,8 @@ type FeatherName = React.ComponentProps<typeof Feather>['name'];
 interface MenuItem { key: string; label: string; icon: FeatherName; route?: string }
 
 const ADMIN_MENU: MenuItem[] = [
+  { key: 'workflow', label: '정산 현황', icon: 'activity', route: 'Workflow' },
+  { key: 'notifications', label: '알림 내역', icon: 'bell', route: 'Notifications' },
   { key: 'performance', label: '지역 포수', icon: 'edit-3', route: 'Performance' },
   { key: 'payment', label: '결제 내역', icon: 'credit-card', route: 'Payment' },
   { key: 'statement', label: '내역 확인', icon: 'list', route: 'Statement' },
@@ -22,6 +24,7 @@ const ADMIN_MENU: MenuItem[] = [
 ];
 
 const PARTNER_MENU: MenuItem[] = [
+  { key: 'notifications', label: '알림 내역', icon: 'bell', route: 'Notifications' },
   { key: 'schedule', label: '배송 일정', icon: 'calendar', route: 'Schedule' },
   { key: 'contacts', label: '주소록', icon: 'book-open', route: 'Contacts' },
 ];

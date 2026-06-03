@@ -18,6 +18,8 @@ import StatementScreen from '../screens/StatementScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 import ContactsScreen from '../screens/ContactsScreen';
 import UsersScreen from '../screens/UsersScreen';
+import WorkflowScreen from '../screens/WorkflowScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import MoreScreen from '../screens/MoreScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 
@@ -61,6 +63,8 @@ function MoreStack() {
       <MoreStackNav.Screen name="Payment" component={PaymentScreen} options={{ title: '결제 내역' }} />
       <MoreStackNav.Screen name="Statement" component={StatementScreen} options={{ title: '내역 확인' }} />
       <MoreStackNav.Screen name="Schedule" component={ScheduleScreen} options={{ title: '배송 일정' }} />
+      <MoreStackNav.Screen name="Workflow" component={WorkflowScreen} options={{ title: '정산 현황' }} />
+      <MoreStackNav.Screen name="Notifications" component={NotificationsScreen} options={{ title: '알림 내역' }} />
       <MoreStackNav.Screen name="Contacts" component={ContactsScreen} options={{ title: '주소록' }} />
       <MoreStackNav.Screen name="Users" component={UsersScreen} options={{ title: '사용자 관리' }} />
       <MoreStackNav.Screen name="NotificationSettings" component={NotificationSettingsScreen} options={{ title: '알림 설정' }} />
