@@ -32,8 +32,12 @@ export const getFullRegionName = (region: string): string => {
 // ── 지자체 시/도 그룹 + 색 테마 (서울/경기 시각 구분, 색맹 대비 라벨 동반) ──
 export type RegionGroup = '서울' | '경기' | '기타';
 
-export const getRegionGroup = (region: string): RegionGroup =>
-  SEOUL_REGIONS.includes(region) ? '서울' : GYEONGGI_REGIONS.includes(region) ? '경기' : '기타';
+export const getRegionGroup = (region: string): RegionGroup => {
+  // 접두어 섞인 표기("서울 동대문구","경기도 시흥시")까지 견고하게 판정
+  if (region.includes('서울') || SEOUL_REGIONS.some((r) => region.includes(r))) return '서울';
+  if (region.includes('경기') || GYEONGGI_REGIONS.some((r) => region.includes(r))) return '경기';
+  return '기타';
+};
 
 export interface RegionTheme {
   group: RegionGroup;

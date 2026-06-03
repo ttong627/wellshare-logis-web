@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Contact } from 'lucide-react';
 import { CONTACTS, GOV_CONTACTS } from '../../constants/members';
+import { getRegionTheme } from '../../constants/regions';
 import { safeRender } from '../../lib/utils';
 
 export default function ContactsTab() {
@@ -41,8 +42,11 @@ export default function ContactsTab() {
               {contacts.map((c, i) => (
                 <div key={i} className="px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 hover:bg-sky-50/50 transition-colors">
                   <div className="flex flex-col">
-                    <span className="font-bold text-slate-700 text-sm">{safeRender(c.region)}</span>
-                    {c.detail && <span className="text-xs text-sky-400 mt-0.5">{safeRender(c.detail)}</span>}
+                    <span className="font-bold text-slate-700 text-sm flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: getRegionTheme(c.region).dot }} />
+                      {safeRender(c.region)}
+                    </span>
+                    {c.detail && <span className="text-xs text-sky-400 mt-0.5 ml-3.5">{safeRender(c.detail)}</span>}
                   </div>
                   <div className="flex flex-col sm:items-end">
                     {c.manager && <span className="text-xs sm:text-sm font-bold text-slate-600">{safeRender(c.manager)}</span>}
@@ -64,8 +68,11 @@ export default function ContactsTab() {
         <div className="divide-y divide-sky-50">
           {GOV_CONTACTS.map((g, i) => (
             <div key={i} className="px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 hover:bg-sky-50/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-slate-700 text-sm">{safeRender(g.region)}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-700 text-sm flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: getRegionTheme(g.region).dot }} />
+                  {safeRender(g.region)}
+                </span>
                 <span className="text-[10px] text-sky-500 bg-sky-100 px-2 py-0.5 rounded-full font-bold">{safeRender(g.order)}</span>
               </div>
               <div className="flex flex-col sm:items-end">
