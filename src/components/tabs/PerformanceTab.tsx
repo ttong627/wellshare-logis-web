@@ -1,10 +1,11 @@
 import React from 'react';
-import { Save, Trash2 } from 'lucide-react';
+import { Save, Trash2, Building2 } from 'lucide-react';
 import { updateDoc, doc } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { MEMBERS } from '../../constants/members';
 import { PARTNER_REGIONS } from '../../constants/members';
+import { getRegionTheme } from '../../constants/regions';
 import { parseNumber, formatNumber, safeRender, CLOSED_MSG } from '../../lib/utils';
 
 export default function PerformanceTab() {
@@ -106,9 +107,14 @@ export default function PerformanceTab() {
         const canEdit = isAdmin || company === partnerCompany;
 
         return (
-          <tr key={region} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-            <td className="p-1 sm:p-4 font-bold text-slate-800 border-r border-slate-200 bg-slate-50 text-center whitespace-nowrap">{safeRender(region)}</td>
-            <td className="p-0.5 sm:p-2 border-r border-slate-200 text-center bg-white w-[25%] sm:w-auto">
+          <tr key={region} className="hover:bg-sky-50/50 transition-colors border-b border-sky-50">
+            <td className="p-1 sm:p-4 font-bold text-slate-800 border-r border-sky-100 bg-sky-50/40 text-center whitespace-nowrap">
+              <span className="inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: getRegionTheme(region).dot }} />
+                {safeRender(region)}
+              </span>
+            </td>
+            <td className="p-0.5 sm:p-2 border-r border-sky-100 text-center bg-white w-[25%] sm:w-auto">
               <input
                 type="text"
                 disabled={isClosed || !canEdit}
@@ -119,7 +125,7 @@ export default function PerformanceTab() {
                 placeholder="0"
               />
             </td>
-            <td className="p-0.5 sm:p-2 border-r border-slate-200 text-center bg-white w-[25%] sm:w-auto">
+            <td className="p-0.5 sm:p-2 border-r border-sky-100 text-center bg-white w-[25%] sm:w-auto">
               <input
                 type="text"
                 disabled={isClosed || !canEdit}
@@ -161,31 +167,31 @@ export default function PerformanceTab() {
       grandTotalPoverty += compPoverty;
 
       return (
-        <div key={company} className="mb-6 sm:mb-8 rounded-xl border border-slate-300 shadow-sm bg-white w-full overflow-hidden">
+        <div key={company} className="glass rounded-2xl overflow-hidden mb-5 w-full">
           {isAdmin && selectedAdminViewCompany === '전체' && (
-            <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2">
-              <span>🏢</span> {safeRender(company)}
+            <div className="px-4 py-2.5 font-black text-white text-sm sm:text-base flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)' }}>
+              <Building2 size={16} /> {safeRender(company)}
             </div>
           )}
           <div className="w-full overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
             <table className="w-full text-left text-[9px] sm:text-sm border-collapse tracking-tighter sm:tracking-normal table-fixed sm:table-auto">
-              <thead className="bg-slate-100 border-b border-slate-300">
-                <tr>
-                  <th className="p-1 sm:p-4 font-bold text-slate-600 border-r border-slate-200 text-center bg-slate-200 whitespace-nowrap">배정 지역</th>
-                  <th className="p-1 sm:p-4 font-bold text-slate-600 border-r border-slate-200 text-center whitespace-nowrap">차상위 포수</th>
-                  <th className="p-1 sm:p-4 font-bold text-slate-600 border-r border-slate-200 text-center whitespace-nowrap">수급자 포수</th>
-                  <th className="p-1 sm:p-4 font-bold text-blue-800 border-l-2 border-blue-200 bg-blue-50 text-center whitespace-nowrap">지자체 합계</th>
-                  <th className="p-1 sm:p-4 font-bold text-emerald-800 border-l-2 border-emerald-200 bg-emerald-50 text-center whitespace-nowrap w-[15%]">조작</th>
+              <thead>
+                <tr className="text-white font-bold" style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)' }}>
+                  <th className="p-1.5 sm:p-3 border border-sky-300/40 text-center whitespace-nowrap">배정 지역</th>
+                  <th className="p-1.5 sm:p-3 border border-sky-300/40 text-center whitespace-nowrap">차상위 포수</th>
+                  <th className="p-1.5 sm:p-3 border border-sky-300/40 text-center whitespace-nowrap">수급자 포수</th>
+                  <th className="p-1.5 sm:p-3 border border-sky-300/40 text-center whitespace-nowrap">지자체 합계</th>
+                  <th className="p-1.5 sm:p-3 border border-sky-300/40 text-center whitespace-nowrap w-[15%]">조작</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">{tableRows}</tbody>
-              <tfoot className="bg-slate-800 text-white border-t-4 border-slate-900">
+              <tbody className="divide-y divide-sky-50">{tableRows}</tbody>
+              <tfoot className="bg-sky-100 text-sky-900 border-t-2 border-sky-300">
                 <tr>
-                  <td className="p-1 sm:p-4 font-bold text-center border-r border-slate-700 whitespace-nowrap">소계</td>
-                  <td className="p-1 sm:p-4 font-black text-sm sm:text-xl text-center border-r border-slate-700 text-emerald-400 whitespace-nowrap">{formatNumber(compPoverty)}</td>
-                  <td className="p-1 sm:p-4 font-black text-sm sm:text-xl text-center border-r border-slate-700 text-emerald-400 whitespace-nowrap">{formatNumber(compBasic)}</td>
-                  <td className="p-1 sm:p-4 font-black text-lg sm:text-2xl text-right border-l-2 border-blue-500 text-blue-300 whitespace-nowrap">{formatNumber(compBasic + compPoverty)}</td>
-                  <td className="p-1 sm:p-4 font-bold text-center border-l-2 border-emerald-700 whitespace-nowrap text-emerald-300"></td>
+                  <td className="p-1 sm:p-3 font-black text-center border border-sky-200 whitespace-nowrap">소계</td>
+                  <td className="p-1 sm:p-3 font-black text-sm sm:text-xl text-center border border-sky-200 whitespace-nowrap">{formatNumber(compPoverty)}</td>
+                  <td className="p-1 sm:p-3 font-black text-sm sm:text-xl text-center border border-sky-200 whitespace-nowrap">{formatNumber(compBasic)}</td>
+                  <td className="p-1 sm:p-3 font-black text-lg sm:text-2xl text-right border border-sky-200 text-sky-800 whitespace-nowrap">{formatNumber(compBasic + compPoverty)}</td>
+                  <td className="p-1 sm:p-3 border border-sky-200 whitespace-nowrap"></td>
                 </tr>
               </tfoot>
             </table>
@@ -245,11 +251,11 @@ export default function PerformanceTab() {
           </div>
           {renderBlocks}
           {isAdmin && selectedAdminViewCompany === '전체' && (
-            <div className="mt-8 bg-blue-900 text-white p-6 rounded-xl flex justify-between items-center shadow-lg">
-              <span className="font-bold text-lg">모든 회원사 전체 합계</span>
-              <div className="text-right">
-                <p className="text-blue-300 text-sm">차상위: {formatNumber(grandTotalPoverty)} / 수급자: {formatNumber(grandTotalBasic)}</p>
-                <p className="font-black text-3xl text-emerald-400 mt-1">{formatNumber(grandTotalPoverty + grandTotalBasic)} 포</p>
+            <div className="mt-8 sky-hero text-white p-6 rounded-2xl flex justify-between items-center shadow-lg">
+              <span className="font-black text-lg relative z-10">모든 회원사 전체 합계</span>
+              <div className="text-right relative z-10">
+                <p className="text-sky-100 text-sm">차상위 {formatNumber(grandTotalPoverty)} · 수급자 {formatNumber(grandTotalBasic)}</p>
+                <p className="font-black text-3xl mt-1">{formatNumber(grandTotalPoverty + grandTotalBasic)} 포</p>
               </div>
             </div>
           )}
