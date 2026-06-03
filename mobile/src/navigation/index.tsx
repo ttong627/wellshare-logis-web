@@ -14,7 +14,8 @@ import DeliveryScreen from '../screens/DeliveryScreen';
 import BillingScreen from '../screens/BillingScreen';
 import MoreScreen from '../screens/MoreScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
-import { StatementScreen, SettlementScreen } from '../screens/PlaceholderScreen';
+import StatementScreen from '../screens/StatementScreen';
+import { SettlementScreen } from '../screens/PlaceholderScreen';
 
 export type RootStackParamList = { Login: undefined; Main: undefined };
 
