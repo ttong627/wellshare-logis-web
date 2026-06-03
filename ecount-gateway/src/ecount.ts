@@ -1,8 +1,8 @@
-// ECOUNT OpenAPI 호출 — tools/ecount_sync.py 의 login/SaveSale 이식.
-// - 세션 싱글플라이트(동시 로그인 1회로 합침) + TTL 보조 + 세션만료 감지시 1회 재로그인
+// ECOUNT OpenAPI 호출 — 회사(COM_CODE)별 로그인/세션/SaveSale.
+// - 세션은 회사코드별로 캐싱(싱글플라이트) + TTL + 만료 감지시 1회 재로그인
 // - fetch + AbortController 타임아웃
 // - SuccessCnt=0 이면 HTTP 200이라도 실패로 판정
-import type { AppConfig } from './config';
+import type { CompanyConfig } from './config';
 import type { ComputedLine } from './amounts';
 
 const SESSION_TTL_MS = 25 * 60 * 1000;
@@ -12,8 +12,8 @@ interface SessionState {
   sid: string | null;
   ts: number;
 }
-const session: SessionState = { sid: null, ts: 0 };
-let loginInFlight: Promise<string> | null = null;
+const sessions = new Map<string, SessionState>(); // comCode → 세션
+const loginInFlight = new Map<string, Promise<string>>();
 
 export class EcountError extends Error {
   constructor(message: string, public detail?: unknown) {
@@ -51,42 +51,46 @@ async function postJson(url: string, payload: unknown): Promise<{ httpStatus: nu
   }
 }
 
-async function doLogin(config: AppConfig): Promise<string> {
-  const { base, comCode, userId, apiKey, lanType, zone } = config.ecount;
+async function doLogin(company: CompanyConfig): Promise<string> {
+  const { base, comCode, userId, apiKey, zone } = company;
   const { httpStatus, body } = await postJson(`${base}/OAPILogin`, {
     COM_CODE: comCode,
     USER_ID: userId,
     API_CERT_KEY: apiKey,
-    LAN_TYPE: lanType,
+    LAN_TYPE: 'ko-KR',
     ZONE: zone,
   });
   const sid: string | undefined = body?.Data?.Datas?.SESSION_ID;
   if (httpStatus !== 200 || !sid) {
-    // 로그인 실패 — IP 미화이트리스트/키 오류 등. 키·세션은 로그에 남기지 않는다.
-    throw new EcountError('ECOUNT 로그인 실패', {
+    // 키·세션은 로그에 남기지 않는다. IP 미화이트리스트/키 오류 메시지만.
+    throw new EcountError(`ECOUNT 로그인 실패 (${comCode})`, {
       httpStatus,
       status: body?.Status,
+      message: body?.Data?.Message,
       error: body?.Error ?? body?.Errors ?? null,
     });
   }
   return sid;
 }
 
-async function getSession(config: AppConfig, force = false): Promise<string> {
-  const fresh = session.sid && Date.now() - session.ts < SESSION_TTL_MS;
-  if (fresh && !force) return session.sid as string;
+async function getSession(company: CompanyConfig, force = false): Promise<string> {
+  const cur = sessions.get(company.comCode);
+  const fresh = cur?.sid && Date.now() - cur.ts < SESSION_TTL_MS;
+  if (fresh && !force) return cur!.sid as string;
 
-  if (loginInFlight) return loginInFlight;
-  loginInFlight = doLogin(config)
+  const inflight = loginInFlight.get(company.comCode);
+  if (inflight) return inflight;
+
+  const p = doLogin(company)
     .then((sid) => {
-      session.sid = sid;
-      session.ts = Date.now();
+      sessions.set(company.comCode, { sid, ts: Date.now() });
       return sid;
     })
     .finally(() => {
-      loginInFlight = null;
+      loginInFlight.delete(company.comCode);
     });
-  return loginInFlight;
+  loginInFlight.set(company.comCode, p);
+  return p;
 }
 
 // 세션 만료/인증 신호 감지 (ECOUNT는 본문에 오류를 담는다)
@@ -103,12 +107,12 @@ export interface SaveSaleResult {
 }
 
 export async function saveSale(
-  config: AppConfig,
+  company: CompanyConfig,
   lines: ComputedLine[],
   ioDate: string,
   makeFlag: string,
 ): Promise<SaveSaleResult> {
-  const { base, cust, whCd } = config.ecount;
+  const { base, cust, whCd } = company;
   const saleList = lines.map((l) => ({
     BulkDatas: {
       IO_DATE: ioDate,
@@ -127,12 +131,12 @@ export async function saveSale(
   const call = async (sid: string) =>
     postJson(`${base}/Sale/SaveSale?SESSION_ID=${encodeURIComponent(sid)}`, { SaleList: saleList });
 
-  let sid = await getSession(config);
+  let sid = await getSession(company);
   let { httpStatus, body } = await call(sid);
 
   // 세션 만료 의심 → 1회 강제 재로그인 후 재시도
   if (looksLikeSessionExpired(httpStatus, body)) {
-    sid = await getSession(config, true);
+    sid = await getSession(company, true);
     ({ httpStatus, body } = await call(sid));
   }
 
@@ -141,14 +145,13 @@ export async function saveSale(
   const failCnt = Number(data.FailCnt ?? 0);
 
   if (httpStatus !== 200 || successCnt < 1) {
-    // ResultDetails[].TotalError / Errors[].Message 를 추출해 구조화 반환
     const details = (data.ResultDetails ?? [])
       .filter((d: any) => !d?.IsSuccess)
       .map((d: any) => ({
         error: d?.TotalError,
         fields: (d?.Errors ?? []).map((e: any) => ({ col: e?.ColCd, message: e?.Message })),
       }));
-    throw new EcountError('ECOUNT SaveSale 실패', {
+    throw new EcountError(`ECOUNT SaveSale 실패 (${company.comCode})`, {
       httpStatus,
       status: body?.Status,
       successCnt,

@@ -66,12 +66,24 @@ app.get('/debug/ip', limiter, requireAdmin, async (_req: Request, res: Response)
   }
 });
 
-// 5) ECOUNT 매출등록 (관리자)
+// 5) 회사 목록 (관리자) — 프론트 회사 선택용
+app.get('/companies', limiter, requireAdmin, (_req: Request, res: Response) => {
+  const list = Array.from(config.companies.values()).map((c) => ({ comCode: c.comCode, label: c.label }));
+  res.json({ ok: true, companies: list, defaultComCode: config.defaultComCode });
+});
+
+// 6) ECOUNT 매출등록 (관리자)
 app.post('/ecount/sale', limiter, requireAdmin, async (req: AuthedRequest, res: Response) => {
   const reqId = randomUUID();
+  const comCode = String(req.body?.comCode ?? config.defaultComCode);
+  const company = config.companies.get(comCode);
+  if (!company) {
+    res.status(400).json({ ok: false, error: 'invalid_company', message: `알 수 없는 회사코드: ${comCode}` });
+    return;
+  }
   let v;
   try {
-    v = validateSaleBody(req.body, config.ecount.makeFlag);
+    v = validateSaleBody(req.body, company.makeFlag);
   } catch (e) {
     if (e instanceof ValidationError) {
       res.status(400).json({ ok: false, error: 'invalid_input', message: e.message });
@@ -82,8 +94,8 @@ app.post('/ecount/sale', limiter, requireAdmin, async (req: AuthedRequest, res: 
 
   const amounts = computeAmounts(v.lines);
   const year = Number(v.ioDate.slice(0, 4));
-  const key = buildIdempotencyKey(year, v.month, v.region);
-  const inputHash = hashInput({ lines: v.lines, ioDate: v.ioDate, makeFlag: v.makeFlag });
+  const key = buildIdempotencyKey(comCode, year, v.month, v.region);
+  const inputHash = hashInput({ comCode, lines: v.lines, ioDate: v.ioDate, makeFlag: v.makeFlag });
   const uid = req.user?.uid ?? 'unknown';
 
   const claimed = await claim(key, inputHash, uid);
@@ -103,9 +115,9 @@ app.post('/ecount/sale', limiter, requireAdmin, async (req: AuthedRequest, res: 
   }
 
   try {
-    const result = await saveSale(config, amounts.lines, v.ioDate, v.makeFlag);
+    const result = await saveSale(company, amounts.lines, v.ioDate, v.makeFlag);
     await markDone(key, { slipNos: result.slipNos, total: amounts.total, supply: amounts.supply, vat: amounts.vat });
-    log('INFO', 'sale done', { reqId, key, slipNos: result.slipNos, total: amounts.total });
+    log('INFO', 'sale done', { reqId, key, comCode, slipNos: result.slipNos, total: amounts.total });
     res.json({
       ok: true,
       slipNos: result.slipNos,
@@ -138,7 +150,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 app.listen(config.port, () => {
   log('INFO', `ecount-gateway listening on ${config.port}`, {
     firebaseProjectId: config.firebaseProjectId,
-    ecountBase: config.ecount.base,
+    companies: Array.from(config.companies.keys()),
     admins: config.adminEmails.size,
   });
 });

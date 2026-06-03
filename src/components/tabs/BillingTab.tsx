@@ -8,7 +8,7 @@ import ExcelIcon from '../shared/ExcelIcon';
 import StatusBadge, { BadgeVariant } from '../shared/StatusBadge';
 import { useConfirm } from '../shared/useConfirm';
 import { auth } from '../../firebase';
-import { sendRegion, buildRegionPayload } from '../../lib/ecountGateway';
+import { sendRegion, buildRegionPayload, ECOUNT_COMPANIES, DEFAULT_COMCODE } from '../../lib/ecountGateway';
 
 type EcountRegState = 'wait' | 'sending' | 'done' | 'cached' | 'error';
 const ECOUNT_BADGE: Record<EcountRegState, { variant: BadgeVariant; label: string } | null> = {
@@ -25,12 +25,14 @@ export default function BillingTab() {
   const [ecountStatus, setEcountStatus] = useState<Record<string, { state: EcountRegState; info?: string }>>({});
   const [sendingRegion, setSendingRegion] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [selectedComCode, setSelectedComCode] = useState(DEFAULT_COMCODE);
 
   // 지자체별 개별 발행 — 담당자가 각 카드의 [발행] 버튼으로 하나씩 등록
   const handleSendRegion = async (item: BillingItem) => {
+    const companyLabel = ECOUNT_COMPANIES.find((c) => c.comCode === selectedComCode)?.label ?? selectedComCode;
     const ok = await confirm({
       title: `${item.region} 매출 발행`,
-      message: `'${item.region}' 매출전표(${formatNumber(item.sum.amount)}원)를 운영 ECOUNT에 등록합니다.\n비가역 작업 — 되돌리려면 ECOUNT 화면에서 직접 삭제해야 합니다.\n계속할까요?`,
+      message: `[${companyLabel}] '${item.region}' 매출전표(${formatNumber(item.sum.amount)}원)를 ECOUNT에 등록합니다.\n비가역 작업 — 되돌리려면 ECOUNT 화면에서 직접 삭제해야 합니다.\n계속할까요?`,
       tone: 'danger',
       confirmText: '발행',
     });
@@ -43,7 +45,7 @@ export default function BillingTab() {
     const month = Number(currentMonth.split('-')[1]);
     try {
       const token = await user.getIdToken();
-      const res = await sendRegion(token, buildRegionPayload(item, month, regions, zonePrices));
+      const res = await sendRegion(token, buildRegionPayload(item, month, regions, zonePrices, selectedComCode));
       if (res.ok && res.cached) {
         setEcountStatus((s) => ({ ...s, [item.region]: { state: 'cached', info: '이미 등록됨' } }));
         showToast(`${item.region} — 이미 등록되어 있습니다 (중복 차단)`);
@@ -126,16 +128,30 @@ export default function BillingTab() {
       {/* ── ECOUNT 매출 발행 (지자체별 개별 발행) ── */}
       {billingReport.report.length > 0 && (
         <div className="fin-card p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h3 className="font-black text-sm text-slate-700 flex items-center gap-1.5">
               <Send size={15} className="text-sky-500" /> ECOUNT 매출 발행 <span className="text-slate-400 font-bold">(지자체별)</span>
             </h3>
-            <button
-              onClick={() => setShowGuide(true)}
-              className="text-[11px] font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 shrink-0"
-            >
-              <ReceiptText size={13} /> 발행 후 작업 안내
-            </button>
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] font-bold text-slate-500 shrink-0">발행 회사</label>
+              <select
+                value={selectedComCode}
+                onChange={(e) => setSelectedComCode(e.target.value)}
+                disabled={!!sendingRegion}
+                aria-label="발행 회사 선택"
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-700 outline-none focus:border-sky-500 bg-white disabled:opacity-50"
+              >
+                {ECOUNT_COMPANIES.map((c) => (
+                  <option key={c.comCode} value={c.comCode}>{c.label} ({c.comCode})</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setShowGuide(true)}
+                className="text-[11px] font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 shrink-0"
+              >
+                <ReceiptText size={13} /> 작업 안내
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">

@@ -16,8 +16,8 @@ export function normalizeRegion(region: string): string {
   return region.normalize('NFC').replace(/\s+/g, '').trim();
 }
 
-export function buildIdempotencyKey(year: number, month: number, region: string): string {
-  return `${year}-${month}-${normalizeRegion(region)}`;
+export function buildIdempotencyKey(comCode: string, year: number, month: number, region: string): string {
+  return `${comCode}-${year}-${month}-${normalizeRegion(region)}`;
 }
 
 export function hashInput(input: unknown): string {

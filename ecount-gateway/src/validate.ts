@@ -1,8 +1,8 @@
 // 신뢰경계 입력 검증 — /ecount/sale 본문.
-// 임의 prodCd가 ECOUNT로 새어가지 않도록 급지품목 화이트리스트로 제한.
+// 품목코드는 회사마다 체계가 다름(wsl_z*, j_000* 등) → 안전 패턴으로만 제한(인젝션 방지).
 import type { SaleLineInput } from './amounts';
 
-export const VALID_PROD_CODES = new Set(['wsl_z1', 'wsl_z2', 'wsl_z3', 'wsl_z4', 'wsl_z5', 'wsl_z6', 'wsl_z7']);
+const PROD_CD_RE = /^[A-Za-z0-9_]{1,20}$/;
 
 const MAX_LINES = 100;
 const MAX_QTY = 100_000;
@@ -69,7 +69,7 @@ export function validateSaleBody(body: any, defaultMakeFlag: string): ValidatedS
 
   const lines: SaleLineInput[] = body.lines.map((l: any, i: number) => {
     if (!l || typeof l !== 'object') throw new ValidationError(`lines[${i}] 형식 오류`);
-    if (!VALID_PROD_CODES.has(l.prodCd)) throw new ValidationError(`lines[${i}].prodCd 허용되지 않음: ${l.prodCd}`);
+    if (typeof l.prodCd !== 'string' || !PROD_CD_RE.test(l.prodCd)) throw new ValidationError(`lines[${i}].prodCd 형식 오류`);
     const prodDes = typeof l.prodDes === 'string' ? clean(l.prodDes) : '';
     if (!prodDes || prodDes.length > 200) throw new ValidationError(`lines[${i}].prodDes 유효하지 않음`);
     const qty = Number(l.qty);

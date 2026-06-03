@@ -8,6 +8,20 @@ const GATEWAY_URL =
   (import.meta.env.VITE_ECOUNT_GATEWAY_URL as string | undefined) ??
   'https://ecount-gateway-673351301105.asia-northeast3.run.app';
 
+// 발행 회사(COM_CODE) — 게이트웨이 ECOUNT_COMPANIES와 동일하게 유지
+export const ECOUNT_COMPANIES = [
+  { comCode: '631989', label: '웰쉐어 (운영)' },
+  { comCode: '156855', label: '웰쉐어 테스트' },
+];
+export const DEFAULT_COMCODE = '631989';
+
+// 회사별 급지→ECOUNT 품목코드 (회사마다 품목코드 체계가 다름)
+const ZONE_TO_PROD_BY_COMPANY: Record<string, Record<string, string>> = {
+  '631989': ZONE_TO_PROD, // wsl_z1~z7
+  // 156855 (형 확인): j_0001=2급지, j_0002=1급지, j_0004=4급지 — 현 정산은 1·2·4급지만 사용
+  '156855': { '1급지': 'j_0002', '2급지': 'j_0001', '4급지': 'j_0004' },
+};
+
 export interface SaleLine {
   prodCd: string;
   prodDes: string;
@@ -17,6 +31,7 @@ export interface SaleLine {
   vat: number;
 }
 export interface SalePayload {
+  comCode: string;
   month: number;
   region: string;
   lines: SaleLine[];
@@ -39,12 +54,15 @@ export function buildRegionPayload(
   month: number,
   regions: Record<string, string>,
   zonePrices: Record<string, { billing: number }>,
+  comCode: string,
 ): SalePayload {
   const zone = regions[item.region] ?? '2급지';
-  const prodCd = ZONE_TO_PROD[zone] ?? 'wsl_z2';
+  const zoneMap = ZONE_TO_PROD_BY_COMPANY[comCode] ?? ZONE_TO_PROD;
+  const prodCd = zoneMap[zone] ?? zoneMap['2급지'] ?? 'wsl_z2';
   const price = Math.round(zonePrices[zone]?.billing ?? 0); // 정수 보장(게이트웨이 검증 대응)
   const prodDes = `${getFullRegionName(item.region)} ${month}월 정부양곡배송비`;
   return {
+    comCode,
     month,
     region: item.region,
     lines: [
