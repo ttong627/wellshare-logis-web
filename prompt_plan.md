@@ -20,7 +20,7 @@
 - ✅ **Phase 0 인프라 (logis-TMS) 완료 (2026-06-03)**: compute/vpcaccess/run API 활성·Blaze 활성 확인. default VPC(asia-northeast3, 10.178.0.0/20) 재사용. 정적 IP `ecount-gw-ip`=**34.64.190.54**(IN_USE) + Cloud Router `ecount-gw-router` + Cloud NAT `ecount-gw-nat`(MANUAL_ONLY, ALL_SUBNETWORKS) 생성. **남은 수동작업: 형님이 ECOUNT 관리자에서 34.64.190.54를 API IP 화이트리스트에 등록**
 - ✅ **Phase 1 게이트웨이 (Cloud Run) 배포 완료 (2026-06-03)**: `ecount-gateway/`(Node20+TS+Express). URL `https://ecount-gateway-673351301105.asia-northeast3.run.app`. Direct VPC egress(all-traffic)→NAT→34.64.190.54. POST /ecount/sale(Firebase 토큰검증+관리자 allowlist+멱등성 상태머신 `year-month-region`+세션 싱글플라이트+SaveSale), GET /(헬스), GET /debug/ip. 코코 보안리뷰 통과(에러 detail 비노출·금액상한·제어문자 필터 반영). 무블로커 검증(health 200/무토큰 401/CORS allowlist) 통과. **남은 검증(관리자 토큰 필요): /debug/ip 실측·실호출. 블로커: ① 형님이 34.64.190.54 ECOUNT 운영 IP화이트리스트 등록 ② 운영키 재발급→시크릿 `ecount-api-key` 교체(현재 placeholder)**
 - **Phase 2 키/담당자 저장**: Firestore `ecount_credentials/{userId}`(서버전용 rules deny client) / `ecount_operators/{email}`(매핑 메타, 키 제외) + 관리 UI
-- **Phase 3 wellshare-logis 앱**: 계산서발급 "ECOUNT 전송" 버튼 → 게이트웨이 호출, 상태배지, 전송후 ECOUNT 화면 작업 가이드(일괄회계반영→발행)
+- ✅ **Phase 3 wellshare-logis 앱 배포완료 (2026-06-03)**: 계산서발급(BillingTab)에 "🧪 테스트(1건)"·"ECOUNT 전송" 버튼 → 게이트웨이 호출, 행정구별 StatusBadge, 부분실패 표시·재전송 안내, 전송후 ECOUNT 화면작업 모달. 매핑은 `ecountGateway.ts`(화면 regions/zonePrices 주입 — 하드코딩 금지). 게이트웨이 supply/vat 패스스루 보강. 미연·미아 리뷰 CRITICAL(급지/단가 하드코딩) 수정 완료. wellshare-logis.web.app 라이브. **남은 검증: 형님 실전송 1건 → ECOUNT 금액 대조**
 - **Phase 4 A방안 엑셀**: `src/lib/ecountExport.ts`(이미 구현) → BillingTab "ECOUNT 엑셀" 버튼 연결
 - **Phase 5**: 다른 앱(logis-TMS 등) 게이트웨이 연동
 

@@ -8,6 +8,8 @@ export interface SaleLineInput {
   prodDes: string;
   qty: number;
   price: number; // VAT 포함 단가
+  supply?: number; // 앱(billingReport)이 보낸 정답 공급가 — 있으면 그대로 사용
+  vat?: number; // 앱이 보낸 정답 세액
 }
 
 export interface ComputedLine extends SaleLineInput {
@@ -26,8 +28,9 @@ export interface ComputedAmounts {
 export function computeAmounts(lines: SaleLineInput[]): ComputedAmounts {
   const computed: ComputedLine[] = lines.map((l) => {
     const total = Math.round(l.qty * l.price);
-    const supply = Math.round(total / 1.1);
-    const vat = total - supply;
+    // 앱이 정답 supply/vat를 보냈으면 그대로 사용(±1원 불일치 방지), 아니면 계산
+    const supply = l.supply != null ? l.supply : Math.round(total / 1.1);
+    const vat = l.vat != null ? l.vat : total - supply;
     return { ...l, total, supply, vat };
   });
 

@@ -80,7 +80,20 @@ export function validateSaleBody(body: any, defaultMakeFlag: string): ValidatedS
     if (!Number.isInteger(price) || price < 1 || price > MAX_PRICE) {
       throw new ValidationError(`lines[${i}].price 는 1~${MAX_PRICE} 정수여야 합니다`);
     }
-    return { prodCd: l.prodCd, prodDes, qty, price };
+    // 앱(billingReport)이 정답 supply/vat를 보내면 검증 후 사용 (없으면 게이트웨이가 계산)
+    let supply: number | undefined;
+    let vat: number | undefined;
+    if (l.supply != null || l.vat != null) {
+      supply = Number(l.supply);
+      vat = Number(l.vat);
+      if (!Number.isInteger(supply) || supply < 0 || !Number.isInteger(vat) || vat < 0) {
+        throw new ValidationError(`lines[${i}].supply/vat 는 0 이상 정수여야 합니다`);
+      }
+      if (supply + vat !== Math.round(qty * price)) {
+        throw new ValidationError(`lines[${i}] supply+vat(${supply + vat}) != 수량*단가(${Math.round(qty * price)})`);
+      }
+    }
+    return { prodCd: l.prodCd, prodDes, qty, price, supply, vat };
   });
 
   const makeFlag = body.makeFlag === 'Y' || body.makeFlag === 'N' ? body.makeFlag : defaultMakeFlag;
