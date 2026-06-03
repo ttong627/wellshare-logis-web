@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "웰쉐어 물류",
+    "name": "정부양곡정산",
     "slug": "wellshare-logis-mobile",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -13,6 +13,7 @@
       "url": "https://u.expo.dev/26acad7e-395b-4155-9128-28f69f83c9dd"
     },
     "orientation": "portrait",
+    "newArchEnabled": false,
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -30,7 +31,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "kr.wssc.wellshare.logis",
-      "versionCode": 7,
+      "versionCode": 8,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
