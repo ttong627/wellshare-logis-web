@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, setDoc, updateDoc, collection, query, onSnapshot } from 'firebase/firestore';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { doc, getDoc, setDoc, updateDoc, deleteField, collection, query, onSnapshot } from 'firebase/firestore';
 import { db, APP_ID } from '../firebase';
 import { useAuth } from './AuthContext';
 
@@ -48,6 +48,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setSavedMonths(snap.docs.map(d => d.id).sort().reverse());
     });
   }, [user]);
+
+  // 이전 달이 마감되지 않았으면 기본 표시 월을 이전 달로 전환(웹과 동일 — 마감 전엔 직전 달이 작업 월).
+  const hasResolvedDefaultMonth = useRef(false);
+  useEffect(() => {
+    if (!user || hasResolvedDefaultMonth.current) return;
+    hasResolvedDefaultMonth.current = true;
+    (async () => {
+      const now = new Date();
+      const tm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      if (currentMonth !== tm) return;
+      const pd = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prev = `${pd.getFullYear()}-${String(pd.getMonth() + 1).padStart(2, '0')}`;
+      try {
+        const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', prev));
+        const prevClosed = snap.exists() ? snap.data().isClosed === true : false;
+        if (!prevClosed) setCurrentMonthState(prev);
+      } catch (e) {
+        console.warn('기본 월 확인 실패:', e);
+      }
+    })();
+  }, [user, currentMonth]);
 
   const loadMonth = useCallback(async (month: string) => {
     if (!user) return;
@@ -114,8 +135,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       delete newDates[company][region];
     }
     setDeliveryDates(newDates);
+    // merge:true는 사라진 키를 삭제하지 못한다 → deleteField로 해당 경로를 명시적 삭제해야 취소가 반영됨
     const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-    await setDoc(ref, { deliveryDates: newDates, updatedAt: new Date().toISOString(), updatedBy: user?.email }, { merge: true });
+    await updateDoc(ref, {
+      [`deliveryDates.${company}.${region}`]: deleteField(),
+      updatedAt: new Date().toISOString(),
+      updatedBy: user?.email,
+    });
   }, [currentMonth, deliveryDates, user]);
 
   return (

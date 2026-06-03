@@ -1,6 +1,6 @@
 import React from 'react';
 import { Save, Building2 } from 'lucide-react';
-import { addDoc, collection, setDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, setDoc, doc, updateDoc, deleteField } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { MEMBERS, PARTNER_REGIONS } from '../../constants/members';
@@ -90,8 +90,12 @@ export default function DeliveryCompletionTab() {
       }
       setDeliveryDates(newDeliveryDates);
 
+      // merge:true는 사라진 키를 삭제하지 못한다 → 해당 경로를 deleteField로 명시적 삭제해야 취소가 반영됨
       const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-      await setDoc(ref, { deliveryDates: newDeliveryDates, updatedAt: new Date().toISOString() }, { merge: true });
+      await updateDoc(ref, {
+        [`deliveryDates.${company}.${region}`]: deleteField(),
+        updatedAt: new Date().toISOString(),
+      });
 
       setLocalDeliveryInputs(prev => {
         const newLocal = { ...prev };
