@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Truck, Save } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { REGION_ORDER } from '../../constants/regions';
+import { REGION_ORDER, getRegionTheme } from '../../constants/regions';
 import { PARTNER_REGIONS_INVERSE } from '../../constants/members';
 import { parseNumber, formatNumber, CLOSED_MSG } from '../../lib/utils';
 import ExcelIcon from '../shared/ExcelIcon';
@@ -151,6 +151,7 @@ export default function OrdersTab({ onOpenConflict }: OrdersTabProps) {
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
         {REGION_ORDER.map(r => {
           const o = orders[r] || {};
+          const theme = getRegionTheme(r);
           const pSum = partnerAggregatedOrders[r] || { basicQty: 0, povertyQty: 0 };
           const partnersInRegion = PARTNER_REGIONS_INVERSE[r] || [];
 
@@ -172,9 +173,22 @@ export default function OrdersTab({ onOpenConflict }: OrdersTabProps) {
           const isBasEmpty = o.basicQty === undefined || o.basicQty === '';
 
           return (
-            <div key={r} className={`border rounded-xl sm:rounded-2xl overflow-hidden transition-all shadow-sm ${hasConflict ? 'border-red-400 shadow-red-100' : 'border-slate-200'}`}>
-              <div className={`px-4 sm:px-6 py-3 sm:py-4 border-b flex justify-between items-center ${hasConflict ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+            <div
+              key={r}
+              className={`border rounded-xl sm:rounded-2xl overflow-hidden transition-all shadow-sm ${hasConflict ? 'border-red-400 shadow-red-100' : 'border-slate-200'}`}
+              style={{ borderLeftWidth: 4, borderLeftColor: hasConflict ? '#f87171' : theme.dot }}
+            >
+              <div
+                className={`px-4 sm:px-6 py-3 sm:py-4 border-b flex justify-between items-center ${hasConflict ? 'bg-red-50 border-red-200' : 'border-slate-200'}`}
+                style={hasConflict ? undefined : { background: theme.bg }}
+              >
                 <div className="flex items-center gap-2 sm:gap-3">
+                  <span
+                    className="text-[10px] font-black px-1.5 py-0.5 rounded-md shrink-0 bg-white"
+                    style={{ color: theme.text, border: `1px solid ${theme.border}` }}
+                  >
+                    {theme.group}
+                  </span>
                   <h3 className="font-bold text-slate-800 text-base sm:text-lg">{r}</h3>
                   <button onClick={() => handleIndividualOrderSave(r)} disabled={isClosed || isSaving} className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded shadow-sm text-[10px] sm:text-xs font-bold transition-colors disabled:opacity-50 ml-2">
                     <Save size={12} /> 포수저장
