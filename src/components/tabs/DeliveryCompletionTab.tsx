@@ -1,5 +1,5 @@
 import React from 'react';
-import { Save } from 'lucide-react';
+import { Save, Building2 } from 'lucide-react';
 import { addDoc, collection, setDoc, doc } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
@@ -128,17 +128,17 @@ export default function DeliveryCompletionTab() {
         const canEdit = isAdmin || company === partnerCompany;
 
         return (
-          <tr key={region} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-            <td className="p-1 sm:p-2 font-bold text-slate-800 border-r border-slate-200 bg-slate-50 text-center whitespace-nowrap text-[10px] sm:text-sm">
+          <tr key={region} className="hover:bg-sky-50/50 transition-colors border-b border-sky-50">
+            <td className="p-1 sm:p-2 font-bold text-slate-800 border-r border-sky-100 bg-sky-50/40 text-center whitespace-nowrap text-[10px] sm:text-sm">
               <span className="inline-flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: getRegionTheme(region).dot }} />
                 {safeRender(region)}
               </span>
             </td>
-            <td className="p-1 sm:p-2 border-r border-slate-200 text-center font-black text-slate-700 whitespace-nowrap text-[10px] sm:text-sm">
+            <td className="p-1 sm:p-2 border-r border-sky-100 text-center font-black text-slate-700 whitespace-nowrap text-[10px] sm:text-sm">
               {formatNumber(pQty)} 포
             </td>
-            <td className="p-1 sm:p-2 border-r border-slate-200 text-center whitespace-nowrap">
+            <td className="p-1 sm:p-2 border-r border-sky-100 text-center whitespace-nowrap">
               {isSavedInDB ? (
                 <StatusBadge variant="done" label={`${dbData.date}${dbData.delayDays ? ` 지체${dbData.delayDays}일` : ''}`} />
               ) : (
@@ -162,7 +162,7 @@ export default function DeliveryCompletionTab() {
                 className="w-[50px] sm:w-[70px] text-[9px] sm:text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 p-0.5 sm:p-1.5 transition-all disabled:opacity-50 text-center placeholder:text-slate-300"
               />
             </td>
-            <td className="p-1 sm:p-2 border-l border-slate-200 text-center bg-white whitespace-nowrap w-[40px] sm:w-[15%]">
+            <td className="p-1 sm:p-2 border-l border-sky-100 text-center bg-white whitespace-nowrap w-[40px] sm:w-[15%]">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-1">
                 {!isSavedInDB ? (
                   <button
@@ -197,24 +197,24 @@ export default function DeliveryCompletionTab() {
       });
 
       return (
-        <div key={company} className="mb-6 sm:mb-8 rounded-xl border border-slate-300 shadow-sm bg-white w-full overflow-hidden">
+        <div key={company} className="glass rounded-2xl overflow-hidden mb-5 w-full">
           {isAdmin && selectedAdminViewCompany === '전체' && (
-            <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2">
-              <span>🏢</span> {safeRender(company)}
+            <div className="px-4 py-2.5 font-black text-white text-sm sm:text-base flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)' }}>
+              <Building2 size={16} /> {safeRender(company)}
             </div>
           )}
           <div className="w-full overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
             <table className="w-full text-left text-[9px] sm:text-sm border-collapse tracking-tighter sm:tracking-normal table-fixed sm:table-auto">
-              <thead className="bg-slate-100 border-b border-slate-300">
-                <tr>
-                  <th className="p-1 sm:p-2 font-bold text-slate-600 border-r border-slate-200 text-center bg-slate-200 break-keep w-[20%]">배정 지자체</th>
-                  <th className="p-1 sm:p-2 font-bold text-slate-600 border-r border-slate-200 text-center bg-slate-200 break-keep w-[15%]">배정 수량</th>
-                  <th className="p-1 sm:p-2 font-bold text-slate-600 border-r border-slate-200 text-center break-keep w-[20%]">배송 상태</th>
-                  <th className="p-1 sm:p-2 font-bold text-blue-800 border-l-2 border-blue-200 bg-blue-50 text-center break-keep w-[30%]">완료일자 및 지체일수</th>
-                  <th className="p-1 sm:p-2 font-bold text-emerald-800 border-l-2 border-emerald-200 bg-emerald-50 text-center break-keep w-[15%]">조작</th>
+              <thead>
+                <tr className="text-white font-bold" style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)' }}>
+                  <th className="p-1.5 border border-sky-300/40 text-center break-keep w-[20%]">배정 지자체</th>
+                  <th className="p-1.5 border border-sky-300/40 text-center break-keep w-[15%]">배정 수량</th>
+                  <th className="p-1.5 border border-sky-300/40 text-center break-keep w-[20%]">배송 상태</th>
+                  <th className="p-1.5 border border-sky-300/40 text-center break-keep w-[30%]">완료일자 및 지체일수</th>
+                  <th className="p-1.5 border border-sky-300/40 text-center break-keep w-[15%]">조작</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">{tableRows}</tbody>
+              <tbody className="divide-y divide-sky-50">{tableRows}</tbody>
             </table>
           </div>
         </div>
