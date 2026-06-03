@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileSpreadsheet, Send, AlertTriangle, ReceiptText } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatCur } from '../../lib/utils';
@@ -25,10 +25,31 @@ export default function BillingTab() {
   const [ecountStatus, setEcountStatus] = useState<Record<string, { state: EcountRegState; info?: string }>>({});
   const [ecountSummary, setEcountSummary] = useState<{ done: number; cached: number; error: number } | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [selectedRegions, setSelectedRegions] = useState<Set<string>>(new Set());
+
+  // 지자체 목록이 바뀌면(월 변경/로딩) 전체 선택으로 초기화 + 상태 리셋
+  const regionKey = billingReport.report.map((it) => it.region).join('|');
+  useEffect(() => {
+    setSelectedRegions(new Set(billingReport.report.map((it) => it.region)));
+    setEcountStatus({});
+    setEcountSummary(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regionKey]);
+
+  const toggleRegion = (r: string) =>
+    setSelectedRegions((s) => { const n = new Set(s); if (n.has(r)) n.delete(r); else n.add(r); return n; });
+
+  const allRegionNames = billingReport.report.map((it) => it.region);
+  const allSelected = allRegionNames.length > 0 && allRegionNames.every((r) => selectedRegions.has(r));
+  const toggleAll = () => setSelectedRegions(allSelected ? new Set() : new Set(allRegionNames));
+  const selectedSum = billingReport.report
+    .filter((it) => selectedRegions.has(it.region))
+    .reduce((s, it) => s + it.sum.amount, 0);
 
   const handleEcountSend = async (testOnly = false) => {
-    const targets = testOnly ? billingReport.report.slice(0, 1) : billingReport.report;
-    if (targets.length === 0) { showToast('전송할 내역이 없습니다.'); return; }
+    const selected = billingReport.report.filter((it) => selectedRegions.has(it.region));
+    const targets = testOnly ? selected.slice(0, 1) : selected;
+    if (targets.length === 0) { showToast('선택된 지자체가 없습니다.'); return; }
     const ok = await confirm({
       title: testOnly ? 'ECOUNT 테스트 전송 (1건)' : 'ECOUNT 매출 전송',
       message: testOnly
@@ -126,79 +147,96 @@ export default function BillingTab() {
           <h2 className="text-base sm:text-lg font-black mb-1" style={{ textShadow: '0 2px 8px rgba(0,0,0,.2)' }}>웰쉐어 세금계산서 발행내역 (희망나르미 발행분)</h2>
           <div className="fin-num text-2xl sm:text-4xl font-black tracking-tight" style={{ textShadow: '0 2px 8px rgba(0,0,0,.2)' }}>{formatCur(billingReport.grandTotal.amount)}</div>
         </div>
-        <div className="w-full md:w-auto flex items-center gap-2 relative z-10">
-          <button
-            onClick={() => handleEcountSend(true)}
-            disabled={ecountSending || billingReport.report.length === 0}
-            title="첫 행정구 1건만 시범 전송"
-            className="flex-none bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 sm:py-2 rounded-xl font-bold text-[11px] sm:text-xs shadow-md transition-all flex items-center justify-center gap-1 whitespace-nowrap ring-1 ring-white/20"
-          >
-            🧪 테스트
-          </button>
-          <button
-            onClick={() => handleEcountSend(false)}
-            disabled={ecountSending || billingReport.report.length === 0}
-            className="flex-1 md:flex-none bg-white/15 hover:bg-white/25 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-xl font-bold text-[11px] sm:text-xs shadow-md transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ring-1 ring-white/30"
-          >
-            <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> {ecountSending ? '전송중…' : 'ECOUNT 전송'}
-          </button>
-          <button
-            onClick={generateAdvancedBillingExcel}
-            className="flex-1 md:flex-none bg-[#107C41] hover:bg-[#185C37] text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-xl font-bold text-[11px] sm:text-xs shadow-md transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-          >
-            <ExcelIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> 엑셀
-          </button>
-        </div>
+        <button
+          onClick={generateAdvancedBillingExcel}
+          className="w-full md:w-auto relative z-10 bg-[#107C41] hover:bg-[#185C37] text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-xl font-bold text-[11px] sm:text-xs shadow-md transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+        >
+          <ExcelIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> 엑셀
+        </button>
       </div>
 
-      {/* ── ECOUNT 전송 상태 패널 ── */}
-      {Object.keys(ecountStatus).length > 0 && (
+      {/* ── ECOUNT 매출 발행 (지자체 선택) ── */}
+      {billingReport.report.length > 0 && (
         <div className="fin-card p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h3 className="font-black text-sm text-slate-700 flex items-center gap-1.5">
-              <Send size={15} className="text-sky-500" /> ECOUNT 전송 상태
+              <Send size={15} className="text-sky-500" /> ECOUNT 매출 발행 <span className="text-slate-400 font-bold">(지자체 선택)</span>
             </h3>
-            {ecountSummary && (
-              <span className="text-[11px] font-bold text-slate-500">
-                등록 {ecountSummary.done} · 중복 {ecountSummary.cached} · 실패 {ecountSummary.error}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={toggleAll}
+                disabled={ecountSending}
+                className="px-2.5 py-1.5 rounded-lg font-bold text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors disabled:opacity-50"
+              >
+                {allSelected ? '전체 해제' : '전체 선택'}
+              </button>
+              <button
+                onClick={() => handleEcountSend(true)}
+                disabled={ecountSending || selectedRegions.size === 0}
+                title="선택한 지자체 중 첫 1건만 시범 전송"
+                className="px-2.5 py-1.5 rounded-lg font-bold text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-700 ring-1 ring-amber-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                🧪 테스트
+              </button>
+              <button
+                onClick={() => handleEcountSend(false)}
+                disabled={ecountSending || selectedRegions.size === 0}
+                className="px-3 py-1.5 rounded-lg font-bold text-[11px] text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                style={{ background: 'linear-gradient(160deg,#38bdf8,#0284c7)' }}
+              >
+                <Send size={13} /> {ecountSending ? '전송중…' : `선택 전송 (${selectedRegions.size})`}
+              </button>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {billingReport.report.filter((item) => ecountStatus[item.region]).map((item) => {
-              const st = ecountStatus[item.region]?.state ?? 'wait';
-              const badge = ECOUNT_BADGE[st];
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {billingReport.report.map((item) => {
+              const checked = selectedRegions.has(item.region);
+              const st = ecountStatus[item.region]?.state;
+              const badge = st ? ECOUNT_BADGE[st] : null;
               return (
-                <div
+                <label
                   key={item.region}
-                  className="flex items-center gap-1.5 bg-slate-50 rounded-lg px-2.5 py-1.5"
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer transition-colors ${checked ? 'bg-sky-50 ring-1 ring-sky-200' : 'bg-slate-50 hover:bg-slate-100'}`}
                   title={ecountStatus[item.region]?.info || ''}
                 >
-                  <span className="text-[11px] font-bold text-slate-600">{item.region}</span>
-                  {badge ? (
-                    <StatusBadge variant={badge.variant} label={badge.label} />
-                  ) : (
-                    <span className="fin-badge" style={{ background: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}>
-                      <AlertTriangle size={12} /> 실패
-                    </span>
-                  )}
-                </div>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleRegion(item.region)}
+                    disabled={ecountSending}
+                    className="w-4 h-4 accent-sky-500 shrink-0"
+                  />
+                  <span className="text-[12px] font-bold text-slate-700 flex-1 truncate">{item.region}</span>
+                  <span className="fin-num text-[11px] text-slate-500">{formatNumber(item.sum.amount)}원</span>
+                  {st &&
+                    (badge ? (
+                      <StatusBadge variant={badge.variant} label={badge.label} />
+                    ) : (
+                      <span className="fin-badge" style={{ background: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}>
+                        <AlertTriangle size={12} /> 실패
+                      </span>
+                    ))}
+                </label>
               );
             })}
           </div>
+
+          <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+            <span className="font-bold text-slate-500">
+              선택 {selectedRegions.size}개 · 합계 <span className="fin-num text-sky-700">{formatNumber(selectedSum)}원</span>
+            </span>
+            {ecountSummary && (
+              <span className="font-bold text-slate-500">
+                결과 — 등록 {ecountSummary.done} · 중복 {ecountSummary.cached} ·{' '}
+                <span className={ecountSummary.error ? 'text-red-500' : ''}>실패 {ecountSummary.error}</span>
+              </span>
+            )}
+          </div>
           {ecountSummary && ecountSummary.error > 0 && (
-            <div className="mt-3 pt-3 border-t border-slate-100">
-              <p className="text-[11px] font-bold text-red-500 mb-1">
-                실패한 행정구 — 다시 'ECOUNT 전송'을 누르면 실패분만 재전송됩니다 (이미 등록된 곳은 자동 건너뜀).
-              </p>
-              <ul className="text-[11px] text-slate-500 space-y-0.5">
-                {billingReport.report
-                  .filter((it) => ecountStatus[it.region]?.state === 'error')
-                  .map((it) => (
-                    <li key={it.region}>· <b className="text-slate-600">{it.region}</b>: {ecountStatus[it.region]?.info || '오류'}</li>
-                  ))}
-              </ul>
-            </div>
+            <p className="mt-2 text-[11px] font-bold text-red-500">
+              실패한 지자체는 다시 '선택 전송'을 누르면 재전송됩니다 (이미 등록된 곳은 자동 건너뜀).
+            </p>
           )}
         </div>
       )}
