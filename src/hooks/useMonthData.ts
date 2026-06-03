@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, collection, query } from 'firebase/firestore';
 import { db, APP_ID } from '../firebase';
@@ -9,11 +9,19 @@ import {
 import { INITIAL_ZONES, INITIAL_REGIONS_DATA } from '../constants/regions';
 import { PARTNER_REGIONS_INVERSE } from '../constants/members';
 
+const getCurrentMonth = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const getPreviousMonth = (month: string) => {
+  const [year, monthNumber] = month.split('-').map(Number);
+  const date = new Date(year, monthNumber - 2, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+};
+
 export function useMonthData(user: User | null) {
-  const [currentMonth, setCurrentMonth] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
+  const [currentMonth, setCurrentMonth] = useState<string>(getCurrentMonth);
 
   const [zonePrices, setZonePrices] = useState<ZonePrices>(INITIAL_ZONES);
   const [regions, setRegions] = useState<RegionsData>(INITIAL_REGIONS_DATA);
@@ -25,6 +33,7 @@ export function useMonthData(user: User | null) {
   const [isClosed, setIsClosed] = useState(false);
   const [savedMonths, setSavedMonths] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const hasResolvedDefaultMonth = useRef(false);
 
   // Listen to saved months list
   useEffect(() => {
@@ -85,6 +94,32 @@ export function useMonthData(user: User | null) {
   useEffect(() => {
     if (user) loadMonth(currentMonth);
   }, [currentMonth, user, loadMonth]);
+
+  useEffect(() => {
+    if (!user || hasResolvedDefaultMonth.current) return;
+    hasResolvedDefaultMonth.current = true;
+
+    const resolveDefaultMonth = async () => {
+      const thisMonth = getCurrentMonth();
+      const previousMonth = getPreviousMonth(thisMonth);
+
+      if (currentMonth !== thisMonth) return;
+
+      try {
+        const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', previousMonth);
+        const snap = await getDoc(ref);
+        const previousMonthClosed = snap.exists() ? snap.data().isClosed === true : false;
+
+        if (!previousMonthClosed) {
+          setCurrentMonth(previousMonth);
+        }
+      } catch (e) {
+        console.error('기본 월 확인 오류:', e);
+      }
+    };
+
+    resolveDefaultMonth();
+  }, [currentMonth, user]);
 
   const saveAll = useCallback(async (email: string) => {
     setIsSaving(true);

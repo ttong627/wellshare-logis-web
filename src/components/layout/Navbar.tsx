@@ -54,11 +54,11 @@ export default function Navbar({
   const gearTabs = ALL_TABS.filter(t => t.inGear && t.visible);
 
   return (
-    <div className="max-w-[1400px] mx-auto px-2 sm:px-4 relative z-10">
+    <div className="max-w-[1400px] mx-auto px-2 sm:px-4 relative z-[1000]">
 
       {/* ── Hero header bar ─────────────────────────────── */}
       <div
-        className="rounded-2xl sm:rounded-3xl mb-3 overflow-hidden"
+        className="relative z-[2000] rounded-2xl sm:rounded-3xl mb-3 overflow-visible"
         style={{
           background: 'linear-gradient(135deg, #0369a1 0%, #0284c7 30%, #0ea5e9 65%, #38bdf8 100%)',
           boxShadow: '0 8px 40px rgba(2,132,199,.45), 0 2px 12px rgba(0,0,0,.12)',
@@ -140,7 +140,7 @@ export default function Navbar({
               </button>
 
               {/* Notifications */}
-              <div className="relative">
+              <div className="relative z-[3000]">
                 <button onClick={() => setShowNoti(p => !p)} title="알림"
                   className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all relative"
                   style={{ background: 'rgba(255,255,255,.15)', border: '1px solid rgba(255,255,255,.25)' }}
@@ -155,7 +155,7 @@ export default function Navbar({
                   )}
                 </button>
                 {showNoti && (
-                  <div className="glass absolute right-0 mt-2 w-72 sm:w-80 rounded-2xl z-50 overflow-hidden">
+                  <div className="glass absolute right-0 top-full mt-2 w-72 sm:w-80 rounded-2xl z-[100000] overflow-hidden shadow-2xl">
                     <div className="px-4 py-2.5 flex justify-between items-center border-b border-sky-100">
                       <span className="text-xs font-black text-sky-700">실시간 알림</span>
                       <button onClick={onClearNotifications}
@@ -207,7 +207,7 @@ export default function Navbar({
       </div>
 
       {/* ── Month + Close bar ────────────────────────────── */}
-      <div className="glass rounded-2xl px-4 sm:px-6 py-3 mb-3 flex flex-col sm:flex-row justify-between items-center gap-3">
+      <div className="glass relative z-10 rounded-2xl px-4 sm:px-6 py-3 mb-3 flex flex-col sm:flex-row justify-between items-center gap-3">
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {isAdmin && (
             <button
@@ -255,7 +255,7 @@ export default function Navbar({
       </div>
 
       {/* ── Main tab bar ─────────────────────────────────── */}
-      <div className="glass rounded-2xl p-2 mb-4 sm:mb-6">
+      <div className="glass relative z-0 rounded-2xl p-2 mb-4 sm:mb-6">
         <nav className="flex flex-nowrap overflow-x-auto gap-1.5" style={{ scrollbarWidth: 'none' }}>
           {mainTabs.map(t => (
             <button

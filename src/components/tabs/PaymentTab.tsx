@@ -1,20 +1,32 @@
 import React, { useRef, useState } from 'react';
-import { CreditCard } from 'lucide-react';
+import { CreditCard, Info } from 'lucide-react';
 import { addDoc, collection, setDoc, doc } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
-import { formatNumber, safeRender, CLOSED_MSG } from '../../lib/utils';
+import { formatNumber, formatCur, CLOSED_MSG } from '../../lib/utils';
 import ExcelIcon from '../shared/ExcelIcon';
+import StatusBadge from '../shared/StatusBadge';
+import { useConfirm } from '../shared/useConfirm';
 
 export default function PaymentTab() {
   const {
     billingSummary, formattedMonthStr, currentMonth,
     deliveryDates, publishRequests, setPublishRequests,
-    isClosed, isSaving, setIsSaving, showToast, user,
+    isClosed, isSaving, setIsSaving, showToast, user, isAdmin,
   } = useApp();
 
+  const { confirm, dialog } = useConfirm();
   const reqDateRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [bulkReqDate, setBulkReqDate] = useState('');
+
+  // 보안: 발행 요청은 관리자(본사) 전용 — 핸들러 레벨 권한 가드
+  const guardAdmin = (): boolean => {
+    if (!isAdmin) { showToast('발행 요청 권한이 없습니다.'); return false; }
+    return true;
+  };
+
+  const shortNameOf = (m: string) =>
+    m.replace('사회적협동조합 ', '').replace(' 협동조합', '').replace('(주)', '');
 
   const handleDownloadOldExcel = () => {
     if (!window.XLSX) return showToast('엑셀 엔진을 준비 중입니다. 잠시 후 다시 시도해주세요.');
@@ -31,8 +43,15 @@ export default function PaymentTab() {
   };
 
   const handleIndividualPublishRequestSave = async (company: string, region: string, dateVal: string) => {
+    if (!guardAdmin()) return;
     if (isClosed) return showToast(CLOSED_MSG);
     if (!dateVal) return showToast('발행 요청 일자를 선택해주세요.');
+    const ok = await confirm({
+      title: '세금계산서 발행 요청',
+      message: `${shortNameOf(company)} · ${region}\n${dateVal} 일자로 세금계산서 발행을 요청합니다.\n회원사에 알림이 전송됩니다.`,
+      confirmText: '요청 보내기',
+    });
+    if (!ok) return;
     setIsSaving(true);
     try {
       const newPublishRequests = {
@@ -53,6 +72,7 @@ export default function PaymentTab() {
   };
 
   const handleBulkRequest = async () => {
+    if (!guardAdmin()) return;
     if (isClosed) return showToast(CLOSED_MSG);
     if (!bulkReqDate) return showToast('일괄 발행 요청 날짜를 선택해주세요.');
     const targets: { company: string; region: string }[] = [];
@@ -64,6 +84,12 @@ export default function PaymentTab() {
       });
     });
     if (targets.length === 0) return showToast('요청할 대상이 없습니다. (미요청 건이 없거나 배송 미완료)');
+    const ok = await confirm({
+      title: `일괄 발행 요청 (${targets.length}건)`,
+      message: `배송 완료된 미요청 ${targets.length}건에 대해\n${bulkReqDate} 일자로 세금계산서 발행을 일괄 요청합니다.\n각 회원사에 알림이 전송됩니다.`,
+      confirmText: `${targets.length}건 요청`,
+    });
+    if (!ok) return;
     setIsSaving(true);
     try {
       const newPublishRequests = { ...publishRequests };
@@ -85,7 +111,15 @@ export default function PaymentTab() {
   };
 
   const handleClearPublishRequest = async (company: string, region: string) => {
+    if (!guardAdmin()) return;
     if (isClosed) return showToast(CLOSED_MSG);
+    const ok = await confirm({
+      title: '발행 요청 취소',
+      message: `${shortNameOf(company)} · ${region}\n세금계산서 발행 요청을 취소합니다.`,
+      confirmText: '요청 취소',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setIsSaving(true);
     try {
       const newPublishRequests = { ...publishRequests };
@@ -103,16 +137,22 @@ export default function PaymentTab() {
 
   return (
     <div className="anim-in space-y-5">
+      {dialog}
+
+      {/* ── 히어로 (총 청구 예정액) ── */}
       <div className="sky-hero p-6 sm:p-8 text-white">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
               style={{ background: 'rgba(255,255,255,.18)', backdropFilter: 'blur(8px)' }}>
               <CreditCard size={22} className="text-white" />
             </div>
             <div>
-              <div className="text-sky-200 text-[10px] font-bold uppercase tracking-widest mb-0.5">Payment</div>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ textShadow: '0 2px 8px rgba(0,0,0,.2)' }}>전체 회원사 결제 명세서</h2>
+              <div className="text-sky-200 text-[10px] font-bold uppercase tracking-widest mb-0.5">Payment · {formattedMonthStr}</div>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight" style={{ textShadow: '0 2px 8px rgba(0,0,0,.2)' }}>전체 회원사 결제 명세서</h2>
+              <div className="fin-num text-2xl sm:text-3xl font-black mt-1" style={{ textShadow: '0 2px 8px rgba(0,0,0,.2)' }}>
+                {formatCur(billingSummary.grandTotalAmount)}
+              </div>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
@@ -123,19 +163,20 @@ export default function PaymentTab() {
                 value={bulkReqDate}
                 onChange={e => setBulkReqDate(e.target.value)}
                 disabled={isClosed}
-                className="border border-white/30 rounded-lg px-1.5 py-1 text-[10px] sm:text-xs font-bold text-slate-700 outline-none focus:border-white/60 bg-white disabled:opacity-50"
+                aria-label="일괄 발행 요청 날짜"
+                className="border border-white/30 rounded-lg px-1.5 py-1 text-[11px] sm:text-xs font-bold text-slate-700 outline-none focus:border-white/60 bg-white disabled:opacity-50"
               />
               <button
                 onClick={handleBulkRequest}
                 disabled={isClosed || isSaving}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-2 sm:px-3 py-1 rounded-lg font-bold text-[10px] sm:text-xs shadow-sm transition-colors disabled:opacity-50 whitespace-nowrap"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-2 sm:px-3 py-1 rounded-lg font-bold text-[11px] sm:text-xs shadow-sm transition-colors disabled:opacity-50 whitespace-nowrap"
               >
                 전체 요청
               </button>
             </div>
             <button
               onClick={handleDownloadOldExcel}
-              className="w-full sm:w-auto bg-[#107C41] hover:bg-[#185C37] text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-xl font-bold text-[10px] sm:text-xs shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap transition-all"
+              className="w-full sm:w-auto bg-[#107C41] hover:bg-[#185C37] text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-xl font-bold text-[11px] sm:text-xs shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap transition-all"
             >
               <ExcelIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> 엑셀
             </button>
@@ -143,84 +184,166 @@ export default function PaymentTab() {
         </div>
       </div>
 
-      <div className="glass rounded-2xl overflow-hidden overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        <table id="payment-table-export" className="w-full border-collapse text-[7.5px] sm:text-[9px] md:text-[11px] lg:text-xs font-sans text-center tracking-tighter sm:tracking-normal whitespace-nowrap">
+      {/* ── 수수료 산식 안내 (투명성) ── */}
+      <div className="flex items-start gap-2 px-4 py-2.5 rounded-xl bg-sky-50 border border-sky-100 text-sky-700">
+        <Info size={15} className="flex-shrink-0 mt-0.5" />
+        <p className="text-[11px] sm:text-xs font-medium leading-relaxed">
+          회원사 청구액 = <b>단가 × 수량 × 97.5%</b> (웰쉐어 정산 수수료 2.5% 차감, 100원 단위 절사) · 공급가/세액은 합계 기준 역산입니다.
+        </p>
+      </div>
+
+      {/* ── 모바일 카드뷰 (sm 미만) ── */}
+      <div className="sm:hidden space-y-4">
+        {billingSummary.sorted.length === 0 && (
+          <div className="fin-card p-8 text-center text-slate-400 font-bold">이번 달 정산 내역이 없습니다.</div>
+        )}
+        {billingSummary.sorted.map(m => (
+          <div key={m.member} className="fin-card overflow-hidden">
+            <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)' }}>
+              <span className="text-white font-black text-sm break-keep">{shortNameOf(m.member)}</span>
+              <span className="fin-num text-white font-black text-base">{formatNumber(m.totalAmount)}<span className="text-[10px] font-bold ml-0.5">원</span></span>
+            </div>
+            <div className="divide-y divide-sky-50">
+              {m.regions.map(r => {
+                const dData = deliveryDates[m.member]?.[r.region] || {};
+                const isDelivered = !!dData.date;
+                const reqDate = publishRequests[m.member]?.[r.region];
+                const refKey = `m-${m.member}-${r.region}`;
+                return (
+                  <div key={r.region} className="px-4 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-black text-slate-800 text-sm">{r.region.split(' ').pop() || r.region}</span>
+                      <span className="fin-num font-black text-sky-800 text-base">{formatNumber(r.finalRowTotal)}<span className="text-[10px] font-bold text-slate-400 ml-0.5">원</span></span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500 mb-2 fin-num">
+                      <span>수량 {formatNumber(r.qty)}</span><span className="text-slate-300">·</span>
+                      <span>공급 {formatNumber(r.supplyValue)}</span><span className="text-slate-300">·</span>
+                      <span>세액 {formatNumber(r.vatValue)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <StatusBadge variant={isDelivered ? 'done' : 'wait'} label={isDelivered ? '배송완료' : '배송전'} />
+                      {reqDate ? (
+                        <>
+                          <StatusBadge variant="requested" label={`${reqDate} 요청완료`} />
+                          <button onClick={() => handleClearPublishRequest(m.member, r.region)} disabled={isClosed || isSaving}
+                            className="ml-auto text-[11px] font-bold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                            요청취소
+                          </button>
+                        </>
+                      ) : isDelivered ? (
+                        <div className="ml-auto flex items-center gap-1.5">
+                          <input type="date" ref={el => { reqDateRefs.current[refKey] = el; }} disabled={isClosed}
+                            aria-label="발행 요청 날짜"
+                            className="border border-slate-300 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-700 outline-none focus:border-sky-500 bg-white" />
+                          <button
+                            onClick={() => {
+                              const d = reqDateRefs.current[refKey]?.value;
+                              if (d) handleIndividualPublishRequestSave(m.member, r.region, d);
+                              else showToast('날짜를 선택해주세요.');
+                            }}
+                            disabled={isClosed || isSaving}
+                            className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-50">
+                            요청
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="ml-auto text-[11px] font-bold text-slate-400">배송 완료 후 요청 가능</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="px-4 py-2.5 bg-sky-50 flex items-center justify-between">
+                <span className="font-black text-sky-700 text-xs">소계 (수량 {formatNumber(m.totalQty)})</span>
+                <span className="fin-num font-black text-sky-900 text-base">{formatNumber(m.totalAmount)}원</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── 데스크탑 표 (sm 이상) · 엑셀 출력 원본 ── */}
+      <div className="hidden sm:block glass rounded-2xl overflow-hidden overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <table id="payment-table-export" className="w-full border-collapse text-[11px] md:text-xs font-sans text-center whitespace-nowrap">
           {billingSummary.sorted.map((m, mIdx) => (
             <tbody key={m.member}>
-              {mIdx > 0 && <tr><td colSpan={10} className="h-[10px] sm:h-[15px] bg-slate-50 border-none"></td></tr>}
+              {mIdx > 0 && <tr><td colSpan={10} className="h-3 bg-transparent border-none"></td></tr>}
               <tr>
-                <td colSpan={9} className="bg-[#d9d9d9] font-bold border border-slate-400 text-left p-1 sm:p-2 px-2 sm:px-4 break-keep">조합사 -&gt; 웰쉐어 발행 내역</td>
-                <td className="text-center font-bold p-1 sm:p-2 bg-[#BFBFBF] border border-slate-400 text-black text-[9px] sm:text-xs whitespace-nowrap">{formattedMonthStr}</td>
+                <td colSpan={9} className="bg-sky-100 font-black border border-sky-200 text-left p-2 px-4 text-sky-800 break-keep">{shortNameOf(m.member)} — 조합사 → 웰쉐어 발행 내역</td>
+                <td className="text-center font-bold p-2 bg-sky-200 border border-sky-300 text-sky-900 text-xs whitespace-nowrap">{formattedMonthStr}</td>
               </tr>
-              <tr className="bg-[#bfbfbf] font-bold border border-slate-400 text-black leading-tight">
-                {['조합사','행정구','단위','품명','수량','공급가','세액','합계','배송현황','계산서 현황 (요청/발급)'].map((h, i) => (
-                  <th key={i} className={`border border-slate-400 p-0.5 sm:p-1 ${i === 0 ? 'w-[12%]' : i === 1 ? 'w-[10%]' : i === 4 ? 'w-[8%]' : i === 5 ? 'w-[12%]' : i === 6 ? 'w-[10%]' : i === 7 ? 'w-[12%]' : i === 8 ? 'w-[7%]' : i === 9 ? 'w-[15%]' : ''}`}>{h}</th>
+              <tr className="text-white font-bold leading-tight" style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)' }}>
+                {['조합사','행정구','단위','품명','수량','공급가','세액','합계','배송현황','계산서 (요청)'].map((h, i) => (
+                  <th key={i} className="border border-sky-300/40 p-1.5">{h}</th>
                 ))}
               </tr>
-              {m.regions.map((r, i) => {
+              {m.regions.map(r => {
                 const dData = deliveryDates[m.member]?.[r.region] || {};
                 const isDelivered = !!dData.date;
                 const reqDate = publishRequests[m.member]?.[r.region];
                 const refKey = `${m.member}-${r.region}`;
-                const shortName = m.member.replace('사회적협동조합 ', '').replace(' 협동조합', '').replace('(주)', '');
+                const shortName = shortNameOf(m.member);
 
                 return (
-                  <tr key={r.region} className="text-black border-b border-slate-200">
-                    {i === 0 && (
-                      <td rowSpan={m.regions.length} className="border border-slate-400 p-0.5 sm:p-1 bg-white font-bold align-middle">
-                        {safeRender(shortName)}
+                  <tr key={r.region} className="text-slate-700 border-b border-sky-50 hover:bg-sky-50/50 transition-colors">
+                    {r === m.regions[0] && (
+                      <td rowSpan={m.regions.length} className="border border-sky-100 p-1.5 bg-white font-black align-middle text-slate-800">
+                        {shortName}
                       </td>
                     )}
-                    <td className="border border-slate-400 p-0.5 sm:p-1 bg-white text-center font-bold">{safeRender(r.region.split(' ').pop() || r.region)}</td>
-                    <td className="border border-slate-400 p-0.5 sm:p-1 bg-white">10Kg</td>
-                    <td className="border border-slate-400 p-0.5 sm:p-1 bg-white">배송비</td>
-                    <td className="border border-slate-400 p-0.5 sm:p-1 bg-white text-right font-black text-blue-800">{formatNumber(r.qty)}</td>
-                    <td className="border border-slate-400 p-0.5 sm:p-1 bg-white text-right">{formatNumber(r.supplyValue)}</td>
-                    <td className="border border-slate-400 p-0.5 sm:p-1 bg-white text-right">{formatNumber(r.vatValue)}</td>
-                    <td className="border border-slate-400 p-0.5 sm:p-1 bg-[#e6f2ff] text-[#000080] text-right font-black">{formatNumber(r.finalRowTotal)}</td>
-                    <td className="border border-slate-400 p-0.5 sm:p-1 bg-[#F8FAFC] font-bold" style={{ color: !isDelivered ? '#64748b' : '#0369a1' }}>
-                      {isDelivered ? '완료' : '배송전'}
+                    <td className="border border-sky-100 p-1.5 bg-white text-center font-bold">{r.region.split(' ').pop() || r.region}</td>
+                    <td className="border border-sky-100 p-1.5 bg-white text-slate-500">10Kg</td>
+                    <td className="border border-sky-100 p-1.5 bg-white text-slate-500">배송비</td>
+                    <td className="fin-num border border-sky-100 p-1.5 bg-white text-right font-black text-sky-700">{formatNumber(r.qty)}</td>
+                    <td className="fin-num border border-sky-100 p-1.5 bg-white text-right">{formatNumber(r.supplyValue)}</td>
+                    <td className="fin-num border border-sky-100 p-1.5 bg-white text-right">{formatNumber(r.vatValue)}</td>
+                    <td className="fin-num border border-sky-100 p-1.5 bg-sky-50 text-sky-900 text-right font-black">{formatNumber(r.finalRowTotal)}</td>
+                    <td className="border border-sky-100 p-1.5 bg-white">
+                      <StatusBadge variant={isDelivered ? 'done' : 'wait'} label={isDelivered ? '완료' : '배송전'} />
                     </td>
-                    <td className="border border-slate-400 p-0.5 sm:p-1 bg-white text-center font-bold">
+                    <td className="border border-sky-100 p-1.5 bg-white text-center">
                       {reqDate ? (
-                        <div className="flex flex-col items-center gap-0.5">
-                          <span className="text-orange-600 text-[7px] sm:text-[9px]">{reqDate}<br/>요청완료</span>
-                          <button onClick={() => handleClearPublishRequest(m.member, r.region)} disabled={isClosed || isSaving} className="bg-slate-100 hover:bg-red-100 text-slate-400 hover:text-red-500 border border-slate-200 px-1 py-0.5 rounded text-[7px] sm:text-[9px] font-bold transition-colors w-full mt-0.5">요청취소</button>
+                        <div className="flex flex-col items-center gap-1">
+                          <StatusBadge variant="requested" label={`${reqDate} 요청완료`} />
+                          <button onClick={() => handleClearPublishRequest(m.member, r.region)} disabled={isClosed || isSaving} className="text-[10px] font-bold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 px-2 py-0.5 rounded transition-colors disabled:opacity-50">요청취소</button>
                         </div>
-                      ) : (
-                        <div className="flex flex-col items-center gap-0.5">
+                      ) : isDelivered ? (
+                        <div className="flex items-center justify-center gap-1">
                           <input
                             type="date"
                             ref={el => { reqDateRefs.current[refKey] = el; }}
                             disabled={isClosed}
-                            className="border border-slate-300 rounded px-0.5 py-0.5 text-[7px] sm:text-[9px] outline-none focus:border-blue-500 bg-white text-slate-700 font-bold w-full"
+                            aria-label="발행 요청 날짜"
+                            className="border border-slate-300 rounded px-1 py-0.5 text-[11px] outline-none focus:border-sky-500 bg-white text-slate-700 font-bold"
                           />
                           <button
                             onClick={() => {
                               const d = reqDateRefs.current[refKey]?.value;
                               if (d) handleIndividualPublishRequestSave(m.member, r.region, d);
-                              else showToast('날짜선택필요');
+                              else showToast('날짜를 선택해주세요.');
                             }}
                             disabled={isClosed || isSaving}
-                            className="bg-orange-500 hover:bg-orange-600 text-white px-1.5 py-0.5 rounded shadow-sm text-[7px] sm:text-[9px] font-bold transition-colors disabled:opacity-50 w-full mt-0.5"
+                            className="bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-0.5 rounded shadow-sm text-[11px] font-bold transition-colors disabled:opacity-50"
                           >
                             요청
                           </button>
                         </div>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-400">배송 후 가능</span>
                       )}
                     </td>
                   </tr>
                 );
               })}
-              <tr className="bg-[#ffff00] font-bold text-black border-t-2 border-slate-400">
-                <td colSpan={2} className="border border-slate-400 p-1 text-center">소 계</td>
-                <td className="border border-slate-400 p-1 text-center">10Kg</td>
-                <td className="border border-slate-400 p-1 text-center">배송비</td>
-                <td className="border border-slate-400 p-1 text-right text-blue-900">{formatNumber(m.totalQty)}</td>
-                <td className="border border-slate-400 p-1 text-right">{formatNumber(m.totalSupply)}</td>
-                <td className="border border-slate-400 p-1 text-right">{formatNumber(m.totalVat)}</td>
-                <td className="border border-slate-400 p-1 text-right text-[#000080] text-[9px] sm:text-xs">{formatNumber(m.totalAmount)}</td>
-                <td colSpan={2} className="border border-slate-400 p-1 text-center"></td>
+              <tr className="font-black text-sky-900 border-t-2 border-sky-300 bg-sky-100">
+                <td colSpan={2} className="border border-sky-200 p-1.5 text-center">소 계</td>
+                <td className="border border-sky-200 p-1.5 text-center">10Kg</td>
+                <td className="border border-sky-200 p-1.5 text-center">배송비</td>
+                <td className="fin-num border border-sky-200 p-1.5 text-right">{formatNumber(m.totalQty)}</td>
+                <td className="fin-num border border-sky-200 p-1.5 text-right">{formatNumber(m.totalSupply)}</td>
+                <td className="fin-num border border-sky-200 p-1.5 text-right">{formatNumber(m.totalVat)}</td>
+                <td className="fin-num border border-sky-200 p-1.5 text-right text-sky-900">{formatNumber(m.totalAmount)}</td>
+                <td colSpan={2} className="border border-sky-200 p-1.5 text-center"></td>
               </tr>
             </tbody>
           ))}

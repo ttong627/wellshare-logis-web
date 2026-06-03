@@ -25,13 +25,16 @@ export default function PricesTab() {
 
   return (
     <div className="anim-in space-y-5">
+      {/* ── 히어로 ── */}
       <div className="sky-hero p-6 sm:p-8 text-white">
         <div className="relative z-10">
           <div className="text-sky-200 text-[10px] font-bold uppercase tracking-widest mb-1">Pricing</div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ textShadow: '0 2px 8px rgba(0,0,0,.2)' }}>단가 및 급지 설정</h2>
-          <p className="text-sky-200 text-xs sm:text-sm mt-1 font-medium">급지별 청구 단가와 지역별 배송 급지를 설정합니다.</p>
+          <p className="text-sky-100 text-xs sm:text-sm mt-1 font-medium">급지별 청구 단가와 지역별 배송 급지를 설정합니다. 단가는 전 회원사 청구액에 즉시 반영됩니다.</p>
         </div>
       </div>
+
+      {/* ── 급지별 청구 단가 ── */}
       <div className="glass rounded-2xl p-5 sm:p-6">
         <h2 className="text-sm sm:text-base font-black text-sky-700 flex items-center gap-2 sm:gap-3 mb-4 pb-3 border-b border-sky-100">
           <Settings size={18} className="text-sky-500" /> 급지별 10Kg 청구 단가 설정
@@ -40,18 +43,21 @@ export default function PricesTab() {
           {ZONE_ORDER.map(zone => {
             const p = zonePrices[zone] || { billing: 0 };
             return (
-              <div key={zone} className="border border-slate-200 rounded-lg sm:rounded-xl p-3 sm:p-5 bg-white shadow-sm flex flex-col justify-center transition-all hover:border-blue-300">
-                <div className="font-bold text-center text-slate-400 mb-1 sm:mb-2 text-[10px] sm:text-xs uppercase tracking-widest">{safeRender(zone)}</div>
-                <div className="relative">
+              <div key={zone} className="fin-card relative overflow-hidden p-3 sm:p-4 flex flex-col justify-center">
+                <div className="absolute top-0 left-0 right-0 h-1" style={{ background: 'linear-gradient(90deg,#38bdf8,#0284c7)' }} />
+                <div className="font-bold text-center text-sky-600 mb-2 text-[10px] sm:text-xs uppercase tracking-widest">{safeRender(zone)}</div>
+                <div className="relative flex items-baseline justify-center gap-1">
                   <input
                     type="text"
+                    inputMode="numeric"
                     disabled={isClosed}
                     value={formatNumber(p.billing)}
                     onChange={(e) => handleZonePriceChange(zone, 'billing', e.target.value)}
                     onFocus={(e) => e.target.select()}
-                    className="w-full p-1.5 sm:p-2 bg-slate-50 rounded-md sm:rounded-lg text-center focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none font-black text-base sm:text-xl text-slate-800 border border-transparent disabled:opacity-50"
+                    aria-label={`${zone} 청구 단가`}
+                    className="fin-num w-full p-1.5 sm:p-2 bg-sky-50/60 rounded-lg text-center focus:bg-white outline-none font-black text-base sm:text-xl text-slate-800 border border-transparent focus:border-sky-300 disabled:opacity-50 transition-colors"
                   />
-                  <span className="absolute -right-1 -bottom-1 text-[8px] sm:text-[10px] font-bold text-slate-400">원</span>
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 shrink-0">원</span>
                 </div>
               </div>
             );
@@ -59,19 +65,21 @@ export default function PricesTab() {
         </div>
       </div>
 
+      {/* ── 지역별 배송 급지 ── */}
       <div className="glass rounded-2xl p-5 sm:p-6">
         <h2 className="text-sm sm:text-base font-black text-sky-700 flex items-center gap-2 sm:gap-3 mb-4 pb-3 border-b border-sky-100">
           <Truck size={18} className="text-sky-500" /> 지역별 배송 급지 지정
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {REGION_ORDER.map(r => (
-            <div key={r} className="flex items-center justify-between p-3 sm:p-4 border border-sky-100 rounded-xl bg-sky-50/50 hover:border-sky-300 transition-all">
+            <div key={r} className="flex items-center justify-between p-3 sm:p-4 border border-sky-100 rounded-xl bg-sky-50/40 hover:border-sky-300 hover:bg-sky-50 transition-all">
               <span className="font-bold text-slate-800 text-sm sm:text-base">{safeRender(r)}</span>
               <select
                 disabled={isClosed}
                 value={regions[r] || '2급지'}
                 onChange={(e) => handleRegionZoneChange(r, e.target.value)}
-                className="bg-slate-50 text-slate-700 border border-slate-200 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md font-bold text-xs sm:text-sm outline-none cursor-pointer"
+                aria-label={`${r} 배송 급지`}
+                className="bg-white text-sky-700 border border-sky-200 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold text-xs sm:text-sm outline-none cursor-pointer focus:border-sky-400 disabled:opacity-50"
               >
                 {ZONE_ORDER.map(k => <option key={k} value={k}>{safeRender(k)}</option>)}
               </select>

@@ -165,6 +165,61 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 3px rgba(14,165,233,.25) !important;
 }
 
+/* ══════════════════════════════════════════════════════════
+   PREMIUM FINANCE — 결제·정산 4탭 프리미엄 레이어
+   ══════════════════════════════════════════════════════════ */
+
+/* ── 시맨틱 상태 토큰 ───────────────────────────────────── */
+:root {
+  --st-wait-bg:      #f1f5f9;   --st-wait-fg:      #64748b;   --st-wait-bd:      #e2e8f0;
+  --st-requested-bg: #fff7ed;   --st-requested-fg: #c2410c;   --st-requested-bd: #fed7aa;
+  --st-issued-bg:    #eff6ff;   --st-issued-fg:    #1d4ed8;   --st-issued-bd:    #bfdbfe;
+  --st-done-bg:      #ecfeff;   --st-done-fg:      #0369a1;   --st-done-bd:      #a5f3fc;
+  --st-paid-bg:      #f0fdf4;   --st-paid-fg:      #15803d;   --st-paid-bd:      #bbf7d0;
+}
+
+/* ── 고정폭 숫자 (금액 정렬) ────────────────────────────── */
+.fin-num { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; font-feature-settings: 'tnum' 1; }
+
+/* ── 정산 글래스 카드 ───────────────────────────────────── */
+.fin-card {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-sky);
+  border-radius: 18px;
+  transition: transform .18s cubic-bezier(.4,0,.2,1), box-shadow .18s cubic-bezier(.4,0,.2,1);
+}
+.fin-card:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(14,165,233,.22), 0 4px 12px rgba(0,0,0,.06); }
+
+/* ── 정산 표: 프리미엄 헤더 + 얼룩무늬 행 ───────────────── */
+.fin-table { border-collapse: separate; border-spacing: 0; }
+.fin-table thead th {
+  background: linear-gradient(135deg, #0369a1 0%, #0284c7 55%, #0ea5e9 100%);
+  color: #fff; font-weight: 800;
+  position: sticky; top: 0; z-index: 1;
+}
+.fin-table tbody tr { transition: background .14s; }
+.fin-table tbody tr:hover { background: rgba(186,230,253,.28) !important; }
+.fin-zebra:nth-child(even) > * { background: rgba(240,249,255,.55); }
+
+/* ── 상태 배지 (색+아이콘+텍스트) ───────────────────────── */
+.fin-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 9999px;
+  font-size: 11px; font-weight: 800; line-height: 1.4;
+  border: 1px solid transparent; white-space: nowrap;
+}
+
+/* ── 확인 다이얼로그 진입 애니메이션 ────────────────────── */
+@keyframes confirmPop {
+  0%   { opacity: 0; transform: translateY(10px) scale(.96); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);   }
+}
+.confirm-pop { animation: confirmPop .22s cubic-bezier(.34,1.56,.64,1) both; }
+.confirm-scrim { animation: fade-in .2s ease-out both; }
+
 /* ── 인쇄: [인쇄] 버튼 → 새 창 출력, Ctrl+P 직접 인쇄 차단 ─ */
 @media print {
   body > * { display: none !important; }
