@@ -8,6 +8,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
+import { sanitizeHtml } from '../../lib/sanitize';
 import { DocType, DocTemplate, DocPageFormat, DocHistoryItem } from '../../types';
 import { safeRender } from '../../lib/utils';
 
@@ -654,7 +655,7 @@ export default function DocsTab() {
 
         // 머리말 붙여넣기 영역 (있을 경우 대체 표시)
         const pastedHeaderEl = form.pastedHeaderHtml ? (
-          <div dangerouslySetInnerHTML={{ __html: form.pastedHeaderHtml }} />
+          <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.pastedHeaderHtml)}} />
         ) : null;
 
         const extraLines = (template.headerExtraLines || []).map((line, i) => (
@@ -766,10 +767,10 @@ export default function DocsTab() {
 
         {/* Body content */}
         {form.pasteMode && form.pastedBodyHtml ? (
-          <div dangerouslySetInnerHTML={{ __html: form.pastedBodyHtml }}
+          <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.pastedBodyHtml) }}
             style={{ fontFamily: fmt.bodyFontFamily || DEFAULT_FONT, fontSize: `${fmt.bodyFontSize}pt`, lineHeight: fmt.bodyLineHeight }} />
         ) : form.htmlMode ? (
-          <div dangerouslySetInnerHTML={{ __html: form.htmlContent }} />
+          <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.htmlContent) }} />
         ) : (
           <>
             <div style={{ fontFamily: fmt.bodyFontFamily || DEFAULT_FONT, fontSize: `${fmt.bodyFontSize}pt`, lineHeight: fmt.bodyLineHeight, textAlign: fmt.bodyAlign || 'left', marginBottom: '6mm' }}>
@@ -833,7 +834,7 @@ export default function DocsTab() {
         if (form.pasteMode && form.pastedFooterHtml) {
           return (
             <div style={{ ...footerBase, borderTop: `${fmt.headerBorderWidth}px solid ${template.themeColor}`, paddingTop: '3mm' }}>
-              <div dangerouslySetInnerHTML={{ __html: form.pastedFooterHtml }}
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.pastedFooterHtml) }}
                 style={{ fontFamily: fmt.footerFontFamily || DEFAULT_FONT, fontSize: `${fmt.footerFontSize}pt`, ...innerShift }} />
             </div>
           );
@@ -1594,7 +1595,7 @@ export default function DocsTab() {
                   {form.pastedHeaderHtml && (
                     <div className="rounded-lg overflow-hidden border border-sky-100">
                       <div className="p-3 bg-white text-xs overflow-auto max-h-28" style={{ fontFamily: "'Malgun Gothic', sans-serif" }}
-                        dangerouslySetInnerHTML={{ __html: form.pastedHeaderHtml }} />
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.pastedHeaderHtml)}} />
                     </div>
                   )}
                 </div>
@@ -1617,7 +1618,7 @@ export default function DocsTab() {
                   {form.pastedBodyHtml && (
                     <div className="rounded-lg overflow-hidden border border-sky-100">
                       <div className="p-3 bg-white text-xs overflow-auto max-h-32" style={{ fontFamily: "'Malgun Gothic', sans-serif" }}
-                        dangerouslySetInnerHTML={{ __html: form.pastedBodyHtml }} />
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.pastedBodyHtml) }} />
                     </div>
                   )}
                 </div>
@@ -1640,7 +1641,7 @@ export default function DocsTab() {
                   {form.pastedFooterHtml && (
                     <div className="rounded-lg overflow-hidden border border-sky-100">
                       <div className="p-3 bg-white text-xs overflow-auto max-h-28" style={{ fontFamily: "'Malgun Gothic', sans-serif" }}
-                        dangerouslySetInnerHTML={{ __html: form.pastedFooterHtml }} />
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.pastedFooterHtml) }} />
                     </div>
                   )}
                 </div>

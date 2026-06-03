@@ -38,6 +38,18 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ROLE_EDITOR';
     }
 
+    // settings.partnerAccounts[email]=='ADMIN' 으로 동적 지정된 관리자 (앱 useAuth와 일치)
+    function isDynamicAdmin(appId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/artifacts/$(appId)/public/data/settings/master_settings)
+        && get(/databases/$(database)/documents/artifacts/$(appId)/public/data/settings/master_settings)
+             .data.get('partnerAccounts', {}).get(request.auth.token.email, '') == 'ADMIN';
+    }
+    // 이메일 하드코딩 관리자 OR 동적 관리자
+    function isAdminUser(appId) {
+      return isAdminEmail() || isDynamicAdmin(appId);
+    }
+
     // ── wellshare-logis-web 메인 앱 데이터 ───────────────────────────────
     // artifacts/{appId}/public/data/** 경로
     match /artifacts/{appId}/public/data/{document=**} {
@@ -47,11 +59,13 @@ service cloud.firestore {
       allow write: if isAdminEmail();
     }
 
-    // 파트너 실적/배송 입력: 인증된 모든 사용자 쓰기 허용
-    // (billing_records는 파트너도 자신의 partnerInputs·deliveryDates 입력 필요)
+    // billing_records: 관리자는 전체. 파트너는 자기 입력 필드만(orders/prices/마감/ecountSales 보호)
     match /artifacts/{appId}/public/data/billing_records/{monthId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow create, delete: if isAdminUser(appId);
+      allow update: if isAdminUser(appId)
+        || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['partnerInputs', 'deliveryDates', 'publishDates', 'updatedAt', 'updatedBy']));
     }
 
     // 알림: 내 타겟만 읽기 / 타겟별 생성 검증 / 읽음(readBy)만 수정 / 삭제는 관리자만
@@ -63,12 +77,12 @@ service cloud.firestore {
         && incoming().message is string && incoming().message.size() <= 500
         && incoming().target is string && incoming().target.size() <= 100
         && incoming().timestamp is string
-        && (incoming().target == 'ADMIN' || isAdminEmail());
+        && (incoming().target == 'ADMIN' || isAdminUser(appId));
       // 읽음처리: readBy 필드만 변경 가능
       allow update: if isSignedIn()
         && incoming().diff(existing()).affectedKeys().hasOnly(['readBy']);
       // 하드 삭제는 관리자만 (파트너는 읽음처리로 정리)
-      allow delete: if isAdminEmail();
+      allow delete: if isAdminUser(appId);
     }
 
     // ── 테스트 연결 ──────────────────────────────────────────────────────

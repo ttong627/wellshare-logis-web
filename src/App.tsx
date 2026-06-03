@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Navbar, { TabId } from './components/layout/Navbar';
 import Toast from './components/layout/Toast';
@@ -7,21 +7,21 @@ import ConflictModal from './components/layout/ConflictModal';
 import LoginForm from './components/auth/LoginForm';
 import ErrorBoundary from './components/ErrorBoundary';
 
-// Tab components
-import ProfileTab from './components/tabs/ProfileTab';
-import AccountTab from './components/tabs/AccountTab';
-import PricesTab from './components/tabs/PricesTab';
-import OrdersTab from './components/tabs/OrdersTab';
-import PerformanceTab from './components/tabs/PerformanceTab';
-import DeliveryCompletionTab from './components/tabs/DeliveryCompletionTab';
-import BillingTab from './components/tabs/BillingTab';
-import PaymentTab from './components/tabs/PaymentTab';
-import PartnerBillingTab from './components/tabs/PartnerBillingTab';
-import ContactsTab from './components/tabs/ContactsTab';
-import UsersTab from './components/tabs/UsersTab';
-import BackupTab from './components/tabs/BackupTab';
-import ScheduleTab from './components/tabs/ScheduleTab';
-import DocsTab from './components/tabs/DocsTab';
+// Tab components — 코드 스플리팅(탭별 청크 분리로 초기 번들 축소)
+const ProfileTab = lazy(() => import('./components/tabs/ProfileTab'));
+const AccountTab = lazy(() => import('./components/tabs/AccountTab'));
+const PricesTab = lazy(() => import('./components/tabs/PricesTab'));
+const OrdersTab = lazy(() => import('./components/tabs/OrdersTab'));
+const PerformanceTab = lazy(() => import('./components/tabs/PerformanceTab'));
+const DeliveryCompletionTab = lazy(() => import('./components/tabs/DeliveryCompletionTab'));
+const BillingTab = lazy(() => import('./components/tabs/BillingTab'));
+const PaymentTab = lazy(() => import('./components/tabs/PaymentTab'));
+const PartnerBillingTab = lazy(() => import('./components/tabs/PartnerBillingTab'));
+const ContactsTab = lazy(() => import('./components/tabs/ContactsTab'));
+const UsersTab = lazy(() => import('./components/tabs/UsersTab'));
+const BackupTab = lazy(() => import('./components/tabs/BackupTab'));
+const ScheduleTab = lazy(() => import('./components/tabs/ScheduleTab'));
+const DocsTab = lazy(() => import('./components/tabs/DocsTab'));
 
 declare global {
   interface Window { XLSX: any; }
@@ -232,7 +232,9 @@ function AppContent() {
 
         <div className="max-w-[1400px] mx-auto px-2 sm:px-4">
           <ErrorBoundary fallback="탭 로딩 중 오류가 발생했습니다. 다시 시도해주세요.">
-            {renderTab()}
+            <Suspense fallback={<div className="text-center py-20 text-sky-400 font-bold text-sm anim-in">불러오는 중…</div>}>
+              {renderTab()}
+            </Suspense>
           </ErrorBoundary>
         </div>
       </div>
