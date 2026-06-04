@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { doc, getDoc, setDoc, updateDoc, deleteField, collection, query, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteField, collection, query, onSnapshot, addDoc } from 'firebase/firestore';
 import { db, APP_ID } from '../firebase';
 import { useAuth } from './AuthContext';
 import { INITIAL_ZONES, INITIAL_REGIONS_DATA } from '../constants';
@@ -25,6 +25,7 @@ interface DataContextType {
   clearDelivery: (company: string, region: string) => Promise<void>;
   saveOrder: (region: string, data: { basicQty: number | ''; povertyQty: number | '' }) => Promise<void>;
   setClosed: (closed: boolean) => Promise<void>;
+  sendPublishRequest: (company: string, region: string, date: string) => Promise<void>;
   loadMonth: (month: string) => Promise<void>;
 }
 
@@ -185,13 +186,33 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }, { merge: true });
   }, [currentMonth, user]);
 
+  // 회원사 계산서 발급 요청 — publishRequests에 날짜 기록 + 해당 회원사에 알림 생성(웹 PaymentTab과 동일).
+  const sendPublishRequest = useCallback(async (company: string, region: string, date: string) => {
+    const newPR = {
+      ...publishRequests,
+      [company]: { ...(publishRequests[company] || {}), [region]: date },
+    };
+    setPublishRequests(newPR);
+    const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
+    await setDoc(ref, {
+      publishRequests: newPR,
+      updatedAt: new Date().toISOString(),
+      updatedBy: user?.email,
+    }, { merge: true });
+    await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'), {
+      message: `[💰정산요청] ${company} ${region} 배송이 확인되었습니다. ${date} 일자로 세금계산서를 발행해 주세요.`,
+      target: company,
+      timestamp: new Date().toISOString(),
+    });
+  }, [currentMonth, publishRequests, user]);
+
   return (
     <DataContext.Provider value={{
       currentMonth, setCurrentMonth,
       partnerInputs, deliveryDates, publishRequests, publishDates, orders,
       zonePrices, regions,
       isClosed, isLoading, savedMonths,
-      savePerformance, saveDelivery, clearDelivery, saveOrder, setClosed, loadMonth,
+      savePerformance, saveDelivery, clearDelivery, saveOrder, setClosed, sendPublishRequest, loadMonth,
     }}>
       {children}
     </DataContext.Provider>

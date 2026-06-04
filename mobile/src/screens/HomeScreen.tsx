@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { useNotifications } from '../hooks/useNotifications';
 import { PARTNER_REGIONS, MEMBERS, COLORS } from '../constants';
 
 type FeatherName = React.ComponentProps<typeof Feather>['name'];
@@ -16,6 +17,8 @@ export default function HomeScreen() {
     isClosed, isLoading, setClosed,
   } = useData();
   const navigation = useNavigation<any>();
+  const { unread } = useNotifications();
+  const goToNotifications = () => navigation.navigate('More', { screen: 'Notifications' });
 
   const handleToggleClose = () => {
     const next = !isClosed;
@@ -71,6 +74,17 @@ export default function HomeScreen() {
             <Text style={styles.brandName}>정부양곡정산</Text>
             <Text style={styles.brandSub}>웰쉐어 · 배송비 정산 포털</Text>
           </View>
+          {/* 알림 벨 — 안 읽은 알림 배지 */}
+          <Pressable onPress={goToNotifications}
+            style={({ pressed }) => [styles.bellBtn, pressed && { opacity: 0.6 }]}
+            accessibilityRole="button" accessibilityLabel={`알림 ${unread > 0 ? `안읽음 ${unread}건` : ''}`}>
+            <Feather name="bell" size={20} color={COLORS.white} />
+            {unread > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unread > 9 ? '9+' : unread}</Text>
+              </View>
+            )}
+          </Pressable>
         </View>
         <View style={styles.headerDivider} />
         <View style={styles.headerBottom}>
@@ -205,6 +219,16 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3,
   },
   logoImg: { width: 32, height: 30 },
+  bellBtn: {
+    width: 42, height: 42, borderRadius: 12, backgroundColor: COLORS.overlayWhite,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  bellBadge: {
+    position: 'absolute', top: 4, right: 4, minWidth: 18, height: 18, borderRadius: 9,
+    backgroundColor: COLORS.danger, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 4, borderWidth: 1.5, borderColor: COLORS.primary,
+  },
+  bellBadgeText: { color: COLORS.white, fontSize: 10, fontWeight: '900', fontVariant: ['tabular-nums'] },
   brandName: { color: COLORS.white, fontSize: 19, fontWeight: '900', letterSpacing: -0.3 },
   brandSub: { color: '#bae6fd', fontSize: 12, fontWeight: '600', marginTop: 2 },
   headerDivider: { height: 1, backgroundColor: COLORS.overlayWhite, marginVertical: 14 },

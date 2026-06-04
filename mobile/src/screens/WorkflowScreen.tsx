@@ -1,11 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, ActivityIndicator,
+  View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import {
-  COLORS, REGION_ORDER, getFullRegionName, isSeoulRegion,
+  COLORS, REGION_ORDER, PARTNER_REGIONS_INVERSE, getFullRegionName, isSeoulRegion,
 } from '../constants';
 import StatusBadge from '../components/StatusBadge';
 
@@ -41,34 +42,39 @@ function firstDeliveryForRegion(
   return '';
 }
 
-type Stage = 'before' | 'pending' | 'issued';
+type Stage = 'before' | 'pending' | 'requested' | 'issued';
 
 interface RegionRow {
   region: string;
   seoul: boolean;
   deliveryDate: string;
+  requestDate: string;
   publishDate: string;
   stage: Stage;
 }
 
 export default function WorkflowScreen() {
-  const { currentMonth, deliveryDates, publishDates, isLoading } = useData();
+  const { currentMonth, deliveryDates, publishDates, publishRequests, isClosed, isLoading, sendPublishRequest } = useData();
+  const { isAdmin } = useAuth();
+  const [sending, setSending] = useState<string | null>(null);
 
   const rows = useMemo<RegionRow[]>(() => {
     return REGION_ORDER.map((region) => {
       const deliveryDate = firstDeliveryForRegion(deliveryDates, region);
+      const requestDate = firstDateForRegion(publishRequests, region);
       const publishDate = firstDateForRegion(publishDates, region);
       let stage: Stage;
-      if (!deliveryDate) stage = 'before';        // 배송 전
-      else if (!publishDate) stage = 'pending';   // 배송완료·발급 대기
-      else stage = 'issued';                       // 발급 완료
-      return { region, seoul: isSeoulRegion(region), deliveryDate, publishDate, stage };
+      if (!deliveryDate) stage = 'before';            // 배송 전
+      else if (publishDate) stage = 'issued';          // 발급 완료
+      else if (requestDate) stage = 'requested';       // 발급 요청됨(완료 대기)
+      else stage = 'pending';                          // 배송완료·발급요청 필요
+      return { region, seoul: isSeoulRegion(region), deliveryDate, requestDate, publishDate, stage };
     });
-  }, [deliveryDates, publishDates]);
+  }, [deliveryDates, publishRequests, publishDates]);
 
-  // 발급대기를 위로 정렬(끊어야 할 건수 우선 노출). 그 외는 REGION_ORDER 유지.
+  // 발급요청 필요(pending)를 위로 정렬(조치 필요 우선). 그 외는 REGION_ORDER 유지.
   const sortedRows = useMemo<RegionRow[]>(() => {
-    const rank: Record<Stage, number> = { pending: 0, before: 1, issued: 1 };
+    const rank: Record<Stage, number> = { pending: 0, requested: 1, before: 2, issued: 2 };
     return [...rows].sort((a, b) => rank[a.stage] - rank[b.stage]);
   }, [rows]);
 
@@ -79,6 +85,40 @@ export default function WorkflowScreen() {
     const pending = rows.filter((r) => r.stage === 'pending').length;
     return { total, delivered, issued, pending };
   }, [rows]);
+
+  // 회원사 계산서 발급 요청 — 해당 지역 담당 회원사(배송완료·미요청)에게 전송.
+  const handleSendRequest = (region: string, deliveryDate: string) => {
+    if (isClosed) { Alert.alert('마감됨', '마감된 월에는 발급 요청을 보낼 수 없습니다.'); return; }
+    const companies = (PARTNER_REGIONS_INVERSE[region] || []).filter(
+      (c) => deliveryDates[c]?.[region]?.date && !publishRequests[c]?.[region],
+    );
+    if (companies.length === 0) {
+      Alert.alert('발급 요청', '요청할 대상 회원사가 없습니다.\n(배송 미완료이거나 이미 요청됨)');
+      return;
+    }
+    const date = deliveryDate || new Date().toISOString().slice(0, 10);
+    Alert.alert(
+      '계산서 발급 요청',
+      `${getFullRegionName(region)} 배송 완료 확인.\n${companies.join(', ')}에\n${date} 일자로 세금계산서 발급을 요청합니다.\n회원사에 알림이 전송됩니다.`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '요청 보내기',
+          onPress: async () => {
+            setSending(region);
+            try {
+              for (const c of companies) await sendPublishRequest(c, region, date);
+              Alert.alert('전송 완료', `${companies.length}개 회원사에 발급 요청을 보냈습니다.`);
+            } catch (e) {
+              Alert.alert('오류', '발급 요청 전송 실패: ' + (e as Error).message);
+            } finally {
+              setSending(null);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   if (isLoading) {
     return (
@@ -94,11 +134,11 @@ export default function WorkflowScreen() {
       {/* 헤더 카드 */}
       <View style={styles.header}>
         <View style={styles.headerIcon}>
-          <Feather name="calendar" size={18} color={COLORS.white} />
+          <Feather name="activity" size={18} color={COLORS.white} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>정산 현황</Text>
-          <Text style={styles.headerSub}>{formatMonth(currentMonth)} · 배송완료 → 계산서 발급 일정</Text>
+          <Text style={styles.headerSub}>{formatMonth(currentMonth)} · 배송완료 → 발급요청 → 발급완료</Text>
         </View>
       </View>
 
@@ -121,26 +161,27 @@ export default function WorkflowScreen() {
         <View style={[styles.kpiCard, kpi.pending > 0 && styles.kpiCardAlert]}>
           <Feather name="alert-circle" size={16} color={kpi.pending > 0 ? COLORS.warning : COLORS.textMuted} />
           <Text style={[styles.kpiValue, kpi.pending > 0 && { color: COLORS.warning }]}>{kpi.pending}</Text>
-          <Text style={[styles.kpiLabel, kpi.pending > 0 && { color: COLORS.warning }]}>발급대기</Text>
+          <Text style={[styles.kpiLabel, kpi.pending > 0 && { color: COLORS.warning }]}>요청 필요</Text>
         </View>
       </View>
 
-      {/* 발급대기 안내 — 끊어야 할 건수 강조 */}
+      {/* 발급요청 필요 안내 */}
       {kpi.pending > 0 && (
         <View style={styles.noticeBanner}>
           <Feather name="alert-triangle" size={15} color={COLORS.warning} />
           <Text style={styles.noticeText}>
-            배송완료 후 계산서 일자 미지정 {kpi.pending}건 — 발급일을 지정해 주세요.
+            배송완료 후 발급요청 미전송 {kpi.pending}건 — 회원사에 발급 요청을 보내 주세요.
           </Text>
         </View>
       )}
 
-      {/* 지역 카드(발급대기 우선) */}
+      {/* 지역 카드(발급요청 필요 우선) */}
       {sortedRows.map((r) => {
         const tone = r.seoul
           ? { border: COLORS.seoul, tint: COLORS.seoulBg, label: '서울' }
           : { border: COLORS.gyeonggi, tint: COLORS.gyeonggiBg, label: '경기' };
         const isPending = r.stage === 'pending';
+        const isRequested = r.stage === 'requested';
 
         return (
           <View
@@ -161,7 +202,9 @@ export default function WorkflowScreen() {
               {r.stage === 'before' ? (
                 <StatusBadge status="wait" label="배송 전" />
               ) : r.stage === 'pending' ? (
-                <StatusBadge status="requested" label="발급 대기" />
+                <StatusBadge status="requested" label="요청 필요" />
+              ) : r.stage === 'requested' ? (
+                <StatusBadge status="requested" label="발급 요청됨" />
               ) : (
                 <StatusBadge status="done" label="발급 완료" />
               )}
@@ -171,12 +214,8 @@ export default function WorkflowScreen() {
               {/* 배송완료일 */}
               <View style={styles.timelineItem}>
                 <View style={styles.timelineHead}>
-                  <Feather
-                    name="truck"
-                    size={13}
-                    color={r.deliveryDate ? COLORS.success : COLORS.textMuted}
-                  />
-                  <Text style={styles.timelineLabel}>배송완료일</Text>
+                  <Feather name="truck" size={13} color={r.deliveryDate ? COLORS.success : COLORS.textMuted} />
+                  <Text style={styles.timelineLabel}>배송완료</Text>
                 </View>
                 <Text style={[styles.timelineValue, !r.deliveryDate && styles.timelineMuted]}>
                   {r.deliveryDate || '미완료'}
@@ -185,27 +224,54 @@ export default function WorkflowScreen() {
 
               <Feather name="chevron-right" size={16} color={COLORS.textMuted} style={styles.timelineArrow} />
 
+              {/* 발급 요청일 */}
+              <View style={styles.timelineItem}>
+                <View style={styles.timelineHead}>
+                  <Feather name="send" size={13} color={r.requestDate ? COLORS.brand : (isPending ? COLORS.warning : COLORS.textMuted)} />
+                  <Text style={styles.timelineLabel}>발급요청</Text>
+                </View>
+                <Text style={[styles.timelineValue, !r.requestDate && styles.timelineMuted, isPending && styles.timelineWarn]}>
+                  {r.requestDate || (isPending ? '필요' : '-')}
+                </Text>
+              </View>
+
+              <Feather name="chevron-right" size={16} color={COLORS.textMuted} style={styles.timelineArrow} />
+
               {/* 계산서 발급일 */}
               <View style={styles.timelineItem}>
                 <View style={styles.timelineHead}>
-                  <Feather
-                    name="file-text"
-                    size={13}
-                    color={r.publishDate ? COLORS.success : (isPending ? COLORS.warning : COLORS.textMuted)}
-                  />
-                  <Text style={styles.timelineLabel}>계산서 발급일</Text>
+                  <Feather name="file-text" size={13} color={r.publishDate ? COLORS.success : COLORS.textMuted} />
+                  <Text style={styles.timelineLabel}>발급완료</Text>
                 </View>
-                <Text
-                  style={[
-                    styles.timelineValue,
-                    !r.publishDate && styles.timelineMuted,
-                    isPending && styles.timelineWarn,
-                  ]}
-                >
-                  {r.publishDate || (isPending ? '지정 필요' : '미지정')}
+                <Text style={[styles.timelineValue, !r.publishDate && styles.timelineMuted]}>
+                  {r.publishDate || (isRequested ? '대기' : '-')}
                 </Text>
               </View>
             </View>
+
+            {/* 발급 요청 버튼 — 관리자, 발급요청 필요 단계만 */}
+            {isAdmin && isPending && (
+              <Pressable
+                onPress={() => handleSendRequest(r.region, r.deliveryDate)}
+                disabled={sending === r.region || isClosed}
+                style={({ pressed }) => [
+                  styles.reqBtn,
+                  (sending === r.region || isClosed) && styles.reqBtnDisabled,
+                  pressed && !isClosed && { opacity: 0.8 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`${getFullRegionName(r.region)} 계산서 발급 요청 보내기`}
+              >
+                {sending === r.region ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <>
+                    <Feather name="send" size={15} color={COLORS.white} />
+                    <Text style={styles.reqBtnText}>회원사에 발급 요청 보내기</Text>
+                  </>
+                )}
+              </Pressable>
+            )}
           </View>
         );
       })}
@@ -269,12 +335,19 @@ const styles = StyleSheet.create({
 
   timelineRow: { flexDirection: 'row', alignItems: 'center' },
   timelineItem: { flex: 1, gap: 5 },
-  timelineHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  timelineLabel: { fontSize: 11, fontWeight: '800', color: COLORS.textMuted },
-  timelineValue: { fontSize: 15, fontWeight: '800', color: COLORS.text, fontVariant: ['tabular-nums'] },
+  timelineHead: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  timelineLabel: { fontSize: 10, fontWeight: '800', color: COLORS.textMuted },
+  timelineValue: { fontSize: 13, fontWeight: '800', color: COLORS.text, fontVariant: ['tabular-nums'] },
   timelineMuted: { color: COLORS.textMuted, fontWeight: '700' },
   timelineWarn: { color: COLORS.warning, fontWeight: '900' },
-  timelineArrow: { marginHorizontal: 8 },
+  timelineArrow: { marginHorizontal: 4 },
+
+  reqBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: COLORS.brand, borderRadius: 12, paddingVertical: 13, marginTop: 14, minHeight: 46,
+  },
+  reqBtnDisabled: { backgroundColor: COLORS.textMuted, opacity: 0.5 },
+  reqBtnText: { color: COLORS.white, fontSize: 14, fontWeight: '800' },
 
   empty: { alignItems: 'center', paddingVertical: 40, gap: 10 },
   emptyText: { fontSize: 14, fontWeight: '800', color: COLORS.text },

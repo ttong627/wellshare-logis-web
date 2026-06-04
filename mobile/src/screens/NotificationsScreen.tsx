@@ -1,12 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { collection, query, where, onSnapshot, doc, setDoc, arrayUnion } from 'firebase/firestore';
-import { db, APP_ID } from '../firebase';
-import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../hooks/useNotifications';
 import { COLORS } from '../constants';
-
-interface Notif { id: string; message: string; target: string; timestamp?: string; readBy?: string[] }
 
 // ISO/문자 타임스탬프 → "M/D HH:mm"
 function fmt(ts?: string): string {
@@ -18,45 +14,7 @@ function fmt(ts?: string): string {
 }
 
 export default function NotificationsScreen() {
-  const { user, isAdmin, partnerCompany } = useAuth();
-  const myTarget = isAdmin ? 'ADMIN' : (partnerCompany || '');
-  const uid = user?.uid || '';
-
-  const [items, setItems] = useState<Notif[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!myTarget) { setLoading(false); return; }
-    const q = query(
-      collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'),
-      where('target', '==', myTarget),
-    );
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Notif[];
-        list.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-        setItems(list);
-        setLoading(false);
-      },
-      (e) => { console.warn('알림 구독 실패:', e); setLoading(false); },
-    );
-    return unsub;
-  }, [myTarget]);
-
-  const markRead = useCallback((n: Notif) => {
-    if (!uid || n.readBy?.includes(uid)) return;
-    setDoc(
-      doc(db, 'artifacts', APP_ID, 'public', 'data', 'notifications', n.id),
-      { readBy: arrayUnion(uid) }, { merge: true },
-    ).catch((e) => console.warn('읽음 처리 실패:', e));
-  }, [uid]);
-
-  const markAll = useCallback(() => {
-    items.forEach((n) => { if (!n.readBy?.includes(uid)) markRead(n); });
-  }, [items, uid, markRead]);
-
-  const unread = items.filter((n) => !n.readBy?.includes(uid)).length;
+  const { items, unread, loading, markRead, markAll, uid } = useNotifications();
 
   if (loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.brand} /><Text style={styles.loadingText}>알림 불러오는 중…</Text></View>;
@@ -90,12 +48,13 @@ export default function NotificationsScreen() {
           const isUnread = !n.readBy?.includes(uid);
           return (
             <Pressable key={n.id} onPress={() => markRead(n)}
-              style={({ pressed }) => [styles.card, isUnread && styles.cardUnread, pressed && { opacity: 0.8 }]}
-              accessibilityRole="button" accessibilityLabel={`알림 ${isUnread ? '안읽음' : '읽음'}`}>
+              style={({ pressed }) => [styles.card, isUnread && styles.cardUnread, pressed && { opacity: 0.75 }]}
+              accessibilityRole="button" accessibilityLabel={`알림 ${isUnread ? '안읽음, 탭하면 읽음 처리' : '읽음'}`}>
               <View style={styles.cardTop}>
-                {isUnread && <View style={styles.dot} />}
+                {isUnread ? <View style={styles.dot} /> : <Feather name="check" size={13} color={COLORS.success} />}
                 <Feather name="bell" size={15} color={isUnread ? COLORS.brand : COLORS.textMuted} />
                 <Text style={styles.time}>{fmt(n.timestamp)}</Text>
+                {isUnread && <Text style={styles.tapHint}>탭하여 읽음</Text>}
               </View>
               <Text style={[styles.msg, isUnread && styles.msgUnread]}>{n.message}</Text>
             </Pressable>
@@ -122,6 +81,7 @@ const styles = StyleSheet.create({
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.danger },
   time: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted, fontVariant: ['tabular-nums'] },
+  tapHint: { marginLeft: 'auto', fontSize: 11, fontWeight: '800', color: COLORS.brand },
   msg: { fontSize: 14, fontWeight: '600', color: COLORS.text, lineHeight: 20 },
   msgUnread: { fontWeight: '800' },
   empty: { alignItems: 'center', paddingVertical: 48 },
