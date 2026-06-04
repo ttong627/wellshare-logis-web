@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { PARTNER_REGIONS, MEMBERS, COLORS, isSeoulRegion } from '../constants';
 import StatusBadge from '../components/StatusBadge';
+import DatePickerField from '../components/DatePickerField';
 
 export default function DeliveryScreen() {
   const { isAdmin, partnerCompany } = useAuth();
@@ -227,16 +228,13 @@ export default function DeliveryScreen() {
 
                     <View style={styles.inputRow}>
                       <View style={[styles.inputGroup, { flex: 2 }]}>
-                        <Text style={styles.inputLabel}>완료일자 (YYYY-MM-DD)</Text>
-                        <TextInput
-                          style={[styles.input, !editable && styles.inputDisabled]}
+                        <Text style={styles.inputLabel}>완료일자</Text>
+                        <DatePickerField
                           value={displayDate}
-                          onChangeText={v => handleChange(company, region, 'date', v)}
-                          placeholder="2025-05-15"
-                          placeholderTextColor={COLORS.textMuted}
-                          editable={editable}
-                          keyboardType="numeric"
-                          maxLength={10}
+                          onChange={v => handleChange(company, region, 'date', v)}
+                          placeholder="날짜 선택"
+                          disabled={!editable}
+                          defaultMonth={currentMonth}
                         />
                       </View>
                       <View style={styles.inputGroup}>
