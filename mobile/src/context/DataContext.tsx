@@ -26,6 +26,7 @@ interface DataContextType {
   saveOrder: (region: string, data: { basicQty: number | ''; povertyQty: number | '' }) => Promise<void>;
   setClosed: (closed: boolean) => Promise<void>;
   sendPublishRequest: (company: string, region: string, date: string) => Promise<void>;
+  clearPublishRequest: (company: string, region: string) => Promise<void>;
   loadMonth: (month: string) => Promise<void>;
 }
 
@@ -186,16 +187,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }, { merge: true });
   }, [currentMonth, user]);
 
-  // 회원사 계산서 발급 요청 — publishRequests에 날짜 기록 + 해당 회원사에 알림 생성(웹 PaymentTab과 동일).
+  // 회원사 계산서 발급 요청 — publishRequests + publishDates(자동 발급완료 처리)를 함께 기록 + 회원사 알림.
   const sendPublishRequest = useCallback(async (company: string, region: string, date: string) => {
     const newPR = {
       ...publishRequests,
       [company]: { ...(publishRequests[company] || {}), [region]: date },
     };
+    const newPD = {
+      ...publishDates,
+      [company]: { ...(publishDates[company] || {}), [region]: date },
+    };
     setPublishRequests(newPR);
+    setPublishDates(newPD);
     const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
     await setDoc(ref, {
       publishRequests: newPR,
+      publishDates: newPD,
       updatedAt: new Date().toISOString(),
       updatedBy: user?.email,
     }, { merge: true });
@@ -204,7 +211,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       target: company,
       timestamp: new Date().toISOString(),
     });
-  }, [currentMonth, publishRequests, user]);
+  }, [currentMonth, publishRequests, publishDates, user]);
+
+  // 발급 요청/완료 취소 — 해당 지역의 publishRequests·publishDates를 함께 삭제(배송완료 단계로 복귀).
+  const clearPublishRequest = useCallback(async (company: string, region: string) => {
+    const newPR = { ...publishRequests };
+    if (newPR[company]) { newPR[company] = { ...newPR[company] }; delete newPR[company][region]; }
+    const newPD = { ...publishDates };
+    if (newPD[company]) { newPD[company] = { ...newPD[company] }; delete newPD[company][region]; }
+    setPublishRequests(newPR);
+    setPublishDates(newPD);
+    const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
+    // merge:true는 키 삭제 불가 → deleteField로 명시 삭제(취소 반영).
+    await updateDoc(ref, {
+      [`publishRequests.${company}.${region}`]: deleteField(),
+      [`publishDates.${company}.${region}`]: deleteField(),
+      updatedAt: new Date().toISOString(),
+      updatedBy: user?.email,
+    });
+  }, [currentMonth, publishRequests, publishDates, user]);
 
   return (
     <DataContext.Provider value={{
@@ -212,7 +237,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       partnerInputs, deliveryDates, publishRequests, publishDates, orders,
       zonePrices, regions,
       isClosed, isLoading, savedMonths,
-      savePerformance, saveDelivery, clearDelivery, saveOrder, setClosed, sendPublishRequest, loadMonth,
+      savePerformance, saveDelivery, clearDelivery, saveOrder, setClosed, sendPublishRequest, clearPublishRequest, loadMonth,
     }}>
       {children}
     </DataContext.Provider>

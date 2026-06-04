@@ -54,7 +54,7 @@ interface RegionRow {
 }
 
 export default function WorkflowScreen() {
-  const { currentMonth, deliveryDates, publishDates, publishRequests, isClosed, isLoading, sendPublishRequest } = useData();
+  const { currentMonth, deliveryDates, publishDates, publishRequests, isClosed, isLoading, sendPublishRequest, clearPublishRequest } = useData();
   const { isAdmin } = useAuth();
   const [sending, setSending] = useState<string | null>(null);
 
@@ -99,7 +99,7 @@ export default function WorkflowScreen() {
     const date = deliveryDate || new Date().toISOString().slice(0, 10);
     Alert.alert(
       '계산서 발급 요청',
-      `${getFullRegionName(region)} 배송 완료 확인.\n${companies.join(', ')}에\n${date} 일자로 세금계산서 발급을 요청합니다.\n회원사에 알림이 전송됩니다.`,
+      `${getFullRegionName(region)} 배송 완료 확인.\n${companies.join(', ')}에\n${date} 일자로 발급 요청을 보내고 발급완료로 처리합니다.\n회원사에 알림이 전송됩니다.`,
       [
         { text: '취소', style: 'cancel' },
         {
@@ -108,9 +108,40 @@ export default function WorkflowScreen() {
             setSending(region);
             try {
               for (const c of companies) await sendPublishRequest(c, region, date);
-              Alert.alert('전송 완료', `${companies.length}개 회원사에 발급 요청을 보냈습니다.`);
+              Alert.alert('처리 완료', `${companies.length}개 회원사에 발급 요청을 보내고 발급완료 처리했습니다.`);
             } catch (e) {
               Alert.alert('오류', '발급 요청 전송 실패: ' + (e as Error).message);
+            } finally {
+              setSending(null);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  // 발급 요청/완료 취소 — 해당 지역의 발급 정보를 삭제하고 배송완료 단계로 되돌린다.
+  const handleCancel = (region: string) => {
+    if (isClosed) { Alert.alert('마감됨', '마감된 월에는 취소할 수 없습니다.'); return; }
+    const companies = (PARTNER_REGIONS_INVERSE[region] || []).filter(
+      (c) => publishDates[c]?.[region] || publishRequests[c]?.[region],
+    );
+    if (companies.length === 0) return;
+    Alert.alert(
+      '발급 취소',
+      `${getFullRegionName(region)}의 발급 요청·완료를 취소합니다.\n배송완료 단계로 되돌아갑니다.`,
+      [
+        { text: '닫기', style: 'cancel' },
+        {
+          text: '취소하기',
+          style: 'destructive',
+          onPress: async () => {
+            setSending(region);
+            try {
+              for (const c of companies) await clearPublishRequest(c, region);
+              Alert.alert('취소 완료', `${getFullRegionName(region)} 발급이 취소되었습니다.`);
+            } catch (e) {
+              Alert.alert('오류', '취소 실패: ' + (e as Error).message);
             } finally {
               setSending(null);
             }
@@ -272,6 +303,30 @@ export default function WorkflowScreen() {
                 )}
               </Pressable>
             )}
+
+            {/* 발급 취소 버튼 — 관리자, 발급요청됨/발급완료 단계 */}
+            {isAdmin && (isRequested || r.stage === 'issued') && (
+              <Pressable
+                onPress={() => handleCancel(r.region)}
+                disabled={sending === r.region || isClosed}
+                style={({ pressed }) => [
+                  styles.cancelBtn,
+                  (sending === r.region || isClosed) && styles.cancelBtnDisabled,
+                  pressed && !isClosed && { opacity: 0.8 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`${getFullRegionName(r.region)} 발급 취소`}
+              >
+                {sending === r.region ? (
+                  <ActivityIndicator size="small" color={COLORS.danger} />
+                ) : (
+                  <>
+                    <Feather name="rotate-ccw" size={15} color={COLORS.danger} />
+                    <Text style={styles.cancelBtnText}>발급 취소</Text>
+                  </>
+                )}
+              </Pressable>
+            )}
           </View>
         );
       })}
@@ -348,6 +403,14 @@ const styles = StyleSheet.create({
   },
   reqBtnDisabled: { backgroundColor: COLORS.textMuted, opacity: 0.5 },
   reqBtnText: { color: COLORS.white, fontSize: 14, fontWeight: '800' },
+
+  cancelBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: COLORS.dangerLight, borderRadius: 12, paddingVertical: 12, marginTop: 12, minHeight: 44,
+    borderWidth: 1, borderColor: COLORS.danger,
+  },
+  cancelBtnDisabled: { opacity: 0.5 },
+  cancelBtnText: { color: COLORS.danger, fontSize: 14, fontWeight: '800' },
 
   empty: { alignItems: 'center', paddingVertical: 40, gap: 10 },
   emptyText: { fontSize: 14, fontWeight: '800', color: COLORS.text },
