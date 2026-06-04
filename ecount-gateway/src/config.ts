@@ -103,6 +103,7 @@ export interface AppConfig {
   companies: Map<string, CompanyConfig>;
   defaultComCode: string;
   firebaseProjectId: string;
+  tmsFirebaseProjectId: string; // TMS 앱(tms-local-frontend) 토큰 발급 프로젝트 (선택). /ecount/sale-tms 전용.
   adminEmails: Set<string>;
   allowedOrigins: Set<string>;
 }
@@ -116,6 +117,7 @@ export function loadConfig(): AppConfig {
     // 토큰 발급 프로젝트. 명시 필수 — 미지정 시 GOOGLE_CLOUD_PROJECT(logis-TMS)로
     // 추론되어 모든 토큰 검증이 실패한다.
     firebaseProjectId: required('FIREBASE_PROJECT_ID'),
+    tmsFirebaseProjectId: optional('TMS_FIREBASE_PROJECT_ID', ''),
     adminEmails: parseAdminEmails(required('ADMIN_EMAILS')),
     allowedOrigins: parseOrigins(required('ALLOWED_ORIGINS')),
   };

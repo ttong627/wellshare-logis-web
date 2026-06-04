@@ -6,13 +6,13 @@ import rateLimit from 'express-rate-limit';
 import { randomUUID } from 'crypto';
 import { loadConfig } from './config';
 import { initAuth, type AuthedRequest } from './firebaseAuth';
-import { validateSaleBody, ValidationError } from './validate';
+import { validateSaleBody, validateTmsSaleBody, ValidationError } from './validate';
 import { computeAmounts } from './amounts';
 import { saveSale, EcountError } from './ecount';
 import { buildIdempotencyKey, hashInput, claim, markDone, markFailed } from './idempotency';
 
 const config = loadConfig(); // 필수 env 미설정 시 여기서 throw → 부팅 실패(의도)
-const { requireAdmin } = initAuth(config);
+const { requireAdmin, requireAdminTms } = initAuth(config);
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1); // Cloud Run 프록시 1홉만 신뢰 (rate-limit IP 우회 방지)
@@ -136,6 +136,66 @@ app.post('/ecount/sale', limiter, requireAdmin, async (req: AuthedRequest, res: 
       return;
     }
     log('ERROR', 'sale unexpected error', { reqId, key, message: msg });
+    res.status(500).json({ ok: false, error: 'internal', reqId });
+  }
+});
+
+// 6-TMS) ECOUNT 매출등록 (tms-local-frontend 전용) — 회원사별 거래처(CUST)·라인 요청당 주입
+app.post('/ecount/sale-tms', limiter, requireAdminTms, async (req: AuthedRequest, res: Response) => {
+  const reqId = randomUUID();
+  const comCode = String(req.body?.comCode ?? config.defaultComCode);
+  const company = config.companies.get(comCode);
+  if (!company) {
+    res.status(400).json({ ok: false, error: 'invalid_company', message: `알 수 없는 회사코드: ${comCode}` });
+    return;
+  }
+  let v;
+  try {
+    v = validateTmsSaleBody(req.body, company.makeFlag);
+  } catch (e) {
+    if (e instanceof ValidationError) {
+      res.status(400).json({ ok: false, error: 'invalid_input', message: e.message });
+      return;
+    }
+    throw e;
+  }
+
+  const amounts = computeAmounts(v.lines);
+  const year = Number(v.ioDate.slice(0, 4));
+  // 멱등성: 회원사(cust) + 연·월 기준 (region 자리에 cust)
+  const key = buildIdempotencyKey(comCode, year, v.month, v.cust);
+  const inputHash = hashInput({ comCode, cust: v.cust, lines: v.lines, ioDate: v.ioDate, makeFlag: v.makeFlag });
+  const uid = req.user?.uid ?? 'unknown';
+
+  const claimed = await claim(key, inputHash, uid);
+  if (claimed.action === 'cached') {
+    const r = claimed.record;
+    res.json({ ok: true, slipNos: r.slipNos ?? [], supply: r.supply, vat: r.vat, total: r.total, cached: true });
+    return;
+  }
+  if (claimed.action === 'conflict') {
+    res.status(409).json({ ok: false, error: 'conflict', message: '동일 회원사·월로 다른 내용이 이미 발행됨', key });
+    return;
+  }
+  if (claimed.action === 'in_progress') {
+    res.status(409).json({ ok: false, error: 'in_progress', message: '동일 요청이 처리 중입니다', key });
+    return;
+  }
+
+  try {
+    const result = await saveSale(company, amounts.lines, v.ioDate, v.makeFlag, v.cust, v.whCd);
+    await markDone(key, { slipNos: result.slipNos, total: amounts.total, supply: amounts.supply, vat: amounts.vat });
+    log('INFO', 'sale-tms done', { reqId, key, comCode, cust: v.cust, slipNos: result.slipNos, total: amounts.total });
+    res.json({ ok: true, slipNos: result.slipNos, supply: amounts.supply, vat: amounts.vat, total: amounts.total, cached: false });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await markFailed(key, msg);
+    if (e instanceof EcountError) {
+      log('ERROR', 'ecount saveSale-tms failed', { reqId, key, message: msg, detail: e.detail });
+      res.status(502).json({ ok: false, error: 'ecount_error', message: '매출등록 중 ECOUNT 오류', reqId });
+      return;
+    }
+    log('ERROR', 'sale-tms unexpected error', { reqId, key, message: msg });
     res.status(500).json({ ok: false, error: 'internal', reqId });
   }
 });

@@ -100,3 +100,67 @@ export function validateSaleBody(body: any, defaultMakeFlag: string): ValidatedS
 
   return { month, region, ioDate, lines, makeFlag };
 }
+
+// ── TMS(tms-local-frontend) 전용 — 회원사별 거래처(CUST) + 상세라인(price 0 허용) ──
+const CUST_RE = /^[A-Za-z0-9_-]{1,30}$/;
+
+export interface ValidatedTmsSale {
+  cust: string;
+  whCd?: string;
+  month: number;
+  ioDate: string;
+  lines: SaleLineInput[];
+  makeFlag: string;
+}
+
+export function validateTmsSaleBody(body: any, defaultMakeFlag: string): ValidatedTmsSale {
+  if (!body || typeof body !== 'object') throw new ValidationError('요청 본문이 없습니다');
+
+  const cust = typeof body.cust === 'string' ? clean(body.cust) : '';
+  if (!cust || !CUST_RE.test(cust)) throw new ValidationError('cust(거래처코드) 형식 오류');
+
+  const whCd = typeof body.whCd === 'string' && body.whCd.trim() ? clean(body.whCd) : undefined;
+
+  const month = Number(body.month);
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    throw new ValidationError('month 는 1~12 정수여야 합니다');
+  }
+
+  let ioDate: string = typeof body.ioDate === 'string' && body.ioDate ? body.ioDate.trim() : todayKST();
+  if (!isValidYmd(ioDate)) throw new ValidationError('ioDate 는 YYYYMMDD 유효일자여야 합니다');
+
+  if (!Array.isArray(body.lines) || body.lines.length === 0) throw new ValidationError('lines 는 1개 이상이어야 합니다');
+  if (body.lines.length > MAX_LINES) throw new ValidationError(`lines 는 ${MAX_LINES}개 이하여야 합니다`);
+
+  const lines: SaleLineInput[] = body.lines.map((l: any, i: number) => {
+    if (!l || typeof l !== 'object') throw new ValidationError(`lines[${i}] 형식 오류`);
+    if (typeof l.prodCd !== 'string' || !PROD_CD_RE.test(l.prodCd)) throw new ValidationError(`lines[${i}].prodCd 형식 오류`);
+    const prodDes = typeof l.prodDes === 'string' ? clean(l.prodDes) : '';
+    if (!prodDes || prodDes.length > 200) throw new ValidationError(`lines[${i}].prodDes 유효하지 않음`);
+    const qty = Number(l.qty);
+    if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QTY) {
+      throw new ValidationError(`lines[${i}].qty 는 1~${MAX_QTY} 정수여야 합니다`);
+    }
+    const price = Number(l.price);
+    // TMS는 상세라인(금액 0)을 허용 → price 0 이상
+    if (!Number.isInteger(price) || price < 0 || price > MAX_PRICE) {
+      throw new ValidationError(`lines[${i}].price 는 0~${MAX_PRICE} 정수여야 합니다`);
+    }
+    let supply: number | undefined;
+    let vat: number | undefined;
+    if (l.supply != null || l.vat != null) {
+      supply = Number(l.supply);
+      vat = Number(l.vat);
+      if (!Number.isInteger(supply) || supply < 0 || !Number.isInteger(vat) || vat < 0) {
+        throw new ValidationError(`lines[${i}].supply/vat 는 0 이상 정수여야 합니다`);
+      }
+      if (supply + vat !== Math.round(qty * price)) {
+        throw new ValidationError(`lines[${i}] supply+vat(${supply + vat}) != 수량*단가(${Math.round(qty * price)})`);
+      }
+    }
+    return { prodCd: l.prodCd, prodDes, qty, price, supply, vat };
+  });
+
+  const makeFlag = body.makeFlag === 'Y' || body.makeFlag === 'N' ? body.makeFlag : defaultMakeFlag;
+  return { cust, whCd, month, ioDate, lines, makeFlag };
+}

@@ -111,8 +111,13 @@ export async function saveSale(
   lines: ComputedLine[],
   ioDate: string,
   makeFlag: string,
+  custOverride?: string,
+  whCdOverride?: string,
 ): Promise<SaveSaleResult> {
-  const { base, cust, whCd } = company;
+  const { base } = company;
+  // 거래처/창고는 요청별 override 가능(미지정 시 회사 기본값). TMS는 회원사별 CUST를 주입한다.
+  const cust = (custOverride && custOverride.trim()) || company.cust;
+  const whCd = (whCdOverride && whCdOverride.trim()) || company.whCd;
   const saleList = lines.map((l) => ({
     BulkDatas: {
       IO_DATE: ioDate,
