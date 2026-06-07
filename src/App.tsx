@@ -6,6 +6,7 @@ import WorkflowGuide from './components/layout/WorkflowGuide';
 import ConflictModal from './components/layout/ConflictModal';
 import LoginForm from './components/auth/LoginForm';
 import ErrorBoundary from './components/ErrorBoundary';
+import InstallPWAButton from './components/InstallPWAButton';
 
 // Tab components — 코드 스플리팅(탭별 청크 분리로 초기 번들 축소)
 const ProfileTab = lazy(() => import('./components/tabs/ProfileTab'));
@@ -262,6 +263,7 @@ export default function App() {
   return (
     <AppProvider>
       <AppContent />
+      <InstallPWAButton />
     </AppProvider>
   );
 }
