@@ -80,7 +80,15 @@ function AdminTabs() {
       <Tab.Screen name="OrdersTab" component={OrdersScreen} options={{ title: '포수입력', headerTitle: '포수 입력', tabBarIcon: tabIcon('clipboard') }} />
       <Tab.Screen name="DeliveryTab" component={DeliveryScreen} options={{ title: '배송완료', headerTitle: '배송 완료', tabBarIcon: tabIcon('truck') }} />
       <Tab.Screen name="BillingTab" component={BillingScreen} options={{ title: '계산서', headerTitle: '계산서 발급 · ECOUNT', tabBarIcon: tabIcon('file-text') }} />
-      <Tab.Screen name="More" component={MoreStack} options={{ title: '더보기', headerShown: false, tabBarIcon: tabIcon('grid') }} />
+      <Tab.Screen
+        name="More"
+        component={MoreStack}
+        options={{ title: '더보기', headerShown: false, tabBarIcon: tabIcon('grid') }}
+        listeners={({ navigation }) => ({
+          // 더보기 탭을 누르면 항상 더보기 홈(메뉴 목록)으로 — 알림 등 하위화면에 멈추지 않도록
+          tabPress: () => { navigation.navigate('More', { screen: 'MoreHome' }); },
+        })}
+      />
     </Tab.Navigator>
   );
 }
@@ -93,7 +101,15 @@ function PartnerTabs() {
       <Tab.Screen name="PerformanceTab" component={PerformanceScreen} options={{ title: '지역포수', headerTitle: '지역 포수 입력', tabBarIcon: tabIcon('edit-3') }} />
       <Tab.Screen name="DeliveryTab" component={DeliveryScreen} options={{ title: '배송완료', headerTitle: '배송 완료', tabBarIcon: tabIcon('truck') }} />
       <Tab.Screen name="StatementTab" component={StatementScreen} options={{ title: '내역확인', headerTitle: '정산 내역', tabBarIcon: tabIcon('list') }} />
-      <Tab.Screen name="More" component={MoreStack} options={{ title: '더보기', headerShown: false, tabBarIcon: tabIcon('grid') }} />
+      <Tab.Screen
+        name="More"
+        component={MoreStack}
+        options={{ title: '더보기', headerShown: false, tabBarIcon: tabIcon('grid') }}
+        listeners={({ navigation }) => ({
+          // 더보기 탭을 누르면 항상 더보기 홈(메뉴 목록)으로 — 알림 등 하위화면에 멈추지 않도록
+          tabPress: () => { navigation.navigate('More', { screen: 'MoreHome' }); },
+        })}
+      />
     </Tab.Navigator>
   );
 }

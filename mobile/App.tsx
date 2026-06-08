@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Pressable, Linking } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +12,7 @@ import { useVersionGate } from './src/hooks/useVersionGate';
 import { usePushNotifications } from './src/hooks/usePushNotifications';
 import AppErrorBoundary from './src/components/AppErrorBoundary';
 import { COLORS } from './src/constants';
+import { downloadAndInstallApk, APK_DIRECT_URL } from './src/lib/apkUpdater';
 
 // FCM 기기 토큰 등록기 — AuthProvider 내부에서만 동작(렌더 출력 없음).
 function PushRegistrar() {
@@ -20,7 +21,30 @@ function PushRegistrar() {
 }
 
 // 강제 업데이트 차단 화면 — 설치 버전이 서버 minVersion보다 낮을 때.
+// 앱 내부에서 APK를 직접 다운로드하고 설치 화면을 띄운다(브라우저 안 거침). 실패 시 다운로드 페이지로 폴백.
 function UpdateRequiredScreen({ latestVersion, apkUrl }: { latestVersion: string; apkUrl: string }) {
+  const [downloading, setDownloading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [failed, setFailed] = useState(false);
+
+  const handleUpdate = async () => {
+    setFailed(false);
+    setDownloading(true);
+    setProgress(0);
+    try {
+      await downloadAndInstallApk(APK_DIRECT_URL, setProgress);
+      // 설치 화면(OS 패키지 설치기)이 떴다. 사용자가 설치를 마치면 새 버전으로 실행됨.
+    } catch (e) {
+      console.warn('인앱 업데이트 실패 → 다운로드 페이지로 폴백:', e);
+      setFailed(true);
+      Linking.openURL(apkUrl).catch(() => {});
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const pct = Math.round(progress * 100);
+
   return (
     <View style={styles.gate}>
       <View style={styles.gateIcon}>
@@ -30,16 +54,33 @@ function UpdateRequiredScreen({ latestVersion, apkUrl }: { latestVersion: string
       <Text style={styles.gateDesc}>
         {`원활하고 안전한 사용을 위해\n최신 버전(v${latestVersion})으로 업데이트가 필요합니다.`}
       </Text>
-      <Pressable
-        onPress={() => Linking.openURL(apkUrl).catch(() => {})}
-        style={({ pressed }) => [styles.gateBtn, pressed && { opacity: 0.85 }]}
-        accessibilityRole="button"
-        accessibilityLabel="지금 업데이트"
-      >
-        <Feather name="download" size={18} color={COLORS.white} />
-        <Text style={styles.gateBtnText}>지금 업데이트</Text>
-      </Pressable>
-      <Text style={styles.gateHint}>버튼을 누르면 다운로드 페이지가 열립니다.{'\n'}설치 후 앱을 다시 실행해 주세요.</Text>
+
+      {downloading ? (
+        <View style={styles.dlBox}>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${pct}%` }]} />
+          </View>
+          <Text style={styles.dlText}>다운로드 중… {pct}%</Text>
+        </View>
+      ) : (
+        <Pressable
+          onPress={handleUpdate}
+          style={({ pressed }) => [styles.gateBtn, pressed && { opacity: 0.85 }]}
+          accessibilityRole="button"
+          accessibilityLabel="지금 업데이트"
+        >
+          <Feather name="download" size={18} color={COLORS.white} />
+          <Text style={styles.gateBtnText}>지금 업데이트</Text>
+        </Pressable>
+      )}
+
+      <Text style={styles.gateHint}>
+        {failed
+          ? '자동 설치에 실패해 다운로드 페이지를 열었습니다.\n받은 파일을 눌러 설치해 주세요.'
+          : downloading
+            ? '다운로드가 끝나면 설치 화면이 자동으로 나타납니다.\n("출처를 알 수 없는 앱" 허용이 필요할 수 있어요)'
+            : '버튼을 누르면 앱에서 바로 다운로드·설치합니다.'}
+      </Text>
     </View>
   );
 }
@@ -95,4 +136,9 @@ const styles = StyleSheet.create({
   },
   gateBtnText: { color: COLORS.white, fontWeight: '800', fontSize: 16 },
   gateHint: { marginTop: 20, color: COLORS.textMuted, fontWeight: '600', fontSize: 12, textAlign: 'center', lineHeight: 18 },
+
+  dlBox: { width: '100%', maxWidth: 280, alignItems: 'center' },
+  progressTrack: { width: '100%', height: 10, borderRadius: 999, backgroundColor: COLORS.infoLight, overflow: 'hidden' },
+  progressFill: { height: 10, borderRadius: 999, backgroundColor: COLORS.brand },
+  dlText: { marginTop: 10, color: COLORS.brandDark, fontWeight: '800', fontSize: 14, fontVariant: ['tabular-nums'] },
 });

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { doc, setDoc } from 'firebase/firestore';
@@ -24,6 +24,22 @@ Notifications.setNotificationHandler({
  */
 export function usePushNotifications(): void {
   const { user, isAdmin, partnerCompany } = useAuth();
+
+  // 앱이 포그라운드로 올 때(및 마운트 시) 트레이 알림 + 런처 아이콘 배지를 정리한다.
+  // FCM 푸시가 알림창에 남아 앱 아이콘 숫자 배지가 인앱에서 확인해도 안 사라지던 문제 해결.
+  useEffect(() => {
+    const clear = async () => {
+      try {
+        await Notifications.setBadgeCountAsync(0);
+        await Notifications.dismissAllNotificationsAsync();
+      } catch (e) {
+        console.warn('알림 배지 정리 실패:', e);
+      }
+    };
+    clear();
+    const sub = AppState.addEventListener('change', (state) => { if (state === 'active') clear(); });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!user) return;
