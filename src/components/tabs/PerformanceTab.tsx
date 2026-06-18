@@ -1,6 +1,6 @@
 import React from 'react';
 import { Save, Trash2, Building2 } from 'lucide-react';
-import { updateDoc, doc } from 'firebase/firestore';
+import { setDoc, doc } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { MEMBERS } from '../../constants/members';
@@ -39,11 +39,11 @@ export default function PerformanceTab() {
     try {
       const pData = partnerInputs[company]?.[region] || {};
       const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-      await updateDoc(ref, {
-        [`partnerInputs.${company}.${region}`]: pData,
+      await setDoc(ref, {
+        partnerInputs: { [company]: { [region]: pData } },
         updatedAt: new Date().toISOString(),
         updatedBy: user?.email || '',
-      });
+      }, { merge: true });
       showToast(`[${region}] 실적이 저장되었습니다.`);
     } catch (e) { showToast('저장 오류: ' + (e as Error).message); }
     finally { setIsSaving(false); }
@@ -57,12 +57,11 @@ export default function PerformanceTab() {
     setIsSaving(true);
     try {
       const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-      await updateDoc(ref, {
-        [`partnerInputs.${company}.${region}.basicQty`]: '',
-        [`partnerInputs.${company}.${region}.povertyQty`]: '',
+      await setDoc(ref, {
+        partnerInputs: { [company]: { [region]: { basicQty: '', povertyQty: '' } } },
         updatedAt: new Date().toISOString(),
         updatedBy: user?.email || '',
-      });
+      }, { merge: true });
       
       setPartnerInputs(prev => ({
         ...prev,
