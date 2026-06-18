@@ -3,7 +3,7 @@ import {
   LayoutDashboard, User, Settings, Truck, PenTool, CheckSquare,
   FileSignature, CreditCard, ReceiptText, Contact, ShieldCheck,
   DatabaseBackup, HelpCircle, FileText, Calendar, LogOut,
-  Bell, Users, ChevronDown, ChevronUp,
+  Bell, Users, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Notification } from '../../types';
 import { safeRender } from '../../lib/utils';
@@ -34,6 +34,13 @@ export default function Navbar({
   const [showNoti, setShowNoti] = useState(false);
   const [isGearOpen, setIsGearOpen] = useState(false);
   const { confirm, dialog } = useConfirm();
+
+  // 마감 전에도 다음 달 작업이 가능하도록 — 관리자·회원사 모두 한 달 단위로 이동
+  const shiftMonth = (m: string, delta: number) => {
+    const [y, mo] = m.split('-').map(Number);
+    const d = new Date(y, mo - 1 + delta, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
 
   const ALL_TABS: Tab[] = [
     { id: 'profile',        label: '내 정보',   icon: <LayoutDashboard size={16} />, visible: !isAdmin && partnerCompany !== null },
@@ -238,8 +245,15 @@ export default function Navbar({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 justify-end w-full sm:w-auto">
-          {/* Month picker */}
-          <div className="flex items-center gap-2 bg-sky-50 border border-sky-200 px-3 py-2 rounded-xl">
+          {/* Month picker + 이전/다음 달 이동 (마감 전에도 다음 달 작업 가능 — 모두 허용) */}
+          <div className="flex items-center gap-1 bg-sky-50 border border-sky-200 pl-1.5 pr-2 py-1.5 rounded-xl">
+            <button
+              onClick={() => setCurrentMonth(shiftMonth(currentMonth, -1))}
+              title="이전 달"
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-sky-600 hover:bg-sky-100 transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
             <span className="text-lg">📅</span>
             <input
               type="month" value={currentMonth}
@@ -247,6 +261,13 @@ export default function Navbar({
               disabled={!isAdmin}
               className="border-none bg-transparent font-black text-sky-800 outline-none cursor-pointer text-sm w-24 sm:w-auto p-0"
             />
+            <button
+              onClick={() => setCurrentMonth(shiftMonth(currentMonth, 1))}
+              title="다음 달로 이동"
+              className="flex items-center gap-0.5 h-7 pl-2 pr-1.5 rounded-lg text-sky-700 bg-sky-100 hover:bg-sky-200 font-bold text-xs transition-colors whitespace-nowrap"
+            >
+              다음 달<ChevronRight size={14} />
+            </button>
           </div>
           {/* Saved months */}
           <div className="flex items-center gap-1.5 bg-sky-50 border border-sky-200 px-3 py-2 rounded-xl">

@@ -23,6 +23,49 @@ export default function BillingScreen() {
   const [y, m] = currentMonth.split('-');
   const month = parseInt(m || '0', 10);
 
+  // force=true: ECOUNT에서 기존 전표를 삭제한 뒤 새 전표를 강제 발행
+  const doSend = async (row: BillingRow, force: boolean) => {
+    setSendStatus(s => ({ ...s, [row.region]: 'sending' }));
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('로그인이 필요합니다');
+      const res = await sendRegion(token, buildRegionPayload(row, month, regions, zonePrices, comCode), force);
+      if (res.ok) {
+        setSendStatus(s => ({ ...s, [row.region]: 'done' }));
+        if (res.cached) {
+          // 이미 전송된 자료 — ECOUNT에서 삭제 후 새로 생성하려면 강제 재발행
+          Alert.alert(
+            '이미 전송됨',
+            `[${row.region}] 이미 ECOUNT에 전송된 자료입니다.\n\nECOUNT에서 기존 전표를 삭제하고 새로 생성하려면 '강제 재발행'을 누르세요.`,
+            [
+              { text: '닫기', style: 'cancel' },
+              { text: '강제 재발행', style: 'destructive', onPress: () => confirmForce(row) },
+            ],
+          );
+        } else {
+          Alert.alert('전송 완료', `[${row.region}] 매출자료 생성 완료${res.slipNos?.length ? `\n전표: ${res.slipNos.join(', ')}` : ''}`);
+        }
+      } else {
+        setSendStatus(s => ({ ...s, [row.region]: 'error' }));
+        Alert.alert('전송 실패', `[${row.region}] ${res.message}`);
+      }
+    } catch (e) {
+      setSendStatus(s => ({ ...s, [row.region]: 'error' }));
+      Alert.alert('전송 오류', (e as Error).message);
+    }
+  };
+
+  const confirmForce = (row: BillingRow) => {
+    Alert.alert(
+      '강제 재발행 — 새 전표 생성',
+      `[${row.region}] ECOUNT에 새 전표를 생성합니다.\n\n⚠️ ECOUNT 화면에서 기존 전표를 먼저 삭제했는지 확인하세요. 삭제하지 않으면 중복 전표가 생성됩니다.`,
+      [
+        { text: '취소', style: 'cancel' },
+        { text: '새 전표 생성', style: 'destructive', onPress: () => doSend(row, true) },
+      ],
+    );
+  };
+
   const handleSend = (row: BillingRow) => {
     const company = ECOUNT_COMPANIES.find(c => c.comCode === comCode)?.label;
     Alert.alert(
@@ -30,28 +73,7 @@ export default function BillingScreen() {
       `[${row.region}] ${company}\n수량 ${row.sum.qty} · 합계 ${won(row.sum.amount)}원\n\n운영 ECOUNT에 매출자료를 생성합니다. 계속할까요?`,
       [
         { text: '취소', style: 'cancel' },
-        {
-          text: '전송', onPress: async () => {
-            setSendStatus(s => ({ ...s, [row.region]: 'sending' }));
-            try {
-              const token = await auth.currentUser?.getIdToken();
-              if (!token) throw new Error('로그인이 필요합니다');
-              const res = await sendRegion(token, buildRegionPayload(row, month, regions, zonePrices, comCode));
-              if (res.ok) {
-                setSendStatus(s => ({ ...s, [row.region]: 'done' }));
-                Alert.alert('전송 완료', res.cached
-                  ? `[${row.region}] 이미 전송된 자료입니다.`
-                  : `[${row.region}] 매출자료 생성 완료${res.slipNos?.length ? `\n전표: ${res.slipNos.join(', ')}` : ''}`);
-              } else {
-                setSendStatus(s => ({ ...s, [row.region]: 'error' }));
-                Alert.alert('전송 실패', `[${row.region}] ${res.message}`);
-              }
-            } catch (e) {
-              setSendStatus(s => ({ ...s, [row.region]: 'error' }));
-              Alert.alert('전송 오류', (e as Error).message);
-            }
-          },
-        },
+        { text: '전송', onPress: () => doSend(row, false) },
       ],
     );
   };

@@ -98,7 +98,8 @@ app.post('/ecount/sale', limiter, requireAdmin, async (req: AuthedRequest, res: 
   const inputHash = hashInput({ comCode, lines: v.lines, ioDate: v.ioDate, makeFlag: v.makeFlag });
   const uid = req.user?.uid ?? 'unknown';
 
-  const claimed = await claim(key, inputHash, uid);
+  if (v.force) log('WARNING', 'sale force re-issue', { reqId, key, comCode, uid });
+  const claimed = await claim(key, inputHash, uid, v.force);
   if (claimed.action === 'cached') {
     log('INFO', 'sale cached', { reqId, key });
     const r = claimed.record;
@@ -167,7 +168,8 @@ app.post('/ecount/sale-tms', limiter, requireAdminTms, async (req: AuthedRequest
   const inputHash = hashInput({ comCode, cust: v.cust, lines: v.lines, ioDate: v.ioDate, makeFlag: v.makeFlag });
   const uid = req.user?.uid ?? 'unknown';
 
-  const claimed = await claim(key, inputHash, uid);
+  if (v.force) log('WARNING', 'sale-tms force re-issue', { reqId, key, comCode, cust: v.cust, uid });
+  const claimed = await claim(key, inputHash, uid, v.force);
   if (claimed.action === 'cached') {
     const r = claimed.record;
     res.json({ ok: true, slipNos: r.slipNos ?? [], supply: r.supply, vat: r.vat, total: r.total, cached: true });

@@ -53,6 +53,13 @@ export default function HomeScreen() {
   const [yr, mo] = currentMonth.split('-');
   const formattedMonth = `${yr}년 ${parseInt(mo, 10)}월`;
 
+  // 마감 전에도 다음 달 작업이 가능하도록 — 관리자·회원사 모두 한 달 단위로 이동
+  const shiftMonth = (m: string, delta: number) => {
+    const [y, mm] = m.split('-').map(Number);
+    const d = new Date(y, mm - 1 + delta, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -108,11 +115,27 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* 월 선택 */}
-      {savedMonths.length > 0 && (
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>조회 월</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
+      {/* 월 선택 + 이전/다음 달 이동 (마감 전에도 다음 달 작업 가능 — 모두 허용) */}
+      <View style={styles.sectionCard}>
+        <View style={styles.monthNavRow}>
+          <Text style={styles.sectionTitle}>조회 월 · {formattedMonth}</Text>
+          <View style={styles.monthNavBtns}>
+            <Pressable onPress={() => setCurrentMonth(shiftMonth(currentMonth, -1))}
+              style={({ pressed }) => [styles.navBtn, pressed && { opacity: 0.6 }]}
+              accessibilityRole="button" accessibilityLabel="이전 달">
+              <Feather name="chevron-left" size={15} color={COLORS.brand} />
+              <Text style={styles.navBtnText}>이전</Text>
+            </Pressable>
+            <Pressable onPress={() => setCurrentMonth(shiftMonth(currentMonth, 1))}
+              style={({ pressed }) => [styles.navBtnPrimary, pressed && { opacity: 0.6 }]}
+              accessibilityRole="button" accessibilityLabel="다음 달로 이동">
+              <Text style={styles.navBtnPrimaryText}>다음 달</Text>
+              <Feather name="chevron-right" size={15} color={COLORS.white} />
+            </Pressable>
+          </View>
+        </View>
+        {savedMonths.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
             {savedMonths.slice(0, 8).map((m) => {
               const active = m === currentMonth;
               return (
@@ -123,8 +146,8 @@ export default function HomeScreen() {
               );
             })}
           </ScrollView>
-        </View>
-      )}
+        )}
+      </View>
 
       {/* KPI */}
       <View style={styles.kpiGrid}>
@@ -247,6 +270,18 @@ const styles = StyleSheet.create({
   closeBtnDone: { backgroundColor: COLORS.danger },
   sectionCard: { backgroundColor: COLORS.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: COLORS.border },
   sectionTitle: { fontSize: 12, fontWeight: '800', color: COLORS.textMuted, letterSpacing: 0.5, marginLeft: 2 },
+  monthNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  monthNavBtns: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  navBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.bg,
+  },
+  navBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.brand },
+  navBtnPrimary: {
+    flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 10, backgroundColor: COLORS.brand,
+  },
+  navBtnPrimaryText: { fontSize: 13, fontWeight: '800', color: COLORS.white },
   monthChip: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: COLORS.bg,
     marginRight: 8, borderWidth: 1, borderColor: COLORS.border,

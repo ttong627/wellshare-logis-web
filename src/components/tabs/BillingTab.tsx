@@ -26,10 +26,12 @@ export default function BillingTab() {
     const companyLabel = ECOUNT_COMPANIES.find((c) => c.comCode === selectedComCode)?.label ?? selectedComCode;
     const already = ecountSales[selectedComCode]?.[item.region];
     const ok = await confirm({
-      title: already ? `${item.region} 재발행` : `${item.region} 매출 발행`,
-      message: `[${companyLabel}] '${item.region}' 매출전표(${formatNumber(item.sum.amount)}원)를 ECOUNT에 등록합니다.\n${already ? '이미 발행된 건입니다 — 멱등성으로 중복 전표는 생성되지 않습니다.\n' : ''}비가역 작업 — 되돌리려면 ECOUNT 화면에서 직접 삭제해야 합니다.\n계속할까요?`,
+      title: already ? `${item.region} 재발행 (새 전표 생성)` : `${item.region} 매출 발행`,
+      message: already
+        ? `[${companyLabel}] '${item.region}' 매출전표(${formatNumber(item.sum.amount)}원)를 ECOUNT에 새로 생성합니다.\n\n⚠️ ECOUNT 화면에서 기존 전표를 먼저 삭제했는지 반드시 확인하세요.\n삭제하지 않고 진행하면 중복 전표가 생성됩니다.\n\n계속할까요?`
+        : `[${companyLabel}] '${item.region}' 매출전표(${formatNumber(item.sum.amount)}원)를 ECOUNT에 등록합니다.\n비가역 작업 — 되돌리려면 ECOUNT 화면에서 직접 삭제해야 합니다.\n계속할까요?`,
       tone: 'danger',
-      confirmText: already ? '재발행' : '발행',
+      confirmText: already ? '새 전표 생성' : '발행',
     });
     if (!ok) return;
     const user = auth.currentUser;
@@ -41,7 +43,8 @@ export default function BillingTab() {
     const month = Number(currentMonth.split('-')[1]);
     try {
       const token = await user.getIdToken();
-      const res = await sendRegion(token, buildRegionPayload(item, month, regions, zonePrices, selectedComCode));
+      // 이미 발행된 건([재발행])은 force=true 로 멱등성을 우회해 새 전표를 생성한다.
+      const res = await sendRegion(token, buildRegionPayload(item, month, regions, zonePrices, selectedComCode), !!already);
       if (res.ok) {
         const rec: EcountSaleRecord = {
           status: res.cached ? 'cached' : 'done',

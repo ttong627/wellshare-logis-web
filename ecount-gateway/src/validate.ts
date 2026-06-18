@@ -46,6 +46,7 @@ export interface ValidatedSale {
   ioDate: string;
   lines: SaleLineInput[];
   makeFlag: string;
+  force: boolean;
 }
 
 export function validateSaleBody(body: any, defaultMakeFlag: string): ValidatedSale {
@@ -97,8 +98,10 @@ export function validateSaleBody(body: any, defaultMakeFlag: string): ValidatedS
   });
 
   const makeFlag = body.makeFlag === 'Y' || body.makeFlag === 'N' ? body.makeFlag : defaultMakeFlag;
+  // 강제 재발행 — 관리자가 ECOUNT에서 기존 전표를 삭제하고 새로 발행할 때만 true
+  const force = body.force === true;
 
-  return { month, region, ioDate, lines, makeFlag };
+  return { month, region, ioDate, lines, makeFlag, force };
 }
 
 // ── TMS(tms-local-frontend) 전용 — 회원사별 거래처(CUST) + 상세라인(price 0 허용) ──
@@ -111,6 +114,7 @@ export interface ValidatedTmsSale {
   ioDate: string;
   lines: SaleLineInput[];
   makeFlag: string;
+  force: boolean;
 }
 
 export function validateTmsSaleBody(body: any, defaultMakeFlag: string): ValidatedTmsSale {
@@ -162,5 +166,6 @@ export function validateTmsSaleBody(body: any, defaultMakeFlag: string): Validat
   });
 
   const makeFlag = body.makeFlag === 'Y' || body.makeFlag === 'N' ? body.makeFlag : defaultMakeFlag;
-  return { cust, whCd, month, ioDate, lines, makeFlag };
+  const force = body.force === true;
+  return { cust, whCd, month, ioDate, lines, makeFlag, force };
 }

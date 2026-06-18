@@ -56,12 +56,13 @@ const ERROR_MESSAGES: Record<string, string> = {
   ip_lookup_failed: 'egress 확인 실패',
 };
 
-export async function sendRegion(token: string, payload: SalePayload): Promise<SendResult> {
+// force=true: ECOUNT에서 기존 전표를 삭제한 뒤 새 전표를 강제 발행(멱등성 우회).
+export async function sendRegion(token: string, payload: SalePayload, force = false): Promise<SendResult> {
   try {
     const res = await fetch(`${GATEWAY_URL}/ecount/sale`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(force ? { ...payload, force: true } : payload),
     });
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (res.ok && data.ok) {

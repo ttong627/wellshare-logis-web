@@ -44,7 +44,10 @@ export type ClaimResult =
   | { action: 'in_progress'; record: SaleRecord };
 
 // 트랜잭션으로 pending 클레임 또는 기존 상태 분기
-export async function claim(key: string, inputHash: string, uid: string): Promise<ClaimResult> {
+// force=true: 관리자가 ECOUNT에서 기존 전표를 직접 삭제한 뒤 재발행하는 경우.
+//   done 기록을 pending으로 덮어써 SaveSale 을 다시 호출(새 전표 생성)한다.
+//   단, 동시에 처리중인 pending 은 force 라도 보호한다(중복 발행 방지).
+export async function claim(key: string, inputHash: string, uid: string, force = false): Promise<ClaimResult> {
   const ref = db.collection(COLLECTION).doc(key);
   return db.runTransaction(async (tx): Promise<ClaimResult> => {
     const snap = await tx.get(ref);
@@ -59,10 +62,15 @@ export async function claim(key: string, inputHash: string, uid: string): Promis
     const rec = snap.data() as SaleRecord;
 
     if (rec.status === 'done') {
+      // 강제 재발행: 기존 done 을 pending 으로 재클레임 → 새 전표 발행 진행(동일/상이 입력 모두 허용)
+      if (force) {
+        tx.set(ref, { status: 'pending', inputHash, uid, createdAtMs: rec.createdAtMs ?? now, updatedAtMs: now });
+        return { action: 'proceed' };
+      }
       return rec.inputHash === inputHash ? { action: 'cached', record: rec } : { action: 'conflict', record: rec };
     }
 
-    // pending(나이 무관) → in_progress. 비가역 매출전표라 자동 재시도로 중복발행하지 않는다.
+    // pending(나이 무관) → in_progress. 비가역 매출전표라 자동 재시도(force 포함)로 중복발행하지 않는다.
     // 고아 pending(인스턴스 강제종료 등)은 ECOUNT 화면 확인 후 Firestore 문서 수동 삭제로 해제.
     if (rec.status === 'pending') {
       return { action: 'in_progress', record: rec };
