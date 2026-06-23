@@ -52,9 +52,10 @@ function formatDateRanges(dates: string[]): string {
   ranges.push([start, end]);
   return ranges.map(([s, e]) => {
     const [, sm, sd] = s.split('-').map(Number);
-    const [, , ed] = e.split('-').map(Number);
+    const [, em, ed] = e.split('-').map(Number);
     if (s === e) return `${sm}/${sd}`;
-    return `${sm}/${sd}~${ed}`;
+    // 달이 바뀌면 종료일에도 월 표기 (6/29~3 → 6/29~7/3), 같은 달이면 일만 (6/12~17)
+    return em === sm ? `${sm}/${sd}~${ed}` : `${sm}/${sd}~${em}/${ed}`;
   }).join(', ');
 }
 
