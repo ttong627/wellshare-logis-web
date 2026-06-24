@@ -18,6 +18,7 @@ const DeliveryCompletionTab = lazy(() => import('./components/tabs/DeliveryCompl
 const BillingTab = lazy(() => import('./components/tabs/BillingTab'));
 const PaymentTab = lazy(() => import('./components/tabs/PaymentTab'));
 const PartnerBillingTab = lazy(() => import('./components/tabs/PartnerBillingTab'));
+const StatisticsTab = lazy(() => import('./components/tabs/StatisticsTab'));
 const ContactsTab = lazy(() => import('./components/tabs/ContactsTab'));
 const UsersTab = lazy(() => import('./components/tabs/UsersTab'));
 const BackupTab = lazy(() => import('./components/tabs/BackupTab'));
@@ -198,6 +199,7 @@ function AppContent() {
       case 'billing': return <BillingTab />;
       case 'payment': return <PaymentTab />;
       case 'partner_billing': return <PartnerBillingTab />;
+      case 'statistics': return <StatisticsTab />;
       case 'contacts': return <ContactsTab />;
       case 'users': return <UsersTab />;
       case 'backup': return <BackupTab />;
