@@ -29,7 +29,8 @@ interface RosterFile {
   size: number;
   storagePath: string;  // Storage 경로
   note?: string;        // 비밀번호 등 안내(예: '엑셀 암호 2729')
-  adminOnly?: boolean;  // true=본사 관리자 전용(회원사 비노출·다운로드 차단, 부천 메일함 명단 등)
+  adminOnly?: boolean;  // true=본사 관리자 전용(회원사 비노출·다운로드 차단)
+  allowedCompanies?: string[]; // 지정 시 이 회원사들(+관리자)만 노출. 미지정이면 지역(region) 매핑 사용
   uploadedAt: string;
   uploadedBy?: string;
 }
@@ -83,19 +84,24 @@ export default function RosterTab() {
   );
 
   // 지역 → 월 → 파일 그룹화
-  //   관리자: 전체(관리자 전용 포함) · 회원사: 담당 지역의 '공유' 명단만(관리자 전용은 제외)
+  //   관리자: 전체 · 회원사: ① 관리자전용 제외 ② allowedCompanies 지정 시 그 회사만,
+  //   미지정이면 담당 지역(region) 매핑으로 노출.
   const grouped = useMemo(() => {
     const regionSet = new Set(myRegions);
-    const visible = isAdmin
-      ? files
-      : files.filter((f) => !f.adminOnly && regionSet.has(f.region));
+    const canSee = (f: RosterFile) => {
+      if (f.adminOnly) return false;
+      if (Array.isArray(f.allowedCompanies) && f.allowedCompanies.length > 0)
+        return !!partnerCompany && f.allowedCompanies.includes(partnerCompany);
+      return regionSet.has(f.region);
+    };
+    const visible = isAdmin ? files : files.filter(canSee);
     const byRegion: Record<string, Record<string, RosterFile[]>> = {};
     for (const f of visible) {
       (byRegion[f.region] ||= {});
       (byRegion[f.region][f.month] ||= []).push(f);
     }
     return byRegion;
-  }, [files, myRegions, isAdmin]);
+  }, [files, myRegions, isAdmin, partnerCompany]);
 
   // 다운로드 — 로그인 게이트(storage.rules) 통과 후 blob으로 받아 원본 파일명 강제
   const handleDownload = async (f: RosterFile) => {
@@ -293,6 +299,9 @@ export default function RosterTab() {
                                 <span className="text-sky-500">{f.category}</span>
                                 <span>{fmtSize(f.size)}</span>
                                 {f.adminOnly && <span className="text-amber-600 font-black">🔒 관리자 전용</span>}
+                                {isAdmin && !f.adminOnly && f.allowedCompanies && f.allowedCompanies.length > 0 && (
+                                  <span className="text-emerald-600 font-bold">🏢 {f.allowedCompanies.join('·')}</span>
+                                )}
                                 {f.note && <span className="text-amber-600">🔑 {f.note}</span>}
                               </div>
                             </div>
