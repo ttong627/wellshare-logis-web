@@ -9,6 +9,7 @@ import {
 import { Notification } from '../../types';
 import { safeRender } from '../../lib/utils';
 import { useConfirm } from '../shared/useConfirm';
+import { APP_VERSION } from '../../constants/version';
 
 export type TabId =
   | 'profile' | 'account' | 'prices' | 'orders' | 'performance'
@@ -100,9 +101,10 @@ export default function Navbar({
               <div className="text-sky-200 text-[9px] sm:text-[10px] font-bold tracking-widest uppercase mb-0.5">
                 (주)웰쉐어로지스 정산 System
               </div>
-              <h1 className="text-white text-xl sm:text-3xl font-black tracking-tight"
+              <h1 className="text-white text-xl sm:text-3xl font-black tracking-tight flex items-end gap-2"
                 style={{ textShadow: '0 2px 8px rgba(0,0,0,.2)' }}>
                 나라미 정산포털
+                <span className="text-sky-200/90 text-[10px] sm:text-xs font-bold tracking-wider pb-0.5 sm:pb-1">v{APP_VERSION}</span>
               </h1>
             </div>
           </div>

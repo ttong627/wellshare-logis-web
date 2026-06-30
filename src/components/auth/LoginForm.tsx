@@ -6,6 +6,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, addDoc, collection } from 'firebase/firestore';
 import { auth, db, APP_ID } from '../../firebase';
+import { APP_VERSION } from '../../constants/version';
 
 interface LoginFormProps {
   onPendingRegistered: (email: string) => void;
@@ -87,6 +88,7 @@ export default function LoginForm({ onPendingRegistered }: LoginFormProps) {
           <button onClick={() => { setIsSignUp(!isSignUp); setError(''); }} className="text-[10px] sm:text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors">
             {isSignUp ? '이미 계정이 있으신가요? 로그인하기' : '처음 오셨나요? 파트너사 신규 계정 생성'}
           </button>
+          <p className="mt-4 text-[10px] font-bold text-slate-300 tracking-wider">v{APP_VERSION}</p>
         </div>
       </div>
     </div>
