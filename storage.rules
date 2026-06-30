@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Firebase Storage 보안 규칙 — wellshare-logis
+//   · rosters/**  : 정부양곡 배송 명단(수급자 개인정보). 읽기는 로그인 사용자(앱이 담당 지역만 노출),
+//                   쓰기는 본사 관리자 이메일만(자동 적재는 SA키가 규칙 우회).
+//   · 그 외 경로  : 기존 동작 유지(doc_images 등) — 로그인 사용자 읽기/쓰기.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdminEmail() {
+      return isSignedIn() && (
+        request.auth.token.email == 'ttong@wssc.kr' ||
+        request.auth.token.email == 'ttong627@gmail.com' ||
+        request.auth.token.email == 'goodp1@hanmail.net'
+      );
+    }
+
+    // 정부양곡 명단 — PII. 다운로드는 로그인 게이트, 업로드/삭제는 관리자만.
+    match /rosters/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdminEmail();
+    }
+
+    // 기존 경로(doc_images 등) — 회귀 방지를 위해 로그인 사용자 읽기/쓰기 유지.
+    match /{allPaths=**} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}

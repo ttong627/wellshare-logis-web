@@ -4,6 +4,7 @@ import {
   FileSignature, CreditCard, ReceiptText, Contact, ShieldCheck,
   DatabaseBackup, HelpCircle, FileText, Calendar, LogOut,
   Bell, Users, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3,
+  ClipboardList,
 } from 'lucide-react';
 import { Notification } from '../../types';
 import { safeRender } from '../../lib/utils';
@@ -12,7 +13,7 @@ import { useConfirm } from '../shared/useConfirm';
 export type TabId =
   | 'profile' | 'account' | 'prices' | 'orders' | 'performance'
   | 'delivery' | 'billing' | 'payment' | 'partner_billing'
-  | 'statistics' | 'contacts' | 'users' | 'backup' | 'schedule' | 'docs';
+  | 'statistics' | 'contacts' | 'users' | 'backup' | 'schedule' | 'docs' | 'roster';
 
 interface Tab { id: TabId; label: string; icon: React.ReactNode; visible: boolean; inGear?: boolean; }
 
@@ -50,6 +51,7 @@ export default function Navbar({
     { id: 'billing',        label: '계산서발급', icon: <FileSignature size={16} />,    visible: isAdmin },
     { id: 'payment',        label: '결제내역',   icon: <CreditCard size={16} />,       visible: isAdmin },
     { id: 'partner_billing',label: '내역확인',   icon: <ReceiptText size={16} />,      visible: isAdmin || partnerCompany !== null },
+    { id: 'roster',         label: '명단',       icon: <ClipboardList size={16} />,    visible: isAdmin || partnerCompany !== null },
     { id: 'statistics',     label: '통계자료',   icon: <BarChart3 size={16} />,        visible: isAdmin || partnerCompany !== null },
     { id: 'schedule',       label: '배송일정',   icon: <Calendar size={16} />,         visible: true },
     { id: 'docs',           label: '공문작성',   icon: <FileText size={16} />,          visible: isAdmin },

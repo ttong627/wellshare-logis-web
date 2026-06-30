@@ -24,6 +24,7 @@ const UsersTab = lazy(() => import('./components/tabs/UsersTab'));
 const BackupTab = lazy(() => import('./components/tabs/BackupTab'));
 const ScheduleTab = lazy(() => import('./components/tabs/ScheduleTab'));
 const DocsTab = lazy(() => import('./components/tabs/DocsTab'));
+const RosterTab = lazy(() => import('./components/tabs/RosterTab'));
 
 declare global {
   interface Window { XLSX: any; }
@@ -199,6 +200,7 @@ function AppContent() {
       case 'billing': return <BillingTab />;
       case 'payment': return <PaymentTab />;
       case 'partner_billing': return <PartnerBillingTab />;
+      case 'roster': return <RosterTab />;
       case 'statistics': return <StatisticsTab />;
       case 'contacts': return <ContactsTab />;
       case 'users': return <UsersTab />;
