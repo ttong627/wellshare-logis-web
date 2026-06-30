@@ -1,9 +1,11 @@
 rules_version = '2';
 
 // Firebase Storage 보안 규칙 — wellshare-logis
-//   · rosters/**  : 정부양곡 배송 명단(수급자 개인정보). 읽기는 로그인 사용자(앱이 담당 지역만 노출),
-//                   쓰기는 본사 관리자 이메일만(자동 적재는 SA키가 규칙 우회).
-//   · 그 외 경로  : 기존 동작 유지(doc_images 등) — 로그인 사용자 읽기/쓰기.
+//   · rosters/**        : 회원사 공유 명단(동대문·여주 등). 다운로드=로그인 사용자, 업로드/삭제=관리자.
+//   · rosters_admin/**  : 본사 관리자 전용 명단(부천 메일함 등). 열람·다운로드·쓰기 모두 관리자만.
+//   · 그 외(doc_images 등): 기존대로 로그인 사용자 읽기/쓰기.
+//   ⚠️ Storage 규칙은 매칭되는 규칙 중 하나라도 허용하면 통과(OR) → 광역 규칙이 rosters 계열을
+//      덮어 권한이 새지 않도록, 광역 규칙에서 rosters/rosters_admin 경로를 명시적으로 제외한다.
 service firebase.storage {
   match /b/{bucket}/o {
 
@@ -16,15 +18,20 @@ service firebase.storage {
       );
     }
 
-    // 정부양곡 명단 — PII. 다운로드는 로그인 게이트, 업로드/삭제는 관리자만.
+    // 회원사 공유 명단(PII) — 다운로드=로그인 게이트, 업로드/삭제=관리자만.
     match /rosters/{allPaths=**} {
       allow read: if isSignedIn();
       allow write: if isAdminEmail();
     }
 
-    // 기존 경로(doc_images 등) — 회귀 방지를 위해 로그인 사용자 읽기/쓰기 유지.
+    // 관리자 전용 명단 — 본사 관리자만 열람/다운로드/쓰기(회원사 완전 차단).
+    match /rosters_admin/{allPaths=**} {
+      allow read, write: if isAdminEmail();
+    }
+
+    // 그 외 경로(doc_images 등) — 로그인 사용자. rosters 계열은 위 전용 규칙만 적용되도록 제외.
     match /{allPaths=**} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSignedIn() && !allPaths.matches('rosters(_admin)?/.*');
     }
   }
 }

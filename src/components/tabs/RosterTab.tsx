@@ -29,6 +29,7 @@ interface RosterFile {
   size: number;
   storagePath: string;  // Storage 경로
   note?: string;        // 비밀번호 등 안내(예: '엑셀 암호 2729')
+  adminOnly?: boolean;  // true=본사 관리자 전용(회원사 비노출·다운로드 차단, 부천 메일함 명단 등)
   uploadedAt: string;
   uploadedBy?: string;
 }
@@ -55,6 +56,7 @@ export default function RosterTab() {
   const [upMonth, setUpMonth] = useState<string>(currentMonth);
   const [upCategory, setUpCategory] = useState<string>('전체');
   const [upNote, setUpNote] = useState<string>('');
+  const [upAdminOnly, setUpAdminOnly] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -80,17 +82,20 @@ export default function RosterTab() {
     [isAdmin, partnerCompany],
   );
 
-  // 지역 → 월 → 파일 그룹화 (담당 지역만)
+  // 지역 → 월 → 파일 그룹화
+  //   관리자: 전체(관리자 전용 포함) · 회원사: 담당 지역의 '공유' 명단만(관리자 전용은 제외)
   const grouped = useMemo(() => {
     const regionSet = new Set(myRegions);
-    const visible = files.filter((f) => regionSet.has(f.region));
+    const visible = isAdmin
+      ? files
+      : files.filter((f) => !f.adminOnly && regionSet.has(f.region));
     const byRegion: Record<string, Record<string, RosterFile[]>> = {};
     for (const f of visible) {
       (byRegion[f.region] ||= {});
       (byRegion[f.region][f.month] ||= []).push(f);
     }
     return byRegion;
-  }, [files, myRegions]);
+  }, [files, myRegions, isAdmin]);
 
   // 다운로드 — 로그인 게이트(storage.rules) 통과 후 blob으로 받아 원본 파일명 강제
   const handleDownload = async (f: RosterFile) => {
@@ -122,7 +127,8 @@ export default function RosterTab() {
     setUploading(true);
     try {
       const safe = file.name.replace(/[\\/:*?"<>|]+/g, '_');
-      const path = `rosters/${upRegion}/${upMonth}/${Date.now()}_${safe}`;
+      const base = upAdminOnly ? 'rosters_admin' : 'rosters';
+      const path = `${base}/${upRegion}/${upMonth}/${Date.now()}_${safe}`;
       await uploadBytes(storageRef(storage, path), file, { contentType: file.type || 'application/octet-stream' });
       await addDoc(collection(db, ...ROSTERS_PATH), {
         region: upRegion,
@@ -133,6 +139,7 @@ export default function RosterTab() {
         size: file.size,
         storagePath: path,
         note: upNote || '',
+        adminOnly: upAdminOnly,
         uploadedAt: new Date().toISOString(),
         uploadedBy: user?.email || '',
       });
@@ -206,10 +213,12 @@ export default function RosterTab() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
             <label className="flex flex-col gap-1">
               <span className="text-[10px] font-bold text-sky-500 uppercase">지역</span>
-              <select value={upRegion} onChange={(e) => setUpRegion(e.target.value)}
-                className="bg-sky-50 border border-sky-200 rounded-xl px-3 py-2 text-sm font-bold text-sky-800 outline-none">
-                {ALL_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
+              <input list="roster-regions" value={upRegion} onChange={(e) => setUpRegion(e.target.value)}
+                placeholder="지역 선택/입력"
+                className="bg-sky-50 border border-sky-200 rounded-xl px-3 py-2 text-sm font-bold text-sky-800 outline-none placeholder:text-sky-300" />
+              <datalist id="roster-regions">
+                {ALL_REGIONS.map((r) => <option key={r} value={r} />)}
+              </datalist>
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-[10px] font-bold text-sky-500 uppercase">월</span>
@@ -229,6 +238,11 @@ export default function RosterTab() {
                 className="bg-sky-50 border border-sky-200 rounded-xl px-3 py-2 text-sm font-bold text-sky-800 outline-none placeholder:text-sky-300" />
             </label>
           </div>
+          <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
+            <input type="checkbox" checked={upAdminOnly} onChange={(e) => setUpAdminOnly(e.target.checked)}
+              className="w-4 h-4 accent-amber-500" />
+            <span className="text-xs font-bold text-amber-700">🔒 본사 관리자 전용 (회원사에 안 보임 · 부천 메일함 명단 등)</span>
+          </label>
           <input ref={fileInputRef} type="file" disabled={uploading}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
             className="block w-full text-xs font-bold text-sky-700 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-sky-100 file:text-sky-700 file:font-bold hover:file:bg-sky-200" />
@@ -278,6 +292,7 @@ export default function RosterTab() {
                               <div className="text-[10px] font-bold text-slate-400 flex flex-wrap items-center gap-x-2">
                                 <span className="text-sky-500">{f.category}</span>
                                 <span>{fmtSize(f.size)}</span>
+                                {f.adminOnly && <span className="text-amber-600 font-black">🔒 관리자 전용</span>}
                                 {f.note && <span className="text-amber-600">🔑 {f.note}</span>}
                               </div>
                             </div>
