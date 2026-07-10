@@ -12,11 +12,13 @@ import {
 } from 'firebase/storage';
 import {
   ClipboardList, Download, Trash2, UploadCloud, Loader2, FileSpreadsheet, Lock,
+  Folder, FolderOpen, FileText, Sparkles, SendHorizontal,
 } from 'lucide-react';
 import { db, storage, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { PARTNER_REGIONS } from '../../constants/members';
 import { useConfirm } from '../shared/useConfirm';
+import { listZipEntries, extractZipEntry, refineExcelDirect, sendToRefineSystem, type ZipEntryInfo } from '../../lib/rosterRefine';
 
 // 명단 파일 메타(Firestore: artifacts/{APP_ID}/public/data/rosters)
 interface RosterFile {
@@ -51,6 +53,14 @@ export default function RosterTab() {
   const [files, setFiles] = useState<RosterFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // zip "폴더" 열람 — 파일별 펼침 상태·목록·원본 blob 캐시(재열람 시 재다운로드 방지)
+  const [zipOpen, setZipOpen] = useState<Record<string, boolean>>({});
+  const [zipEntries, setZipEntries] = useState<Record<string, ZipEntryInfo[]>>({});
+  const [zipBlobs, setZipBlobs] = useState<Record<string, Blob>>({});
+  const [zipLoading, setZipLoading] = useState<Record<string, boolean>>({});
+  // 정제 액션(정제된 명단 받기/명단 정제하기) 진행 중 키 — fileId 또는 fileId::entryPath(::send)
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
 
   // 관리자 업로드 폼 상태
   const [upRegion, setUpRegion] = useState<string>(ALL_REGIONS[0] || '');
@@ -124,6 +134,105 @@ export default function RosterTab() {
       showToast('다운로드에 실패했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setBusyId(null);
+    }
+  };
+
+  // 원본 파일 전체를 File 객체로 받기(정제 액션의 입력용)
+  const fetchAsFile = async (f: RosterFile): Promise<File> => {
+    const url = await getDownloadURL(storageRef(storage, f.storagePath));
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    return new File([blob], f.fileName, { type: blob.type || f.contentType });
+  };
+
+  // zip "폴더" 펼치기 — 첫 펼침 시에만 다운로드+목록화, 이후는 캐시 재사용
+  const toggleZip = async (f: RosterFile) => {
+    setZipOpen((prev) => ({ ...prev, [f.id]: !prev[f.id] }));
+    if (zipEntries[f.id]) return;
+    setZipLoading((prev) => ({ ...prev, [f.id]: true }));
+    try {
+      const url = await getDownloadURL(storageRef(storage, f.storagePath));
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      setZipBlobs((prev) => ({ ...prev, [f.id]: blob }));
+      const entries = await listZipEntries(blob);
+      setZipEntries((prev) => ({ ...prev, [f.id]: entries }));
+    } catch (e) {
+      console.error('zip 열람 실패:', e);
+      showToast('압축 파일을 열지 못했습니다.');
+      setZipOpen((prev) => ({ ...prev, [f.id]: false }));
+    } finally {
+      setZipLoading((prev) => ({ ...prev, [f.id]: false }));
+    }
+  };
+
+  // zip 안 파일 1개를 File 객체로 추출(blob 캐시 재사용)
+  const extractAsFile = async (f: RosterFile, entry: ZipEntryInfo): Promise<File> => {
+    let blob = zipBlobs[f.id];
+    if (!blob) {
+      const url = await getDownloadURL(storageRef(storage, f.storagePath));
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      blob = await res.blob();
+      setZipBlobs((prev) => ({ ...prev, [f.id]: blob as Blob }));
+    }
+    const entryBlob = await extractZipEntry(blob, entry.path);
+    const name = entry.path.split('/').pop() || entry.path;
+    return new File([entryBlob], name, { type: entryBlob.type || 'application/octet-stream' });
+  };
+
+  // zip 안 파일 1개를 원본 그대로 다운로드(엑셀이 아닌 인수지시서 pdf 등)
+  const handleExtractDownload = async (f: RosterFile, entry: ZipEntryInfo) => {
+    const key = `${f.id}::${entry.path}::extract`;
+    setActionBusy(key);
+    try {
+      const file = await extractAsFile(f, entry);
+      const a = document.createElement('a');
+      const objUrl = URL.createObjectURL(file);
+      a.href = objUrl;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objUrl);
+    } catch (e) {
+      console.error('추출 실패:', e);
+      showToast('파일 추출에 실패했습니다.');
+    } finally {
+      setActionBusy(null);
+    }
+  };
+
+  // "정제된 명단 받기" — 이 앱 안에서 바로 주소매칭 후 정제 엑셀 즉시 다운로드
+  const handleRefineDirect = async (getFile: () => Promise<File>, region: string, key: string) => {
+    setActionBusy(key);
+    try {
+      const file = await getFile();
+      const { total, matched } = await refineExcelDirect(file, region);
+      showToast(`정제 완료: ${matched}/${total}건 주소 매칭 · 파일이 다운로드됩니다`);
+    } catch (e) {
+      console.error('정제 실패:', e);
+      showToast(e instanceof Error ? e.message : '정제 중 오류가 발생했습니다.');
+    } finally {
+      setActionBusy(null);
+    }
+  };
+
+  // "명단 정제하기" — 명단정제시스템(nexus-pipeline)으로 파일을 인계해 새 탭에서 이어 작업
+  //   (지자체/월 자동감지 · 2개 파일 합치기 · DB 저장 모두 그 시스템의 기존 기능 그대로 사용)
+  const handleSendToRefine = async (getFile: () => Promise<File>, region: string, key: string) => {
+    setActionBusy(key);
+    try {
+      const file = await getFile();
+      await sendToRefineSystem(file, region);
+      showToast('명단정제시스템으로 전송했습니다. 새로 열린 탭을 확인해주세요.');
+    } catch (e) {
+      console.error('전송 실패:', e);
+      showToast(e instanceof Error ? e.message : '전송 중 오류가 발생했습니다.');
+    } finally {
+      setActionBusy(null);
     }
   };
 
@@ -289,35 +398,129 @@ export default function RosterTab() {
                     <div className="space-y-1.5">
                       {grouped[region][month]
                         .sort((a, b) => a.fileName.localeCompare(b.fileName))
-                        .map((f) => (
-                          <div key={f.id}
-                            className="flex items-center gap-3 bg-white/70 border border-sky-100 rounded-xl px-3 py-2.5">
-                            <FileSpreadsheet size={18} className="text-emerald-500 shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <div className="text-sm font-bold text-slate-800 truncate">{f.fileName}</div>
-                              <div className="text-[10px] font-bold text-slate-400 flex flex-wrap items-center gap-x-2">
-                                <span className="text-sky-500">{f.category}</span>
-                                <span>{fmtSize(f.size)}</span>
-                                {f.adminOnly && <span className="text-amber-600 font-black">🔒 관리자 전용</span>}
-                                {isAdmin && !f.adminOnly && f.allowedCompanies && f.allowedCompanies.length > 0 && (
-                                  <span className="text-emerald-600 font-bold">🏢 {f.allowedCompanies.join('·')}</span>
+                        .map((f) => {
+                          const isZip = /\.zip$/i.test(f.fileName);
+                          const isExcel = /\.(xlsx|xls)$/i.test(f.fileName);
+                          const zipIsOpen = !!zipOpen[f.id];
+                          const entries = zipEntries[f.id];
+                          return (
+                            <div key={f.id}>
+                              <div className="flex items-center gap-3 bg-white/70 border border-sky-100 rounded-xl px-3 py-2.5">
+                                {isZip ? (
+                                  <button onClick={() => toggleZip(f)} title="폴더 열기/닫기"
+                                    className="shrink-0 text-sky-500 hover:text-sky-700">
+                                    {zipLoading[f.id]
+                                      ? <Loader2 size={18} className="animate-spin" />
+                                      : (zipIsOpen ? <FolderOpen size={18} /> : <Folder size={18} />)}
+                                  </button>
+                                ) : (
+                                  <FileSpreadsheet size={18} className="text-emerald-500 shrink-0" />
                                 )}
-                                {f.note && <span className="text-amber-600">🔑 {f.note}</span>}
+                                <div
+                                  className={`min-w-0 flex-1 ${isZip ? 'cursor-pointer' : ''}`}
+                                  onClick={isZip ? () => toggleZip(f) : undefined}
+                                >
+                                  <div className="text-sm font-bold text-slate-800 truncate">
+                                    {f.fileName}
+                                    {isZip && <span className="ml-1.5 text-[10px] text-sky-400 font-black align-middle">폴더</span>}
+                                  </div>
+                                  <div className="text-[10px] font-bold text-slate-400 flex flex-wrap items-center gap-x-2">
+                                    <span className="text-sky-500">{f.category}</span>
+                                    <span>{fmtSize(f.size)}</span>
+                                    {f.adminOnly && <span className="text-amber-600 font-black">🔒 관리자 전용</span>}
+                                    {isAdmin && !f.adminOnly && f.allowedCompanies && f.allowedCompanies.length > 0 && (
+                                      <span className="text-emerald-600 font-bold">🏢 {f.allowedCompanies.join('·')}</span>
+                                    )}
+                                    {f.note && <span className="text-amber-600">🔑 {f.note}</span>}
+                                  </div>
+                                </div>
+                                <button onClick={() => handleDownload(f)} disabled={busyId === f.id}
+                                  className="btn-sky shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50">
+                                  {busyId === f.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                  원본
+                                </button>
+                                {isExcel && !isZip && (
+                                  <>
+                                    <button
+                                      onClick={() => handleRefineDirect(() => fetchAsFile(f), f.region, f.id)}
+                                      disabled={actionBusy === f.id}
+                                      title="이 앱에서 바로 주소를 정제해 다운로드"
+                                      className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50">
+                                      {actionBusy === f.id ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                                      정제된 명단 받기
+                                    </button>
+                                    <button
+                                      onClick={() => handleSendToRefine(() => fetchAsFile(f), f.region, `${f.id}::send`)}
+                                      disabled={actionBusy === `${f.id}::send`}
+                                      title="명단정제시스템으로 보내 합치기·DB저장까지 이어서 작업"
+                                      className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50">
+                                      {actionBusy === `${f.id}::send` ? <Loader2 size={14} className="animate-spin" /> : <SendHorizontal size={14} />}
+                                      명단 정제하기
+                                    </button>
+                                  </>
+                                )}
+                                {isAdmin && (
+                                  <button onClick={() => handleDelete(f)} disabled={busyId === f.id} title="삭제"
+                                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50">
+                                    <Trash2 size={15} />
+                                  </button>
+                                )}
                               </div>
+
+                              {isZip && zipIsOpen && (
+                                <div className="ml-8 mt-1.5 mb-1 space-y-1.5 border-l-2 border-sky-100 pl-3">
+                                  {zipLoading[f.id] ? (
+                                    <div className="text-xs text-sky-400 font-bold py-2 flex items-center gap-1.5">
+                                      <Loader2 size={13} className="animate-spin" /> 압축 여는 중…
+                                    </div>
+                                  ) : !entries?.length ? (
+                                    <div className="text-xs text-slate-400 py-2">압축 안에 파일이 없습니다.</div>
+                                  ) : (
+                                    entries.map((entry) => {
+                                      const entryKey = `${f.id}::${entry.path}`;
+                                      return (
+                                        <div key={entry.path}
+                                          className="flex items-center gap-2 bg-white/50 border border-sky-50 rounded-lg px-2.5 py-2">
+                                          {entry.isExcel
+                                            ? <FileSpreadsheet size={14} className="text-emerald-500 shrink-0" />
+                                            : <FileText size={14} className="text-slate-400 shrink-0" />}
+                                          <div className="min-w-0 flex-1 text-xs font-bold text-slate-700 truncate">{entry.path}</div>
+                                          <button
+                                            onClick={() => handleExtractDownload(f, entry)}
+                                            disabled={actionBusy === `${entryKey}::extract`}
+                                            className="shrink-0 flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold bg-sky-100 text-sky-700 hover:bg-sky-200 disabled:opacity-50">
+                                            {actionBusy === `${entryKey}::extract` ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                                            원본
+                                          </button>
+                                          {entry.isExcel && (
+                                            <>
+                                              <button
+                                                onClick={() => handleRefineDirect(() => extractAsFile(f, entry), f.region, entryKey)}
+                                                disabled={actionBusy === entryKey}
+                                                title="이 앱에서 바로 주소를 정제해 다운로드"
+                                                className="shrink-0 flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50">
+                                                {actionBusy === entryKey ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                                                정제된 명단 받기
+                                              </button>
+                                              <button
+                                                onClick={() => handleSendToRefine(() => extractAsFile(f, entry), f.region, `${entryKey}::send`)}
+                                                disabled={actionBusy === `${entryKey}::send`}
+                                                title="명단정제시스템으로 보내 합치기·DB저장까지 이어서 작업"
+                                                className="shrink-0 flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50">
+                                                {actionBusy === `${entryKey}::send` ? <Loader2 size={12} className="animate-spin" /> : <SendHorizontal size={12} />}
+                                                명단 정제하기
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            <button onClick={() => handleDownload(f)} disabled={busyId === f.id}
-                              className="btn-sky shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50">
-                              {busyId === f.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                              받기
-                            </button>
-                            {isAdmin && (
-                              <button onClick={() => handleDelete(f)} disabled={busyId === f.id} title="삭제"
-                                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50">
-                                <Trash2 size={15} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   </div>
                 ))}
