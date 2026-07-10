@@ -12,7 +12,7 @@ import {
 } from 'firebase/storage';
 import {
   ClipboardList, Download, Trash2, UploadCloud, Loader2, FileSpreadsheet, Lock,
-  Folder, FolderOpen, FileText, Sparkles, SendHorizontal,
+  Folder, FolderOpen, FileText, Sparkles, SendHorizontal, Square, CheckSquare, Layers, X,
 } from 'lucide-react';
 import { db, storage, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
@@ -61,6 +61,19 @@ export default function RosterTab() {
   const [zipLoading, setZipLoading] = useState<Record<string, boolean>>({});
   // 정제 액션(정제된 명단 받기/명단 정제하기) 진행 중 키 — fileId 또는 fileId::entryPath(::send)
   const [actionBusy, setActionBusy] = useState<string | null>(null);
+
+  // 엑셀 다중 선택(최대 2개) — "2개 파일 합쳐서 정제" 요청 대응. key로 토글, getFile은 지연 실행.
+  interface SelectedItem { getFile: () => Promise<File>; label: string; region: string }
+  const [selected, setSelected] = useState<Record<string, SelectedItem>>({});
+  const selectedKeys = Object.keys(selected);
+  const toggleSelect = (key: string, item: SelectedItem) => {
+    setSelected((prev) => {
+      if (prev[key]) { const next = { ...prev }; delete next[key]; return next; }
+      if (Object.keys(prev).length >= 2) { showToast('한 번에 최대 2개까지 함께 정제할 수 있습니다.'); return prev; }
+      return { ...prev, [key]: item };
+    });
+  };
+  const clearSelection = () => setSelected({});
 
   // 관리자 업로드 폼 상태
   const [upRegion, setUpRegion] = useState<string>(ALL_REGIONS[0] || '');
@@ -206,12 +219,14 @@ export default function RosterTab() {
   };
 
   // "정제된 명단 받기" — 이 앱 안에서 바로 주소매칭 후 정제 엑셀 즉시 다운로드
-  const handleRefineDirect = async (getFile: () => Promise<File>, region: string, key: string) => {
+  //   getFiles가 여러 개(선택모드 2개)면 한 결과로 합쳐서 정제한다.
+  const handleRefineDirect = async (getFiles: Array<() => Promise<File>>, region: string, key: string) => {
     setActionBusy(key);
     try {
-      const file = await getFile();
-      const { total, matched } = await refineExcelDirect(file, region);
+      const files = await Promise.all(getFiles.map((g) => g()));
+      const { total, matched } = await refineExcelDirect(files, region);
       showToast(`정제 완료: ${matched}/${total}건 주소 매칭 · 파일이 다운로드됩니다`);
+      clearSelection();
     } catch (e) {
       console.error('정제 실패:', e);
       showToast(e instanceof Error ? e.message : '정제 중 오류가 발생했습니다.');
@@ -221,13 +236,17 @@ export default function RosterTab() {
   };
 
   // "명단 정제하기" — 명단정제시스템(nexus-pipeline)으로 파일을 인계해 새 탭에서 이어 작업
-  //   (지자체/월 자동감지 · 2개 파일 합치기 · DB 저장 모두 그 시스템의 기존 기능 그대로 사용)
-  const handleSendToRefine = async (getFile: () => Promise<File>, region: string, key: string) => {
+  //   (지자체/월 자동감지 · 2개 파일이면 정제시스템의 기존 2개 파일 합치기 기능으로 자동 병합 ·
+  //   DB 저장까지 모두 그 시스템의 기존 기능을 그대로 사용 — 중복 구현 안 함)
+  const handleSendToRefine = async (getFiles: Array<() => Promise<File>>, region: string, key: string) => {
     setActionBusy(key);
     try {
-      const file = await getFile();
-      await sendToRefineSystem(file, region);
-      showToast('명단정제시스템으로 전송했습니다. 새로 열린 탭을 확인해주세요.');
+      const files = await Promise.all(getFiles.map((g) => g()));
+      await sendToRefineSystem(files, region);
+      showToast(files.length > 1
+        ? '명단정제시스템으로 2개 파일을 전송했습니다. 새로 열린 탭에서 지자체·월을 확인해주세요.'
+        : '명단정제시스템으로 전송했습니다. 새로 열린 탭을 확인해주세요.');
+      clearSelection();
     } catch (e) {
       console.error('전송 실패:', e);
       showToast(e instanceof Error ? e.message : '전송 중 오류가 발생했습니다.');
@@ -317,6 +336,42 @@ export default function RosterTab() {
           </p>
         </div>
       </div>
+
+      {/* 선택 항목 액션바 — 체크박스로 고른 엑셀 1~2개를 한 번에 정제(2개면 합쳐서 작업) */}
+      {selectedKeys.length > 0 && (
+        <div className="sticky top-2 z-10 glass rounded-2xl p-4 border-2 border-indigo-200 shadow-lg">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Layers size={18} className="text-indigo-500 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-black text-indigo-700">선택 {selectedKeys.length}개</div>
+              <div className="text-[11px] font-bold text-slate-400 truncate">
+                {selectedKeys.map((k) => selected[k].label).join(' + ')}
+              </div>
+            </div>
+            <button
+              onClick={() => handleRefineDirect(selectedKeys.map((k) => selected[k].getFile), selected[selectedKeys[0]].region, 'SEL')}
+              disabled={actionBusy === 'SEL'}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50">
+              {actionBusy === 'SEL' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              {selectedKeys.length > 1 ? '2개 합쳐서 정제 받기' : '정제된 명단 받기'}
+            </button>
+            <button
+              onClick={() => handleSendToRefine(selectedKeys.map((k) => selected[k].getFile), selected[selectedKeys[0]].region, 'SEL::send')}
+              disabled={actionBusy === 'SEL::send'}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50">
+              {actionBusy === 'SEL::send' ? <Loader2 size={14} className="animate-spin" /> : <SendHorizontal size={14} />}
+              {selectedKeys.length > 1 ? '2개 함께 명단 정제하기' : '명단 정제하기'}
+            </button>
+            <button onClick={clearSelection} title="선택 해제"
+              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+          {selectedKeys.length === 1 && (
+            <p className="text-[10px] font-bold text-indigo-400 mt-1.5">파일을 하나 더 선택하면 2개를 합쳐서 정제할 수 있습니다.</p>
+          )}
+        </div>
+      )}
 
       {/* 관리자 업로드 패널 */}
       {isAdmin && (
@@ -434,6 +489,14 @@ export default function RosterTab() {
                                     {f.note && <span className="text-amber-600">🔑 {f.note}</span>}
                                   </div>
                                 </div>
+                                {isExcel && !isZip && (
+                                  <button
+                                    onClick={() => toggleSelect(f.id, { getFile: () => fetchAsFile(f), label: f.fileName, region: f.region })}
+                                    title="선택(최대 2개 함께 정제)"
+                                    className={`shrink-0 ${selected[f.id] ? 'text-indigo-600' : 'text-slate-300 hover:text-slate-400'}`}>
+                                    {selected[f.id] ? <CheckSquare size={18} /> : <Square size={18} />}
+                                  </button>
+                                )}
                                 <button onClick={() => handleDownload(f)} disabled={busyId === f.id}
                                   className="btn-sky shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50">
                                   {busyId === f.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
@@ -442,7 +505,7 @@ export default function RosterTab() {
                                 {isExcel && !isZip && (
                                   <>
                                     <button
-                                      onClick={() => handleRefineDirect(() => fetchAsFile(f), f.region, f.id)}
+                                      onClick={() => handleRefineDirect([() => fetchAsFile(f)], f.region, f.id)}
                                       disabled={actionBusy === f.id}
                                       title="이 앱에서 바로 주소를 정제해 다운로드"
                                       className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50">
@@ -450,7 +513,7 @@ export default function RosterTab() {
                                       정제된 명단 받기
                                     </button>
                                     <button
-                                      onClick={() => handleSendToRefine(() => fetchAsFile(f), f.region, `${f.id}::send`)}
+                                      onClick={() => handleSendToRefine([() => fetchAsFile(f)], f.region, `${f.id}::send`)}
                                       disabled={actionBusy === `${f.id}::send`}
                                       title="명단정제시스템으로 보내 합치기·DB저장까지 이어서 작업"
                                       className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50">
@@ -485,6 +548,14 @@ export default function RosterTab() {
                                             ? <FileSpreadsheet size={14} className="text-emerald-500 shrink-0" />
                                             : <FileText size={14} className="text-slate-400 shrink-0" />}
                                           <div className="min-w-0 flex-1 text-xs font-bold text-slate-700 truncate">{entry.path}</div>
+                                          {entry.isExcel && (
+                                            <button
+                                              onClick={() => toggleSelect(entryKey, { getFile: () => extractAsFile(f, entry), label: entry.path.split('/').pop() || entry.path, region: f.region })}
+                                              title="선택(최대 2개 함께 정제)"
+                                              className={`shrink-0 ${selected[entryKey] ? 'text-indigo-600' : 'text-slate-300 hover:text-slate-400'}`}>
+                                              {selected[entryKey] ? <CheckSquare size={15} /> : <Square size={15} />}
+                                            </button>
+                                          )}
                                           <button
                                             onClick={() => handleExtractDownload(f, entry)}
                                             disabled={actionBusy === `${entryKey}::extract`}
@@ -495,7 +566,7 @@ export default function RosterTab() {
                                           {entry.isExcel && (
                                             <>
                                               <button
-                                                onClick={() => handleRefineDirect(() => extractAsFile(f, entry), f.region, entryKey)}
+                                                onClick={() => handleRefineDirect([() => extractAsFile(f, entry)], f.region, entryKey)}
                                                 disabled={actionBusy === entryKey}
                                                 title="이 앱에서 바로 주소를 정제해 다운로드"
                                                 className="shrink-0 flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50">
@@ -503,7 +574,7 @@ export default function RosterTab() {
                                                 정제된 명단 받기
                                               </button>
                                               <button
-                                                onClick={() => handleSendToRefine(() => extractAsFile(f, entry), f.region, `${entryKey}::send`)}
+                                                onClick={() => handleSendToRefine([() => extractAsFile(f, entry)], f.region, `${entryKey}::send`)}
                                                 disabled={actionBusy === `${entryKey}::send`}
                                                 title="명단정제시스템으로 보내 합치기·DB저장까지 이어서 작업"
                                                 className="shrink-0 flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50">
