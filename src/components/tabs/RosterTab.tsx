@@ -13,6 +13,7 @@ import {
 import {
   ClipboardList, Download, Trash2, UploadCloud, Loader2, FileSpreadsheet, Lock,
   Folder, FolderOpen, FileText, Sparkles, SendHorizontal, Square, CheckSquare, Layers, X,
+  Key, Mail,
 } from 'lucide-react';
 import { db, storage, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
@@ -35,6 +36,9 @@ interface RosterFile {
   allowedCompanies?: string[]; // 지정 시 이 회원사들(+관리자)만 노출. 미지정이면 지역(region) 매핑 사용
   uploadedAt: string;
   uploadedBy?: string;
+  passwordFound?: string;      // 원본 메일에서 자동으로 찾아 이미 해제한 암호(감사·확인용 — 파일은 이미 평문)
+  sourceMailSubject?: string;  // 원본 메일 제목(자동수집분만 — 있으면 "메일 보기" 버튼 노출)
+  sourceMailBody?: string;     // 원본 메일 본문(태그 제거된 텍스트)
 }
 
 const ROSTERS_PATH = ['artifacts', APP_ID, 'public', 'data', 'rosters'] as const;
@@ -61,6 +65,9 @@ export default function RosterTab() {
   const [zipLoading, setZipLoading] = useState<Record<string, boolean>>({});
   // 정제 액션(정제된 명단 받기/명단 정제하기) 진행 중 키 — fileId 또는 fileId::entryPath(::send)
   const [actionBusy, setActionBusy] = useState<string | null>(null);
+
+  // "메일 보기" — 원본 메일 제목·본문을 보는 모달(자동수집된 파일만 가능)
+  const [viewingMail, setViewingMail] = useState<RosterFile | null>(null);
 
   // 엑셀 다중 선택(최대 2개) — "2개 파일 합쳐서 정제" 요청 대응. key로 토글, getFile은 지연 실행.
   interface SelectedItem { getFile: () => Promise<File>; label: string; region: string }
@@ -479,7 +486,7 @@ export default function RosterTab() {
                                     {f.fileName}
                                     {isZip && <span className="ml-1.5 text-[10px] text-sky-400 font-black align-middle">폴더</span>}
                                   </div>
-                                  <div className="text-[10px] font-bold text-slate-400 flex flex-wrap items-center gap-x-2">
+                                  <div className="text-[10px] font-bold text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
                                     <span className="text-sky-500">{f.category}</span>
                                     <span>{fmtSize(f.size)}</span>
                                     {f.adminOnly && <span className="text-amber-600 font-black">🔒 관리자 전용</span>}
@@ -487,6 +494,17 @@ export default function RosterTab() {
                                       <span className="text-emerald-600 font-bold">🏢 {f.allowedCompanies.join('·')}</span>
                                     )}
                                     {f.note && <span className="text-amber-600">🔑 {f.note}</span>}
+                                    {f.passwordFound && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white font-black text-[10px] shadow-sm">
+                                        <Key size={10} /> 원본 암호: {f.passwordFound} (자동 해제됨)
+                                      </span>
+                                    )}
+                                    {f.sourceMailSubject && (
+                                      <button onClick={(e) => { e.stopPropagation(); setViewingMail(f); }}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 hover:bg-sky-200 font-bold text-[10px]">
+                                        <Mail size={10} /> 원본 메일 보기
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                                 {isExcel && !isZip && (
@@ -601,6 +619,44 @@ export default function RosterTab() {
         })
       )}
       {dialog}
+
+      {/* 원본 메일 보기 모달 — 자동수집 시 저장해둔 제목·본문(태그 제거) 열람 */}
+      {viewingMail && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4"
+          onClick={() => setViewingMail(null)}>
+          <div className="glass rounded-2xl p-5 max-w-lg w-full max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Mail size={18} className="text-sky-500 shrink-0" />
+                <h3 className="font-black text-slate-800 text-sm truncate">원본 메일</h3>
+              </div>
+              <button onClick={() => setViewingMail(null)} className="shrink-0 text-slate-400 hover:text-slate-600">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="text-[11px] font-bold text-slate-400 mb-2">
+              {viewingMail.region} · {viewingMail.fileName}
+            </div>
+            <div className="bg-white/70 border border-sky-100 rounded-xl p-3 mb-2">
+              <div className="text-sm font-black text-slate-800">{viewingMail.sourceMailSubject}</div>
+            </div>
+            {viewingMail.passwordFound && (
+              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 mb-2">
+                <Key size={14} className="text-emerald-600 shrink-0" />
+                <span className="text-xs font-bold text-emerald-700">
+                  이 메일에서 찾은 암호(<b>{viewingMail.passwordFound}</b>)로 파일이 이미 자동 해제되어 저장됐습니다.
+                </span>
+              </div>
+            )}
+            <div className="overflow-y-auto flex-1 bg-white/50 border border-sky-50 rounded-xl p-3">
+              <p className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
+                {viewingMail.sourceMailBody || '(본문 없음)'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

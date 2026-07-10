@@ -16,7 +16,7 @@ import { loadToken, fetchAllMails, fetchMailBody } from './worksmail.mjs';
 import { planMail, extractCategory } from './classify-yanggok.mjs';
 import {
   getGoogleToken, listAttachments, downloadAttachment, uploadToStorage,
-  loadExistingKeys, createRosterDoc, safeName, extContentType,
+  loadExistingKeys, createRosterDoc, safeName, extContentType, cleanMailBodyForDisplay,
 } from './persist-rosters.mjs';
 import { sendTelegram } from './notify-telegram.mjs';
 import { extractPassword } from './password-extract.mjs';
@@ -125,7 +125,7 @@ async function main() {
     for (const { m, plan } of targets) {
       let atts;
       try { atts = await listAttachments(token, m.mailId); } catch (e) { log(`    ✗ 첨부목록 실패 ${m.mailId}: ${e.message.slice(0, 80)}`); continue; }
-      // 메일 본문은 이 메일의 첨부 중 하나라도 암호화로 밝혀졌을 때만 지연 조회(API 절약) + 캐시.
+      // 메일 본문 — 이 메일의 첨부 전체가 공유하므로 1회만 조회+캐시(암호 추출용 + 화면 열람용 저장).
       let bodyCache;
       const getBody = async () => {
         if (bodyCache === undefined) { try { bodyCache = await fetchMailBody(token, m.mailId); } catch { bodyCache = ''; } }
@@ -148,18 +148,20 @@ async function main() {
         try {
           let buf = await downloadAttachment(token, m.mailId, a.attachmentId);
           let note = plan.note;
+          let passwordFound = '';
           const isXlsx = /\.xlsx?$/i.test(a.filename);
           const isZip = /\.zip$/i.test(a.filename);
+          const rawBody = await getBody(); // 암호 유무와 무관하게 항상 저장(리스트에서 원문 열람용)
 
           if (isXlsx && await isXlsxEncrypted(buf)) {
-            const pw = extractPassword({ subject: m.subject, body: await getBody(), fileName: a.filename });
+            const pw = extractPassword({ subject: m.subject, body: rawBody, fileName: a.filename });
             const plain = pw ? await decryptXlsx(buf, pw) : null;
-            if (plain) { buf = plain; log(`    🔓 암호 해제(엑셀): ${a.filename}`); }
+            if (plain) { buf = plain; passwordFound = pw; log(`    🔓 암호 해제(엑셀): ${a.filename} (pw=${pw})`); }
             else note = [note, '🔒 암호 확인 필요(메일에서 못 찾음) — 담당자 확인'].filter(Boolean).join(' · ');
           } else if (isZip && await zipHasEncryptedXlsx(buf)) {
-            const pw = extractPassword({ subject: m.subject, body: await getBody(), fileName: a.filename });
+            const pw = extractPassword({ subject: m.subject, body: rawBody, fileName: a.filename });
             const { changed, buf: outBuf, stillEncrypted } = await decryptZipEntries(buf, pw);
-            if (changed) { buf = outBuf; log(`    🔓 암호 해제(zip 안 엑셀): ${a.filename}`); }
+            if (changed) { buf = outBuf; passwordFound = pw; log(`    🔓 암호 해제(zip 안 엑셀): ${a.filename} (pw=${pw})`); }
             if (stillEncrypted) note = [note, '🔒 암호 확인 필요(메일에서 못 찾음) — 담당자 확인'].filter(Boolean).join(' · ');
           }
 
@@ -171,6 +173,8 @@ async function main() {
             note, adminOnly: plan.adminOnly,
             uploadedAt: new Date().toISOString(), uploadedBy: '양곡 자동수집',
             sourceMailId: m.mailId, sourceAccount: acc.name,
+            sourceMailSubject: m.subject, sourceMailBody: cleanMailBodyForDisplay(rawBody),
+            passwordFound,
           });
           if (created) {
             existingIds.add(docId); legacyKeys.add(legacyKey); legacyKeys.add(regionFileKey);

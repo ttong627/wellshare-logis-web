@@ -176,6 +176,20 @@ export async function patchRosterDoc(fsToken, docId, fields) {
   if (!r.ok) throw new Error(`patch ${docId} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
 }
 
+// 메일 본문(HTML)에서 표시용 텍스트만 추출 — 태그·엔티티 제거, 과도한 공백 정리, 길이 제한
+// (Firestore 문서 크기·UI 가독성 보호. 원문 전체가 필요하면 메일함에서 직접 확인).
+export function cleanMailBodyForDisplay(html, maxLen = 3000) {
+  const text = String(html || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .split('\n').map((l) => l.trim()).join('\n')
+    .trim();
+  return text.length > maxLen ? `${text.slice(0, maxLen)}…(생략)` : text;
+}
+
 // 결정적 ID로 문서 생성(멱등) — 이미 있으면 409 → false 반환
 export async function createRosterDoc(fsToken, docId, d) {
   const fields = {
@@ -192,6 +206,9 @@ export async function createRosterDoc(fsToken, docId, d) {
     uploadedBy: { stringValue: d.uploadedBy },
     sourceMailId: { stringValue: String(d.sourceMailId || '') },
     sourceAccount: { stringValue: String(d.sourceAccount || '') },
+    sourceMailSubject: { stringValue: String(d.sourceMailSubject || '') },
+    sourceMailBody: { stringValue: String(d.sourceMailBody || '') },
+    passwordFound: { stringValue: String(d.passwordFound || '') },
   };
   const r = await fetch(`${FS_BASE}/${ROSTERS}?documentId=${encodeURIComponent(docId)}`, {
     method: 'POST',
