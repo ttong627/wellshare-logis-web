@@ -81,6 +81,12 @@ export function normalizeMail(m, folderName) {
 // 수집에서 보통 제외할 시스템 폴더(보낸/임시/수신확인/메모는 보건소 발주 아님)
 const SKIP_FOLDERS = new Set(['보낸메일함', '임시보관함', '수신확인', '메모함']);
 
+// 메일 1건 본문(HTML) — 암호 추출 등 필요할 때만 지연 호출(전체 수집 시 매번 부르면 API 낭비).
+export async function fetchMailBody(token, mailId) {
+  const j = await api(token, `/${mailId}`);
+  return j.mail?.body || '';
+}
+
 // 전체 폴더 순회 수집 → 정규화 메일 배열(folderName 포함)
 //   includeSpamTrash: 스팸/휴지통도 읽음(형 요청 "스팸함도 확인"). 분류에서 보건소 매칭된 것만 업무로 추림.
 export async function fetchAllMails(token, { perFolder = 5000, includeSpamTrash = true, since = null } = {}) {

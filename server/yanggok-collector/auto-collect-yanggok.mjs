@@ -1,7 +1,10 @@
 // 정부양곡 명단 자동수집 오케스트레이터 — VM cron이 2시간 주기 실행 (yyplus 데몬 20분 뒤 오프셋).
 //   ① 계정별 nworks 토큰을 '읽기전용'으로 사용 (갱신은 yyplus auto-collect 담당 — 이중갱신 회전충돌 방지)
 //   ② 최근 N일 메일 수집 → 양곡 명단 분류(classify-yanggok) → 첨부 다운로드 → Storage/Firestore 멱등 적재
-//   ③ 신규 적재·토큰 장애를 텔레그램 ops 채널로 알림(12h 중복방지)
+//   ③ 첨부(엑셀 직접 또는 zip 안 엑셀)가 암호화면 메일 제목·본문·파일명에서 암호를 찾아 자동 해제
+//      후 평문으로 저장(원문 수급자 명단을 회원사가 암호 없이 바로 열 수 있게). 암호를 못 찾으면
+//      암호화 상태 그대로 저장 + note에 "🔒 암호 확인 필요" 표시(추측 금지 — 실제 암호만 시도).
+//   ④ 신규 적재·토큰 장애를 텔레그램 ops 채널로 알림(12h 중복방지)
 //   사용: node auto-collect-yanggok.mjs                # dry-run(쓰기 없음)
 //         node auto-collect-yanggok.mjs --commit       # 실제 적재
 //         node auto-collect-yanggok.mjs --commit --days 45   # 수집 창 조정(기본 14일)
@@ -9,13 +12,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadToken, fetchAllMails } from './worksmail.mjs';
+import { loadToken, fetchAllMails, fetchMailBody } from './worksmail.mjs';
 import { planMail, extractCategory } from './classify-yanggok.mjs';
 import {
   getGoogleToken, listAttachments, downloadAttachment, uploadToStorage,
   loadExistingKeys, createRosterDoc, safeName, extContentType,
 } from './persist-rosters.mjs';
 import { sendTelegram } from './notify-telegram.mjs';
+import { extractPassword } from './password-extract.mjs';
+import { isXlsxEncrypted, decryptXlsx, decryptZipEntries, zipHasEncryptedXlsx } from './decrypt.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const NW = path.join(os.homedir(), '.config', 'nworks');
@@ -120,6 +125,12 @@ async function main() {
     for (const { m, plan } of targets) {
       let atts;
       try { atts = await listAttachments(token, m.mailId); } catch (e) { log(`    ✗ 첨부목록 실패 ${m.mailId}: ${e.message.slice(0, 80)}`); continue; }
+      // 메일 본문은 이 메일의 첨부 중 하나라도 암호화로 밝혀졌을 때만 지연 조회(API 절약) + 캐시.
+      let bodyCache;
+      const getBody = async () => {
+        if (bodyCache === undefined) { try { bodyCache = await fetchMailBody(token, m.mailId); } catch { bodyCache = ''; } }
+        return bodyCache;
+      };
       for (const a of atts) {
         const docId = `MAIL_${acc.key}_${m.mailId}_${a.attachmentId}`;
         const legacyKey = `${plan.region}|${plan.month}|${a.filename}`;
@@ -135,13 +146,29 @@ async function main() {
           continue;
         }
         try {
-          const buf = await downloadAttachment(token, m.mailId, a.attachmentId);
+          let buf = await downloadAttachment(token, m.mailId, a.attachmentId);
+          let note = plan.note;
+          const isXlsx = /\.xlsx?$/i.test(a.filename);
+          const isZip = /\.zip$/i.test(a.filename);
+
+          if (isXlsx && await isXlsxEncrypted(buf)) {
+            const pw = extractPassword({ subject: m.subject, body: await getBody(), fileName: a.filename });
+            const plain = pw ? await decryptXlsx(buf, pw) : null;
+            if (plain) { buf = plain; log(`    🔓 암호 해제(엑셀): ${a.filename}`); }
+            else note = [note, '🔒 암호 확인 필요(메일에서 못 찾음) — 담당자 확인'].filter(Boolean).join(' · ');
+          } else if (isZip && await zipHasEncryptedXlsx(buf)) {
+            const pw = extractPassword({ subject: m.subject, body: await getBody(), fileName: a.filename });
+            const { changed, buf: outBuf, stillEncrypted } = await decryptZipEntries(buf, pw);
+            if (changed) { buf = outBuf; log(`    🔓 암호 해제(zip 안 엑셀): ${a.filename}`); }
+            if (stillEncrypted) note = [note, '🔒 암호 확인 필요(메일에서 못 찾음) — 담당자 확인'].filter(Boolean).join(' · ');
+          }
+
           await uploadToStorage(gcsToken, storagePath, buf, contentType, a.filename);
           const created = await createRosterDoc(fsToken, docId, {
             region: plan.region, month: plan.month,
             category: extractCategory(m.subject, a.filename),
             fileName: a.filename, contentType, size: buf.length, storagePath,
-            note: plan.note, adminOnly: plan.adminOnly,
+            note, adminOnly: plan.adminOnly,
             uploadedAt: new Date().toISOString(), uploadedBy: '양곡 자동수집',
             sourceMailId: m.mailId, sourceAccount: acc.name,
           });

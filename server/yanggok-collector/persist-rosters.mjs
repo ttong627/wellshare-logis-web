@@ -127,6 +127,55 @@ export async function loadExistingKeys(fsToken) {
   return { ids, legacy };
 }
 
+// 모든 rosters 문서(필드 포함) — backfill-decrypt-existing.mjs가 사용
+export async function listAllRosterDocs(fsToken) {
+  const out = [];
+  let pageToken = null;
+  do {
+    const q = new URLSearchParams({ pageSize: '300' });
+    if (pageToken) q.set('pageToken', pageToken);
+    const r = await fetch(`${FS_BASE}/${ROSTERS}?${q}`, { headers: { Authorization: `Bearer ${fsToken}` }, signal: AbortSignal.timeout(30000) });
+    if (!r.ok) throw new Error(`rosters 나열 HTTP ${r.status}`);
+    const j = await r.json();
+    for (const doc of (j.documents || [])) {
+      const f = doc.fields || {};
+      out.push({
+        id: doc.name.split('/').pop(),
+        region: f.region?.stringValue || '', month: f.month?.stringValue || '',
+        fileName: f.fileName?.stringValue || '', contentType: f.contentType?.stringValue || '',
+        storagePath: f.storagePath?.stringValue || '', note: f.note?.stringValue || '',
+      });
+    }
+    pageToken = j.nextPageToken || null;
+  } while (pageToken);
+  return out;
+}
+
+// GCS 객체 다운로드/업로드(같은 경로 덮어쓰기, 다운로드 토큰 새로 발급) — 복호화 재저장용
+export async function downloadFromStorage(gcsToken, objectPath) {
+  const r = await fetch(`https://storage.googleapis.com/storage/v1/b/${BUCKET}/o/${encodeURIComponent(objectPath)}?alt=media`, {
+    headers: { Authorization: `Bearer ${gcsToken}` }, signal: AbortSignal.timeout(60000),
+  });
+  if (!r.ok) throw new Error(`Storage 다운로드 HTTP ${r.status}`);
+  return Buffer.from(await r.arrayBuffer());
+}
+
+// Firestore 문서 필드 부분 patch(updateMask) — note/size/decrypted 갱신용
+export async function patchRosterDoc(fsToken, docId, fields) {
+  const mask = Object.keys(fields).map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
+  const body = {};
+  for (const [k, v] of Object.entries(fields)) {
+    body[k] = typeof v === 'boolean' ? { booleanValue: v } : typeof v === 'number' ? { integerValue: String(v) } : { stringValue: String(v) };
+  }
+  const r = await fetch(`${FS_BASE}/${ROSTERS}/${docId}?${mask}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${fsToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: body }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!r.ok) throw new Error(`patch ${docId} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+}
+
 // 결정적 ID로 문서 생성(멱등) — 이미 있으면 409 → false 반환
 export async function createRosterDoc(fsToken, docId, d) {
   const fields = {
