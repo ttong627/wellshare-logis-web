@@ -16,9 +16,26 @@ export interface ZipEntryInfo {
   size: number;
 }
 
+// zip 파일명 인코딩 자동 판별 — 윈도우 탐색기/알집 등으로 압축한 zip은 파일명을 UTF-8이 아닌
+// CP949(EUC-KR)로 저장한다. JSZip은 기본적으로 UTF-8로만 해석해 한글이 깨진다(예: "õ-)2026..."
+// 형 깨짐 신고). UTF-8 엄격 디코딩을 먼저 시도하고 실패하면(잘못된 바이트 시퀀스) EUC-KR로 재시도.
+function decodeZipFileName(bytes: string[] | Uint8Array | Buffer): string {
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes as unknown as ArrayLike<number>);
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(arr);
+  } catch {
+    try {
+      return new TextDecoder('euc-kr').decode(arr);
+    } catch {
+      return new TextDecoder('utf-8').decode(arr); // 최후 폴백(그래도 표시는 되게)
+    }
+  }
+}
+const ZIP_LOAD_OPTS = { decodeFileName: decodeZipFileName } as const;
+
 // ── ① zip 목록/추출 ──────────────────────────────────────────────
 export async function listZipEntries(blob: Blob): Promise<ZipEntryInfo[]> {
-  const zip = await JSZip.loadAsync(blob);
+  const zip = await JSZip.loadAsync(blob, ZIP_LOAD_OPTS);
   const entries: ZipEntryInfo[] = [];
   zip.forEach((path, entry) => {
     if (entry.dir) return;
@@ -33,7 +50,8 @@ export async function listZipEntries(blob: Blob): Promise<ZipEntryInfo[]> {
 }
 
 export async function extractZipEntry(blob: Blob, path: string): Promise<Blob> {
-  const zip = await JSZip.loadAsync(blob);
+  // listZipEntries와 동일한 decodeFileName을 써야 path 문자열이 일치한다(인코딩 판별 결과 동일 보장).
+  const zip = await JSZip.loadAsync(blob, ZIP_LOAD_OPTS);
   const entry = zip.file(path);
   if (!entry) throw new Error(`zip 안에서 파일을 찾을 수 없습니다: ${path}`);
   return entry.async('blob');
