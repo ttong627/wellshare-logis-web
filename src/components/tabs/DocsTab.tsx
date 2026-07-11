@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronUp, Edit3, FileText, Save, RotateCcw,
   Code, Eye, Minus, Type, Palette, Layout, Layers, ClipboardPaste,
 } from 'lucide-react';
-import { doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, runTransaction, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
@@ -337,19 +337,34 @@ export default function DocsTab() {
     })();
   }, []);
 
+  // ⚠️ 2026-07-11 아카이빙 설계 반영: history가 official_docs/main 문서 안 배열로 무기한
+  // 누적돼(당시 이미 1MB 한도의 35%) 서브컬렉션(official_docs/main/history/{id})으로 이전했다.
+  // 조회도 배열 전체 대신 최신 300건만 가져온다 — 지금 규모(수십 건)에선 페이지네이션 없이도
+  // 충분하고, 더 늘어나면 그때 "더보기" 커서 페이지네이션을 추가하면 된다(오버엔지니어링 방지).
+  const HISTORY_LOAD_LIMIT = 300;
   useEffect(() => {
     (async () => {
       try {
-        const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main'));
-        if (snap.exists()) {
-          const h: DocHistoryItem[] = snap.data().history || [];
-          setHistory(h.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-          const thisYear = h.filter(x => x.docNo.year === new Date().getFullYear() && x.type === selectedId);
-          setNextDocNum(thisYear.reduce((m, x) => Math.max(m, x.docNo.num), 0) + 1);
-        }
+        const historyCol = collection(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main', 'history');
+        const snap = await getDocs(query(historyCol, orderBy('timestamp', 'desc'), limit(HISTORY_LOAD_LIMIT)));
+        setHistory(snap.docs.map(d => d.data() as DocHistoryItem));
       } catch (e) {
         console.error('공문 이력 로드 오류:', e);
         showToast('공문 이력을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.');
+      }
+    })();
+  }, []);
+
+  // 문서번호 미리보기용 — 연도+유형별 카운터 문서 1개만 조회(전체 이력 스캔 안 함)
+  useEffect(() => {
+    (async () => {
+      try {
+        const year = new Date().getFullYear();
+        const counterRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main', 'counters', `${year}_${selectedId}`);
+        const snap = await getDoc(counterRef);
+        setNextDocNum((snap.exists() ? (snap.data().lastNum as number) : 0) + 1);
+      } catch (e) {
+        console.error('문서번호 카운터 조회 오류:', e);
       }
     })();
   }, [selectedId]);
@@ -469,16 +484,16 @@ export default function DocsTab() {
     if (form.pasteMode && !form.pastedHeaderHtml && !form.pastedBodyHtml && !form.pastedFooterHtml) return showToast('붙여넣기 내용을 입력해주세요.');
     setIsSaving(true);
     try {
-      const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main');
       const year = new Date().getFullYear();
-      // ⚠️ 2026-07-11 점검 발견: nextDocNum은 렌더 시점 로컬 state라 관리자 2명이 거의 동시에
-      // 발송하면 같은 문서번호가 중복될 수 있었다 — runTransaction으로 "최신 이력 조회 → 번호
-      // 계산 → 저장"을 원자화해 중복 채번을 막는다.
-      const { item, dn, updated } = await runTransaction(db, async (tx) => {
-        const snap = await tx.get(docRef);
-        const existing: DocHistoryItem[] = snap.exists() ? (snap.data().history || []) : [];
-        const thisYear = existing.filter(x => x.docNo.year === year && x.type === selectedId);
-        const num = thisYear.reduce((m, x) => Math.max(m, x.docNo.num), 0) + 1;
+      // ⚠️ 2026-07-11: history를 official_docs/main 문서 안 배열로 무기한 append하던 구조를
+      // 서브컬렉션(main/history/{id})으로 옮겼다(1MB 문서 한도 위험 제거). 문서번호는 별도
+      // 카운터 문서(main/counters/{year}_{type})를 트랜잭션으로 원자적 +1 — Firestore 클라이언트
+      // 트랜잭션은 특정 문서 read만 가능하고 쿼리는 못 하므로, "이 연도·유형 최신 이력을 스캔해
+      // 최대값 찾기" 대신 "작은 카운터 문서 하나를 원자적으로 증가"시키는 표준 패턴을 쓴다.
+      const counterRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main', 'counters', `${year}_${selectedId}`);
+      const { item, dn } = await runTransaction(db, async (tx) => {
+        const counterSnap = await tx.get(counterRef);
+        const num = (counterSnap.exists() ? (counterSnap.data().lastNum as number) : 0) + 1;
         const dn = `${template.docPrefix}-${year}-${String(num).padStart(3, '0')}`;
         const item: DocHistoryItem = {
           id: `${Date.now()}`, timestamp: new Date().toISOString(),
@@ -493,11 +508,11 @@ export default function DocsTab() {
             docNumber: dn, settingsSnapshot: {} as any,
           },
         };
-        const updated = [item, ...existing];
-        tx.set(docRef, { history: updated, updatedAt: new Date().toISOString() });
-        return { item, dn, updated };
+        tx.set(counterRef, { lastNum: num });
+        tx.set(doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main', 'history', item.id), item);
+        return { item, dn };
       });
-      setHistory(updated);
+      setHistory(h => [item, ...h]);
       setNextDocNum(item.docNo.num + 1);
       setForm(f => ({ ...f, docNumber: dn }));
       showToast(`공문이 저장되었습니다. (${dn})`);
@@ -538,10 +553,10 @@ export default function DocsTab() {
 
   const handleDeleteHistory = async (id: string) => {
     if (!confirm('이 공문 이력을 삭제하시겠습니까?')) return;
-    const updated = history.filter(h => h.id !== id);
     try {
-      await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main'), { history: updated, updatedAt: new Date().toISOString() });
-      setHistory(updated);
+      // 서브컬렉션 단건 삭제 — 배열 전체를 다시 쓰지 않으므로 동시에 다른 이력이 추가/삭제돼도 안전.
+      await deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main', 'history', id));
+      setHistory(h => h.filter(x => x.id !== id));
       showToast('이력이 삭제되었습니다.');
     } catch (e) { showToast('삭제 오류: ' + (e as Error).message); }
   };
@@ -938,7 +953,7 @@ export default function DocsTab() {
             )}
             <button onClick={() => setShowHistory(p => !p)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all border border-white/30 hover:border-white/60 text-white hover:bg-white/15">
-              <History size={15} /> 이력 ({history.length})
+              <History size={15} /> 이력 (최근 {history.length}건)
             </button>
           </div>
         </div>
