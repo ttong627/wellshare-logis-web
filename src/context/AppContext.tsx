@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useEffect } from 'react';
-import { collection, query, onSnapshot, addDoc, doc, setDoc, where, arrayUnion } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, setDoc, where, arrayUnion } from 'firebase/firestore';
 import { db, APP_ID } from '../firebase';
 import { useAuth, AuthState } from '../hooks/useAuth';
 import { useMonthData } from '../hooks/useMonthData';
@@ -9,10 +9,9 @@ import {
   BillingReport, BillingSummary, OrderSummaries, EcountSales,
 } from '../types';
 import {
-  REGION_ORDER, SEOUL_REGIONS, INITIAL_ZONES, INITIAL_REGIONS_DATA,
+  REGION_ORDER, SEOUL_REGIONS,
 } from '../constants/regions';
 import { PARTNER_REGIONS, PARTNER_REGIONS_INVERSE } from '../constants/members';
-import { parseNumber, CLOSED_MSG } from '../lib/utils';
 
 // ─── Computed Helpers ─────────────────────────────────────────────────
 

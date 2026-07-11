@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PenTool, CheckSquare, CreditCard, ReceiptText, XCircle } from 'lucide-react';
+import { useEscToClose } from '../../hooks/useEscToClose';
 
 interface WorkflowGuideProps {
   loginCount: number;
@@ -13,6 +14,7 @@ export default function WorkflowGuide({ loginCount, onClose }: WorkflowGuideProp
     if (dontShowAgain) localStorage.setItem('hideWorkflowGuide', 'true');
     onClose();
   };
+  useEscToClose(true, handleClose);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">

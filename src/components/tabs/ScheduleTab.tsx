@@ -3,14 +3,12 @@ import {
   Plus, Trash2, Search, RotateCcw, Printer, Download, FileDown,
   UserPlus, Calendar, Users, LayoutGrid,
 } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { REGION_ORDER, SEOUL_REGIONS, GYEONGGI_REGIONS } from '../../constants/regions';
 import { ScheduleItem, ScheduleData, Driver } from '../../types';
-import { safeRender } from '../../lib/utils';
+import { safeRender, escapeHtml } from '../../lib/utils';
 
 const DONG_DATA: Record<string, string[]> = {
   '부천시 소사구': ['심곡본동', '심곡본1동', '소사본동', '소사본3동', '범박동', '괴안동', '역곡3동', '송내1동', '송내2동', '옥길동'],
@@ -598,13 +596,13 @@ export default function ScheduleTab() {
       const rowBg = item.isCompleted ? '#fffbe6' : (idx % 2 === 0 ? '#fff' : '#f5f7fa');
       return `<tr style="height:${forPdf ? 17 : 19}px;background:${rowBg};">
         <td style="${c}">${idx + 1}</td>
-        <td style="${c}font-weight:600;">${item.dong || ''}</td>
-        <td style="${c}font-weight:700;">${item.driverName || ''}</td>
-        <td style="${c}">${item.driverPhone || ''}</td>
-        <td style="${c}color:#c05000;">${item.emergencyPhone || ''}</td>
-        <td style="${c}font-weight:700;background:${dateBg};color:${dateClr};">${dateStr}</td>
-        <td style="${c}font-weight:700;background:${item.isCompleted ? '#FFB300' : dateBg};color:${dateClr};">${completion}</td>
-        <td style="${c}color:#555;">${item.notes || ''}</td>
+        <td style="${c}font-weight:600;">${escapeHtml(item.dong)}</td>
+        <td style="${c}font-weight:700;">${escapeHtml(item.driverName)}</td>
+        <td style="${c}">${escapeHtml(item.driverPhone)}</td>
+        <td style="${c}color:#c05000;">${escapeHtml(item.emergencyPhone)}</td>
+        <td style="${c}font-weight:700;background:${dateBg};color:${dateClr};">${escapeHtml(dateStr)}</td>
+        <td style="${c}font-weight:700;background:${item.isCompleted ? '#FFB300' : dateBg};color:${dateClr};">${escapeHtml(completion)}</td>
+        <td style="${c}color:#555;">${escapeHtml(item.notes)}</td>
       </tr>`;
     }).join('');
     const emptyCount = Math.max(0, 35 - items.length);
@@ -648,6 +646,12 @@ export default function ScheduleTab() {
     if (!items.length) return showToast('내보낼 데이터가 없습니다.');
     setIsSaving(true);
     try {
+      // PDF 내보내기를 실제로 누를 때만 jsPDF/html2canvas를 불러온다 — 둘 다 무거운 라이브러리라
+      // ScheduleTab 진입 즉시 로드하면 탭 청크가 커진다(2026-07-11 점검, 640KB→분리 후 축소).
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
       const { title, tableHtml } = buildReportHtml(true);
       const container = document.createElement('div');
       container.style.cssText = 'position:absolute;left:-9999px;top:0;width:780px;background:white;padding:10px 12px;';

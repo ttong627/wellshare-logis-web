@@ -4,6 +4,7 @@
 //   보안: Storage 다운로드는 로그인 게이트(storage.rules), 메타는 인증 읽기·관리자 쓰기.
 //   수급자 개인정보(PII)이므로 UI는 담당 지역만 보여주고, 파일은 클릭 시 즉시 받도록만 한다(미리보기 없음).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy,
 } from 'firebase/firestore';
@@ -19,6 +20,7 @@ import { db, storage, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { PARTNER_REGIONS } from '../../constants/members';
 import { useConfirm } from '../shared/useConfirm';
+import { useEscToClose } from '../../hooks/useEscToClose';
 import { listZipEntries, extractZipEntry, refineExcelDirect, sendToRefineSystem, type ZipEntryInfo } from '../../lib/rosterRefine';
 
 // 명단 파일 메타(Firestore: artifacts/{APP_ID}/public/data/rosters)
@@ -68,6 +70,7 @@ export default function RosterTab() {
 
   // "메일 보기" — 원본 메일 제목·본문을 보는 모달(자동수집된 파일만 가능)
   const [viewingMail, setViewingMail] = useState<RosterFile | null>(null);
+  useEscToClose(!!viewingMail, () => setViewingMail(null));
 
   // 엑셀 다중 선택(최대 2개) — "2개 파일 합쳐서 정제" 요청 대응. key로 토글, getFile은 지연 실행.
   interface SelectedItem { getFile: () => Promise<File>; label: string; region: string }
@@ -263,8 +266,20 @@ export default function RosterTab() {
   };
 
   // 관리자 업로드
+  const UPLOAD_ALLOWED_EXT = ['xlsx', 'xls', 'pdf', 'zip', 'hwp', 'hwpx', 'docx'];
   const handleUpload = async (file: File) => {
     if (!isAdmin || !upRegion || !upMonth) return;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (!UPLOAD_ALLOWED_EXT.includes(ext)) {
+      showToast(`지원하지 않는 파일 형식입니다(.${ext || '없음'}). 허용: ${UPLOAD_ALLOWED_EXT.join(', ')}`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    if (file.size === 0) {
+      showToast('빈 파일(0바이트)은 업로드할 수 없습니다.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
     setUploading(true);
     try {
       const safe = file.name.replace(/[\\/:*?"<>|]+/g, '_');
@@ -421,6 +436,7 @@ export default function RosterTab() {
             <span className="text-xs font-bold text-amber-700">🔒 본사 관리자 전용 (회원사에 안 보임 · 부천 메일함 명단 등)</span>
           </label>
           <input ref={fileInputRef} type="file" disabled={uploading}
+            accept=".xlsx,.xls,.pdf,.zip,.hwp,.hwpx,.docx"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
             className="block w-full text-xs font-bold text-sky-700 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-sky-100 file:text-sky-700 file:font-bold hover:file:bg-sky-200" />
           {uploading && (
@@ -620,8 +636,13 @@ export default function RosterTab() {
       )}
       {dialog}
 
-      {/* 원본 메일 보기 모달 — 자동수집 시 저장해둔 제목·본문(태그 제거) 열람 */}
-      {viewingMail && (
+      {/* 원본 메일 보기 모달 — 자동수집 시 저장해둔 제목·본문(태그 제거) 열람.
+          ⚠️ 2026-07-11 실사고: 이 탭의 최상위 div는 진입 애니메이션(.anim-in, transform:translateY
+          → fill-mode both)을 쓰는데, transform이 걸린 조상은 하위 position:fixed의 기준을 뷰포트가
+          아닌 그 조상 박스로 바꿔버린다. 그 결과 이 모달이 화면 훨씬 아래(목록 전체 높이 한가운데)에
+          그려져 사실상 안 보였다(본문 안 보인다는 문의의 실제 원인) — useConfirm과 동일하게 항상
+          document.body로 포털 렌더링해 조상 transform의 영향을 받지 않게 한다. */}
+      {viewingMail && createPortal(
         <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4"
           onClick={() => setViewingMail(null)}>
           <div className="glass rounded-2xl p-5 max-w-lg w-full max-h-[80vh] flex flex-col"
@@ -655,7 +676,8 @@ export default function RosterTab() {
               </p>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

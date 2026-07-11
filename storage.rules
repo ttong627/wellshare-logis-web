@@ -3,9 +3,12 @@ rules_version = '2';
 // Firebase Storage 보안 규칙 — wellshare-logis
 //   · rosters/**        : 회원사 공유 명단(동대문·여주 등). 다운로드=로그인 사용자, 업로드/삭제=관리자.
 //   · rosters_admin/**  : 본사 관리자 전용 명단(부천 메일함 등). 열람·다운로드·쓰기 모두 관리자만.
-//   · 그 외(doc_images 등): 기존대로 로그인 사용자 읽기/쓰기.
+//   · 그 외(doc_images, refine-handoff 등): 기존대로 로그인 사용자 읽기/쓰기.
 //   ⚠️ Storage 규칙은 매칭되는 규칙 중 하나라도 허용하면 통과(OR) → 광역 규칙이 rosters 계열을
 //      덮어 권한이 새지 않도록, 광역 규칙에서 rosters/rosters_admin 경로를 명시적으로 제외한다.
+//   ⚠️ 2026-07-11 실사고: {allPaths=**}는 path 타입이라 .matches()(string 전용)를 쓰면 타입
+//      오류로 항상 거부된다(광역 규칙 전체가 막혀 refine-handoff 업로드 실패) — 첫 세그먼트만
+//      떼어 문자열 비교로 수정. path 세그먼트가 1개뿐인 루트 객체도 대비해 두 형태 모두 둔다.
 service firebase.storage {
   match /b/{bucket}/o {
 
@@ -29,9 +32,12 @@ service firebase.storage {
       allow read, write: if isAdminEmail();
     }
 
-    // 그 외 경로(doc_images 등) — 로그인 사용자. rosters 계열은 위 전용 규칙만 적용되도록 제외.
-    match /{allPaths=**} {
-      allow read, write: if isSignedIn() && !allPaths.matches('rosters(_admin)?/.*');
+    // 그 외 경로(doc_images, refine-handoff 등) — 로그인 사용자. rosters 계열은 위 전용 규칙만 적용.
+    match /{first}/{rest=**} {
+      allow read, write: if isSignedIn() && first != 'rosters' && first != 'rosters_admin';
+    }
+    match /{first} {
+      allow read, write: if isSignedIn() && first != 'rosters' && first != 'rosters_admin';
     }
   }
 }

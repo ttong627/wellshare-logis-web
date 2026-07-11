@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { DatabaseBackup, Save, ArrowDownToLine } from 'lucide-react';
-import { getDocs, collection, doc, setDoc, getDoc, getFirestore } from 'firebase/firestore';
+import { getDocs, collection, doc, setDoc, getDoc, getFirestore, writeBatch } from 'firebase/firestore';
 import { initializeApp, getApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 
@@ -117,7 +117,7 @@ export default function BackupTab() {
         const existingIds = new Set((existing as { id: string }[]).map(h => h.id));
         const toAdd = newHistory.filter(h => !existingIds.has(h.id));
         const merged = [...toAdd, ...existing];
-        await setDoc(mainRef, { history: merged, updatedAt: Date.now() });
+        await setDoc(mainRef, { history: merged, updatedAt: new Date().toISOString() });
         addLog(`공문 이력 ${toAdd.length}건 추가 (기존 ${existing.length}건 유지)`);
       }
 
@@ -137,7 +137,7 @@ export default function BackupTab() {
         const existingDriverIds = new Set(existingDrivers.map(dr => dr.id));
         const toAdd = newDrivers.filter(dr => !existingDriverIds.has(dr.id));
         const merged = [...existingDrivers, ...toAdd];
-        await setDoc(listRef, { drivers: merged, updatedAt: Date.now() });
+        await setDoc(listRef, { drivers: merged, updatedAt: new Date().toISOString() });
         addLog(`기사 ${toAdd.length}명 추가 (기존 ${existingDrivers.length}명 유지)`);
       }
 
@@ -174,25 +174,45 @@ export default function BackupTab() {
     }
   };
 
+  // Firestore 배치는 500건 제한이라 안전하게 400건씩 끊어 커밋한다.
+  const BATCH_CHUNK = 400;
   const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsSaving(true);
+    let committed = 0;
+    let total = 0;
     try {
       const text = await file.text();
       const data = JSON.parse(text);
+      const writes: Array<[string, string, Record<string, unknown>]> = [];
       if (data.billing_records) {
         for (const [id, val] of Object.entries(data.billing_records)) {
-          await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', id), val as Record<string, unknown>);
+          writes.push(['billing_records', id, val as Record<string, unknown>]);
         }
       }
       if (data.settings) {
         for (const [id, val] of Object.entries(data.settings)) {
-          await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'settings', id), val as Record<string, unknown>);
+          writes.push(['settings', id, val as Record<string, unknown>]);
         }
       }
-      showToast('데이터 복원이 완료되었습니다. 페이지를 새로고침 해주세요.');
-    } catch (err) { showToast('복원 실패: ' + (err as Error).message); }
+      total = writes.length;
+      // ⚠️ 2026-07-11 점검 발견: 기존엔 문서를 하나씩 setDoc해서 중간에 실패하면 일부 월만
+      // 복원된 채 멈췄다 — writeBatch로 묶어 청크 단위 원자성을 확보하고, 실패 시 몇 건까지
+      // 반영됐는지 사용자에게 정확히 안내한다.
+      for (let i = 0; i < writes.length; i += BATCH_CHUNK) {
+        const chunk = writes.slice(i, i + BATCH_CHUNK);
+        const batch = writeBatch(db);
+        for (const [col, id, val] of chunk) {
+          batch.set(doc(db, 'artifacts', APP_ID, 'public', 'data', col, id), val);
+        }
+        await batch.commit();
+        committed += chunk.length;
+      }
+      showToast(`데이터 복원이 완료되었습니다(${committed}/${total}건). 페이지를 새로고침 해주세요.`);
+    } catch (err) {
+      showToast(`복원 실패(${committed}/${total}건까지 반영됨): ${(err as Error).message}`);
+    }
     finally { setIsSaving(false); if (e.target) e.target.value = ''; }
   };
 

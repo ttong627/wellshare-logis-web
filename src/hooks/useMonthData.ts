@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, collection, query } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, collection, query } from 'firebase/firestore';
 import { db, APP_ID } from '../firebase';
 import {
   ZonePrices, RegionsData, Orders, PartnerInputs,
@@ -35,15 +35,18 @@ export function useMonthData(user: User | null) {
   const [isSaving, setIsSaving] = useState(false);
   const hasResolvedDefaultMonth = useRef(false);
 
-  // Listen to saved months list
-  useEffect(() => {
+  // 저장된 월 목록 — 문서 ID(월)만 필요한데 onSnapshot으로 전체 컬렉션을 구독하면 어느 월이든
+  // 저장할 때마다(orders/partnerInputs 등 큰 필드 포함) 모든 월 문서를 통째로 다시 내려받는
+  // 낭비가 있었다(2026-07-11 점검 발견). 마운트 시 1회 조회로 바꾸고, 저장 직후(refreshSavedMonths)
+  // 갱신해 새 월이 생겨도 목록이 갱신되도록 한다.
+  const refreshSavedMonths = useCallback(async () => {
     if (!user) return;
     const q = query(collection(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records'));
-    const unsub = onSnapshot(q, (snap) => {
-      setSavedMonths(snap.docs.map(d => d.id).sort().reverse());
-    });
-    return () => unsub();
+    const snap = await getDocs(q);
+    setSavedMonths(snap.docs.map(d => d.id).sort().reverse());
   }, [user]);
+
+  useEffect(() => { refreshSavedMonths(); }, [refreshSavedMonths]);
 
   const loadMonth = useCallback(async (month: string) => {
     if (!user || !month) return;
@@ -119,20 +122,23 @@ export function useMonthData(user: User | null) {
         publishDates, publishRequests, deliveryDates, isClosed,
         updatedAt: new Date().toISOString(), updatedBy: email,
       }, { merge: true });
+      // 이미 목록에 있는 월이면(대부분의 경우) 전체 컬렉션 재조회를 생략 — 신규 월일 때만 갱신
+      if (!savedMonths.includes(currentMonth)) refreshSavedMonths();
     } finally {
       setIsSaving(false);
     }
-  }, [currentMonth, zonePrices, regions, orders, partnerInputs, publishDates, publishRequests, deliveryDates, isClosed]);
+  }, [currentMonth, zonePrices, regions, orders, partnerInputs, publishDates, publishRequests, deliveryDates, isClosed, savedMonths, refreshSavedMonths]);
 
   const saveField = useCallback(async (field: string, value: unknown, email: string) => {
     setIsSaving(true);
     try {
       const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
       await setDoc(ref, { [field]: value, updatedAt: new Date().toISOString(), updatedBy: email }, { merge: true });
+      if (!savedMonths.includes(currentMonth)) refreshSavedMonths();
     } finally {
       setIsSaving(false);
     }
-  }, [currentMonth]);
+  }, [currentMonth, savedMonths, refreshSavedMonths]);
 
   return {
     currentMonth, setCurrentMonth,

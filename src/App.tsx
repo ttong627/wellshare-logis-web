@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Navbar, { TabId } from './components/layout/Navbar';
 import Toast from './components/layout/Toast';
@@ -61,7 +61,7 @@ function AppContent() {
     pendingUsers, partnerAccountsDB, signOut,
     currentMonth, setCurrentMonth, savedMonths, isClosed,
     myNotifications, clearMyNotifications,
-    toastMessage, showToast,
+    toastMessage,
     handleToggleClose,
   } = useApp();
 

@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronUp, Edit3, FileText, Save, RotateCcw,
   Code, Eye, Minus, Type, Palette, Layout, Layers, ClipboardPaste,
 } from 'lucide-react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
@@ -330,7 +330,10 @@ export default function DocsTab() {
           });
         }
         setTemplates(loaded);
-      } catch { /* silent */ }
+      } catch (e) {
+        console.error('서식 템플릿 로드 오류:', e);
+        showToast('서식 템플릿을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.');
+      }
     })();
   }, []);
 
@@ -344,7 +347,10 @@ export default function DocsTab() {
           const thisYear = h.filter(x => x.docNo.year === new Date().getFullYear() && x.type === selectedId);
           setNextDocNum(thisYear.reduce((m, x) => Math.max(m, x.docNo.num), 0) + 1);
         }
-      } catch { /* silent */ }
+      } catch (e) {
+        console.error('공문 이력 로드 오류:', e);
+        showToast('공문 이력을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.');
+      }
     })();
   }, [selectedId]);
 
@@ -364,7 +370,10 @@ export default function DocsTab() {
     try {
       await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'settings', 'doc_templates'),
         { templates: updated, updatedAt: new Date().toISOString() });
-    } catch { /* silent */ }
+    } catch (e) {
+      console.error('서식 저장 오류:', e);
+      showToast('서식 변경사항 저장에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const resetFormat = async () => {
@@ -458,28 +467,38 @@ export default function DocsTab() {
     if (!form.htmlMode && !form.pasteMode && !form.body1.trim()) return showToast('본문 내용을 입력해주세요.');
     if (form.htmlMode && !form.htmlContent.trim()) return showToast('HTML 내용을 입력해주세요.');
     if (form.pasteMode && !form.pastedHeaderHtml && !form.pastedBodyHtml && !form.pastedFooterHtml) return showToast('붙여넣기 내용을 입력해주세요.');
-    const dn = `${template.docPrefix}-${new Date().getFullYear()}-${String(nextDocNum).padStart(3, '0')}`;
-    const item: DocHistoryItem = {
-      id: `${Date.now()}`, timestamp: new Date().toISOString(),
-      type: selectedId, receiver: form.receiver, subject: form.subject,
-      docNo: { year: new Date().getFullYear(), num: nextDocNum },
-      data: {
-        type: selectedId, receiver: form.receiver, via: form.via,
-        subject: form.subject, body1: form.htmlMode ? form.htmlContent : form.body1,
-        body2: form.body2, body3: form.body3, body4: form.body4,
-        items: form.items.filter(i => i.trim()),
-        date: form.date, docNo: { year: new Date().getFullYear(), num: nextDocNum },
-        docNumber: dn, settingsSnapshot: {} as any,
-      },
-    };
     setIsSaving(true);
     try {
-      const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main'));
-      const existing = snap.exists() ? (snap.data().history || []) : [];
-      const updated = [item, ...existing];
-      await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main'), { history: updated, updatedAt: Date.now() });
+      const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main');
+      const year = new Date().getFullYear();
+      // ⚠️ 2026-07-11 점검 발견: nextDocNum은 렌더 시점 로컬 state라 관리자 2명이 거의 동시에
+      // 발송하면 같은 문서번호가 중복될 수 있었다 — runTransaction으로 "최신 이력 조회 → 번호
+      // 계산 → 저장"을 원자화해 중복 채번을 막는다.
+      const { item, dn, updated } = await runTransaction(db, async (tx) => {
+        const snap = await tx.get(docRef);
+        const existing: DocHistoryItem[] = snap.exists() ? (snap.data().history || []) : [];
+        const thisYear = existing.filter(x => x.docNo.year === year && x.type === selectedId);
+        const num = thisYear.reduce((m, x) => Math.max(m, x.docNo.num), 0) + 1;
+        const dn = `${template.docPrefix}-${year}-${String(num).padStart(3, '0')}`;
+        const item: DocHistoryItem = {
+          id: `${Date.now()}`, timestamp: new Date().toISOString(),
+          type: selectedId, receiver: form.receiver, subject: form.subject,
+          docNo: { year, num },
+          data: {
+            type: selectedId, receiver: form.receiver, via: form.via,
+            subject: form.subject, body1: form.htmlMode ? form.htmlContent : form.body1,
+            body2: form.body2, body3: form.body3, body4: form.body4,
+            items: form.items.filter(i => i.trim()),
+            date: form.date, docNo: { year, num },
+            docNumber: dn, settingsSnapshot: {} as any,
+          },
+        };
+        const updated = [item, ...existing];
+        tx.set(docRef, { history: updated, updatedAt: new Date().toISOString() });
+        return { item, dn, updated };
+      });
       setHistory(updated);
-      setNextDocNum(n => n + 1);
+      setNextDocNum(item.docNo.num + 1);
       setForm(f => ({ ...f, docNumber: dn }));
       showToast(`공문이 저장되었습니다. (${dn})`);
       setShowPreview(true);
@@ -521,7 +540,7 @@ export default function DocsTab() {
     if (!confirm('이 공문 이력을 삭제하시겠습니까?')) return;
     const updated = history.filter(h => h.id !== id);
     try {
-      await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main'), { history: updated, updatedAt: Date.now() });
+      await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'official_docs', 'main'), { history: updated, updatedAt: new Date().toISOString() });
       setHistory(updated);
       showToast('이력이 삭제되었습니다.');
     } catch (e) { showToast('삭제 오류: ' + (e as Error).message); }

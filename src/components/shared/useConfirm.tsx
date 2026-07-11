@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, HelpCircle } from 'lucide-react';
+import { useEscToClose } from '../../hooks/useEscToClose';
 
 // 금전 직결 액션(세금계산서 발급/취소 등)의 실수 방지용 확인 다이얼로그.
 // AppContext를 건드리지 않도록 각 탭에서 로컬로 사용한다.
@@ -35,6 +36,8 @@ export function useConfirm() {
   }, []);
 
   const isDanger = state.tone === 'danger';
+
+  useEscToClose(state.open, () => close(false));
 
   const dialog = state.open
     ? createPortal(

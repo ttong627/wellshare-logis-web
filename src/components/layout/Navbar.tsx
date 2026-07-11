@@ -3,7 +3,7 @@ import {
   LayoutDashboard, User, Settings, Truck, PenTool, CheckSquare,
   FileSignature, CreditCard, ReceiptText, Contact, ShieldCheck,
   DatabaseBackup, HelpCircle, FileText, Calendar, LogOut,
-  Bell, Users, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3,
+  Bell, Users, ChevronLeft, ChevronRight, BarChart3,
   ClipboardList,
 } from 'lucide-react';
 import { Notification } from '../../types';

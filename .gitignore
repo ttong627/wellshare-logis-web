@@ -34,6 +34,10 @@ mobile/.expo/
 # CrewAI 멀티에이전트
 agents/.env
 agents/.venv/
+
+# 이 저장소와 무관한 별개 프로젝트(react-example 보일러플레이트) — 2026-07-11 점검에서 발견,
+# 실수로 커밋되어 있던 것을 git 추적에서 제외(디스크 파일은 보존, 필요시 원래 저장소로 이동)
+ttong/
 .idea
 .DS_Store
 *.suo

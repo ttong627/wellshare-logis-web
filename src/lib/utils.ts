@@ -1,3 +1,10 @@
+// 사용자 입력값을 HTML 문자열에 그대로 꽂아 넣기 전 이스케이프(저장형 XSS 방지).
+// document.write/innerHTML로 조립하는 인쇄용 HTML(ScheduleTab 등)에서 사용.
+export const escapeHtml = (val: unknown): string =>
+  safeRender(val).replace(/[&<>"']/g, (ch) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch] as string
+  ));
+
 export const safeRender = (val: unknown): string => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object') return '[Object Error]';

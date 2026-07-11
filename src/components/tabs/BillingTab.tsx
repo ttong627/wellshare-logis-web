@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FileSpreadsheet, Send, AlertTriangle, ReceiptText } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatCur } from '../../lib/utils';
@@ -7,6 +8,7 @@ import { BillingItem, EcountSaleRecord } from '../../types';
 import ExcelIcon from '../shared/ExcelIcon';
 import StatusBadge from '../shared/StatusBadge';
 import { useConfirm } from '../shared/useConfirm';
+import { useEscToClose } from '../../hooks/useEscToClose';
 import { auth } from '../../firebase';
 import { sendRegion, buildRegionPayload, ECOUNT_COMPANIES, DEFAULT_COMCODE } from '../../lib/ecountGateway';
 
@@ -19,6 +21,7 @@ export default function BillingTab() {
   const [sendingRegion, setSendingRegion] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({}); // `${comCode}|${region}` → 메시지
   const [showGuide, setShowGuide] = useState(false);
+  useEscToClose(showGuide, () => setShowGuide(false));
   const [selectedComCode, setSelectedComCode] = useState(DEFAULT_COMCODE);
 
   // 지자체별 개별 발행 — 결과는 billing_records(ecountSales: 회사코드→지자체→전표)에 영구 저장
@@ -338,8 +341,11 @@ export default function BillingTab() {
           </div>
         </>
       )}
-      {/* ── ECOUNT 화면 작업 안내 ── */}
-      {showGuide && (
+      {/* ── ECOUNT 화면 작업 안내 ──
+          ⚠️ 2026-07-11: 이 탭 최상위 div가 .anim-in(transform 있음)을 쓰므로, position:fixed 모달은
+          그 안에 직접 렌더링하면 화면 밖으로 밀려 안 보인다(RosterTab.tsx 실사고와 동일 패턴) —
+          반드시 createPortal로 document.body에 렌더링한다. */}
+      {showGuide && createPortal(
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
           style={{ background: 'rgba(2,23,49,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
@@ -365,7 +371,8 @@ export default function BillingTab() {
               확인
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {dialog}
     </div>

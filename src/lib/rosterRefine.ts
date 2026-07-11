@@ -57,7 +57,10 @@ export async function extractZipEntry(blob: Blob, jszipKey: string): Promise<Blo
 }
 
 // ── window.XLSX(CDN, App.tsx에서 로드) 준비 대기 ──────────────────
+// SheetJS는 공식 타입정의 없이 CDN 전역으로 로드되므로 any가 불가피하다.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function waitForXLSX(timeoutMs = 8000): Promise<any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const w = window as unknown as { XLSX?: any };
   if (w.XLSX) return w.XLSX;
   const start = Date.now();
@@ -72,6 +75,71 @@ async function waitForXLSX(timeoutMs = 8000): Promise<any> {
 function findAddressColumn(headers: string[]): number {
   return headers.findIndex((h) => String(h || '').includes('주소'));
 }
+
+// 일부 정부기관 양식은 1행이 진짜 헤더가 아니라 제목 배너("2022년 경로당 중식양곡 신청내역" 등)라
+// "주소" 헤더가 몇 줄 아래에 있다 — 위에서부터 최대 10행까지 "주소" 컬럼이 있는 첫 행을 헤더로 본다.
+function findHeaderRowIndex(rows: string[][], maxScan = 10): number {
+  const limit = Math.min(rows.length, maxScan);
+  for (let i = 0; i < limit; i++) {
+    if (findAddressColumn(rows[i]) >= 0) return i;
+  }
+  return 0;
+}
+
+// ⚠️ 2026-07-11 실사고: 한컴셀(HCell)로 만든 xlsx는 sharedStrings.xml 리치텍스트 run에 한컴
+// 전용 확장(<mc:AlternateContent><mc:Choice Requires="hs">...<hs:.../>...</mc:Choice>
+// <mc:Fallback>...표준 서식만...</mc:Fallback></mc:AlternateContent>)이 섞여 있는 경우가 있어,
+// SheetJS(xlsx.js)가 이를 인식하지 못하고 "예외 없이 조용히" 시트를 빈 것으로 처리한다(정부양곡
+// 동대문구 명단에서 실측 — 6,832행짜리 시트가 0행으로 읽힘). <hs:...> 태그만 골라 지우면 mc:Choice/
+// mc:Fallback 구조가 반쯤 깨져(선언 없는 hs: 속성만 남음) 오히려 SheetJS가 훨씬 더 이상한 상태로
+// 빠진다(실측 — 시트 범위가 A1:HH64656465로 부풀어 브라우저가 멈춘다) — 반드시 mc:AlternateContent
+// 블록 전체를 "그 확장을 모르는 리더를 위한" mc:Fallback 내용으로만 치환해야 한다.
+// xlsx 내부는 순수 zip이고 파트 이름이 전부 영문 고정 경로(xl/sharedStrings.xml 등)라 zip 파일명
+// 인코딩 문제(zipRawFilenames 참고)와는 무관 — 안전하게 재압축 가능. 정제(주소매칭) 목적의 사본에만
+// 적용하고 "원본" 다운로드는 건드리지 않는다.
+function unwrapMcAlternateContent(xml: string): string {
+  const OPEN = '<mc:AlternateContent';
+  const CLOSE = '</mc:AlternateContent>';
+  let out = '';
+  let i = 0;
+  while (true) {
+    const start = xml.indexOf(OPEN, i);
+    if (start < 0) { out += xml.slice(i); break; }
+    out += xml.slice(i, start);
+    const end = xml.indexOf(CLOSE, start);
+    if (end < 0) { out += xml.slice(start); break; } // 닫는 태그를 못 찾으면 손대지 않고 원문 유지
+    const block = xml.slice(start, end + CLOSE.length);
+    const fbStart = block.indexOf('<mc:Fallback');
+    if (fbStart < 0) { i = end + CLOSE.length; continue; } // Fallback 없으면 건드리지 않음
+    const fbGt = block.indexOf('>', fbStart);
+    const fbEnd = block.indexOf('</mc:Fallback>', fbGt);
+    if (fbEnd < 0) { i = end + CLOSE.length; continue; }
+    out += block.slice(fbGt + 1, fbEnd); // mc:Fallback 안쪽(표준 호환 내용)만 남긴다
+    i = end + CLOSE.length;
+  }
+  return out;
+}
+async function sanitizeXlsxForParsing(bytes: Uint8Array): Promise<Uint8Array> {
+  let zip: JSZip;
+  try { zip = await JSZip.loadAsync(bytes); } catch { return bytes; }
+  let touched = false;
+  const xmlPaths = Object.keys(zip.files).filter((k) => !zip.files[k].dir && k.startsWith('xl/') && k.endsWith('.xml'));
+  for (const path of xmlPaths) {
+    const xml = await zip.files[path].async('string');
+    if (!xml.includes('<mc:AlternateContent')) continue;
+    const cleaned = unwrapMcAlternateContent(xml);
+    if (cleaned !== xml) { zip.file(path, cleaned); touched = true; }
+  }
+  if (!touched) return bytes;
+  return zip.generateAsync({ type: 'uint8array' });
+}
+
+// ⚠️ 2026-07-11 실사고: sheetRows를 지정하지 않고 XLSX.read()를 호출하면(=무제한 모드) SheetJS
+// 0.18.5가 실제로는 6,832행뿐인 시트의 범위를 A1:HH64656465(6천4백만 행)로 잘못 계산해 이후
+// sheet_to_json이 거대 배열을 할당하려다 브라우저 탭이 멈춘다(실측). sheetRows에 실제 행수보다
+// 넉넉히 큰 값을 명시하면 SheetJS가 다른(정상 동작하는) 내부 경로를 타 범위를 정확히 계산한다 —
+// 실제 데이터가 이 값보다 적으면 잘리지 않고 전부 파싱됨(실측 확인).
+const XLSX_MAX_ROWS = 100000;
 
 // 동시성 제한 실행(주소API 과호출 방지)
 async function asyncPool<T, R>(limit: number, items: T[], fn: (item: T, idx: number) => Promise<R>): Promise<R[]> {
@@ -105,14 +173,17 @@ async function matchAddress(query: string, cityLabel: string): Promise<{ standar
 }
 
 // 엑셀 1개를 [헤더, ...본문행] 배열로 파싱(내부 공용 — 단일/병합 정제에서 재사용)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- SheetJS는 CDN 전역, 공식 타입 없음
 async function readRows(file: File, XLSX: any): Promise<{ sheetName: string; headers: string[]; body: string[][] }> {
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: 'array' });
+  const rawBytes = new Uint8Array(await file.arrayBuffer());
+  const buf = await sanitizeXlsxForParsing(rawBytes);
+  const wb = XLSX.read(buf, { type: 'array', sheetRows: XLSX_MAX_ROWS });
   const sheetName = wb.SheetNames[0];
   const sheet = wb.Sheets[sheetName];
   const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
   if (!rows.length) throw new Error(`빈 엑셀 파일입니다: ${file.name}`);
-  return { sheetName, headers: rows[0].map((h) => String(h || '')), body: rows.slice(1) };
+  const headerIdx = findHeaderRowIndex(rows);
+  return { sheetName, headers: rows[headerIdx].map((h) => String(h || '')), body: rows.slice(headerIdx + 1) };
 }
 
 // ── ② 명단정제시스템 안 거치고 이 앱에서 바로 정제 → 다운로드 ─────
@@ -136,13 +207,18 @@ export async function refineExcelDirect(
   const combined: { row: string[]; source: string }[] = [];
   parsed.forEach((p, i) => p.body.forEach((row) => combined.push({ row, source: files[i].name })));
 
+  // ⚠️ 2026-07-11 점검 발견: 이전엔 주소가 빈 행은 onProgress를 아예 안 불러 진행률이 멈춘
+  // 것처럼 보였고, 매칭 성공 여부가 확정되기 전에 matched+1로 불러 실제 매칭 수와 표시가
+  // 어긋났다 — "처리한 행 수"(done)를 매 행 처리 후 정확히 1씩 늘려 진행률로 넘긴다.
   let matched = 0;
+  let done = 0;
   const results = await asyncPool(8, combined, async ({ row }) => {
     const addr = String(row[addrCol] || '').trim();
-    if (!addr) return { refined: '', ok: false };
+    if (!addr) { done += 1; onProgress?.(done, combined.length); return { refined: '', ok: false }; }
     const r = await matchAddress(addr, cityLabel);
-    onProgress?.(matched + 1, combined.length);
-    if (r?.standardRoadAddress) { matched += 1; return { refined: r.standardRoadAddress, ok: true }; }
+    done += 1;
+    if (r?.standardRoadAddress) { matched += 1; onProgress?.(done, combined.length); return { refined: r.standardRoadAddress, ok: true }; }
+    onProgress?.(done, combined.length);
     return { refined: '', ok: false };
   });
 
@@ -169,9 +245,11 @@ export async function sendToRefineSystem(files: File[], region: string): Promise
   if (!files.length) throw new Error('보낼 파일이 없습니다.');
   if (files.length > 2) throw new Error('한 번에 최대 2개까지 함께 정제할 수 있습니다.');
   const upload = async (file: File) => {
+    const isXlsx = /\.xlsx?$/i.test(file.name);
+    const outBytes = isXlsx ? await sanitizeXlsxForParsing(new Uint8Array(await file.arrayBuffer())) : file;
     const safe = file.name.replace(/[\\/:*?"<>|]+/g, '_');
     const path = `refine-handoff/${Date.now()}_${safe}`;
-    await uploadBytes(storageRef(storage, path), file, { contentType: file.type || 'application/octet-stream' });
+    await uploadBytes(storageRef(storage, path), outBytes, { contentType: file.type || 'application/octet-stream' });
     return getDownloadURL(storageRef(storage, path));
   };
   const urls = await Promise.all(files.map(upload));

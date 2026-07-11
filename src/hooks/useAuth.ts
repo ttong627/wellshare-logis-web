@@ -43,17 +43,28 @@ export function useAuth(): AuthState {
   useEffect(() => {
     if (!user) return;
     const settingsRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'settings', 'master_settings');
-    const unsub = onSnapshot(settingsRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setPartnerAccountsDB(data.partnerAccounts || {});
-        setPendingUsers(data.pendingUsers || []);
-      } else {
+    const unsub = onSnapshot(
+      settingsRef,
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          setPartnerAccountsDB(data.partnerAccounts || {});
+          setPendingUsers(data.pendingUsers || []);
+        } else {
+          setPartnerAccountsDB({});
+          setPendingUsers([]);
+        }
+        setIsDbLoaded(true);
+      },
+      // 에러 콜백 없으면 구독 실패 시 isDbLoaded가 영원히 false로 남아 "데이터 로딩 중..." 화면에서
+      // 무한 로딩에 빠진다(2026-07-11 점검 발견) — 실패해도 로딩은 끝내고 빈 상태로 진행시킨다.
+      (err) => {
+        console.error('설정 구독 오류:', err);
         setPartnerAccountsDB({});
         setPendingUsers([]);
-      }
-      setIsDbLoaded(true);
-    });
+        setIsDbLoaded(true);
+      },
+    );
     return () => unsub();
   }, [user]);
 

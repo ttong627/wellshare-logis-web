@@ -3,6 +3,7 @@ import { Truck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PARTNER_REGIONS_INVERSE } from '../../constants/members';
 import { formatNumber, parseNumber, safeRender } from '../../lib/utils';
+import { useEscToClose } from '../../hooks/useEscToClose';
 
 interface ConflictModalProps {
   resolvingRegion: string;
@@ -11,6 +12,7 @@ interface ConflictModalProps {
 
 export default function ConflictModal({ resolvingRegion, onClose }: ConflictModalProps) {
   const { orders, partnerInputs, setPartnerInputs, setOrders, partnerAggregatedOrders, showToast } = useApp();
+  useEscToClose(true, onClose);
 
   const o = orders[resolvingRegion] || {};
   const pSum = partnerAggregatedOrders[resolvingRegion] || { basicQty: 0, povertyQty: 0 };
