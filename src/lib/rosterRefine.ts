@@ -6,42 +6,41 @@
 import JSZip from 'jszip';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
+import { buildCorrectedNameMap } from './zipRawFilenames';
 
 const ADDRESS_API = String(import.meta.env.VITE_ADDRESS_MATCH_API_URL || '').replace(/\/+$/, '');
 const REFINE_SYSTEM_URL = String(import.meta.env.VITE_REFINE_SYSTEM_URL || 'https://logis-op.web.app').replace(/\/+$/, '');
 
 export interface ZipEntryInfo {
-  path: string;
+  path: string;       // 화면 표시용 — 항상 정정된 실제 파일명(원시 바이트 기준)
+  jszipKey: string;    // JSZip 내부 키(잘못 디코딩됐을 수 있음) — 추출 시 이 키로 조회
   isExcel: boolean;
   size: number;
 }
 
-// zip 파일명 인코딩 자동 판별 — 윈도우 탐색기/알집 등으로 압축한 zip은 파일명을 UTF-8이 아닌
-// CP949(EUC-KR)로 저장한다. JSZip은 기본적으로 UTF-8로만 해석해 한글이 깨진다(예: "õ-)2026..."
-// 형 깨짐 신고). UTF-8 엄격 디코딩을 먼저 시도하고 실패하면(잘못된 바이트 시퀀스) EUC-KR로 재시도.
-function decodeZipFileName(bytes: string[] | Uint8Array | Buffer): string {
-  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes as unknown as ArrayLike<number>);
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(arr);
-  } catch {
-    try {
-      return new TextDecoder('euc-kr').decode(arr);
-    } catch {
-      return new TextDecoder('utf-8').decode(arr); // 최후 폴백(그래도 표시는 되게)
-    }
-  }
+// ⚠️ JSZip의 decodeFileName 훅은 zip 항목의 UTF-8 플래그 비트가 켜져 있으면 아예 호출되지 않고
+// JSZip 자체 UTF-8 디코더(손실, U+FFFD)가 쓰인다. 일부 압축 도구가 CP949 바이트를 쓰면서도 이
+// 플래그를 잘못 켜두는 경우가 있어(2026-07-11 실측), 플래그 값과 무관하게 항상 zip 중앙 디렉토리의
+// 원시 바이트를 직접 읽어(zipRawFilenames) 우리 디코더로 이름을 다시 정한다. 절대 되돌리지 말 것
+// — JSZip 기본 경로로 재압축하면 원본 한글 파일명이 복구 불가능하게 손상된다(실제 사고 발생).
+async function loadZipWithCorrectedNames(blob: Blob): Promise<{ zip: JSZip; nameMap: Map<string, string> }> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const zip = await JSZip.loadAsync(bytes);
+  const nameMap = buildCorrectedNameMap(bytes, Object.keys(zip.files));
+  return { zip, nameMap };
 }
-const ZIP_LOAD_OPTS = { decodeFileName: decodeZipFileName } as const;
 
 // ── ① zip 목록/추출 ──────────────────────────────────────────────
 export async function listZipEntries(blob: Blob): Promise<ZipEntryInfo[]> {
-  const zip = await JSZip.loadAsync(blob, ZIP_LOAD_OPTS);
+  const { zip, nameMap } = await loadZipWithCorrectedNames(blob);
   const entries: ZipEntryInfo[] = [];
-  zip.forEach((path, entry) => {
+  zip.forEach((jszipKey, entry) => {
     if (entry.dir) return;
+    const path = nameMap.get(jszipKey) ?? jszipKey;
     const lower = path.toLowerCase();
     entries.push({
       path,
+      jszipKey,
       isExcel: lower.endsWith('.xlsx') || lower.endsWith('.xls'),
       size: (entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize || 0,
     });
@@ -49,11 +48,11 @@ export async function listZipEntries(blob: Blob): Promise<ZipEntryInfo[]> {
   return entries.sort((a, b) => (b.isExcel ? 1 : 0) - (a.isExcel ? 1 : 0) || a.path.localeCompare(b.path, 'ko'));
 }
 
-export async function extractZipEntry(blob: Blob, path: string): Promise<Blob> {
-  // listZipEntries와 동일한 decodeFileName을 써야 path 문자열이 일치한다(인코딩 판별 결과 동일 보장).
-  const zip = await JSZip.loadAsync(blob, ZIP_LOAD_OPTS);
-  const entry = zip.file(path);
-  if (!entry) throw new Error(`zip 안에서 파일을 찾을 수 없습니다: ${path}`);
+export async function extractZipEntry(blob: Blob, jszipKey: string): Promise<Blob> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const zip = await JSZip.loadAsync(bytes);
+  const entry = zip.file(jszipKey);
+  if (!entry) throw new Error(`zip 안에서 파일을 찾을 수 없습니다: ${jszipKey}`);
   return entry.async('blob');
 }
 

@@ -198,7 +198,7 @@ export default function RosterTab() {
       blob = await res.blob();
       setZipBlobs((prev) => ({ ...prev, [f.id]: blob as Blob }));
     }
-    const entryBlob = await extractZipEntry(blob, entry.path);
+    const entryBlob = await extractZipEntry(blob, entry.jszipKey);
     const name = entry.path.split('/').pop() || entry.path;
     return new File([entryBlob], name, { type: entryBlob.type || 'application/octet-stream' });
   };
@@ -346,7 +346,7 @@ export default function RosterTab() {
 
       {/* 선택 항목 액션바 — 체크박스로 고른 엑셀 1~2개를 한 번에 정제(2개면 합쳐서 작업) */}
       {selectedKeys.length > 0 && (
-        <div className="sticky top-2 z-10 glass rounded-2xl p-4 border-2 border-indigo-200 shadow-lg">
+        <div className="sticky top-2 z-[3500] glass rounded-2xl p-4 border-2 border-indigo-200 shadow-lg">
           <div className="flex items-center gap-3 flex-wrap">
             <Layers size={18} className="text-indigo-500 shrink-0" />
             <div className="min-w-0 flex-1">
@@ -622,7 +622,7 @@ export default function RosterTab() {
 
       {/* 원본 메일 보기 모달 — 자동수집 시 저장해둔 제목·본문(태그 제거) 열람 */}
       {viewingMail && (
-        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4"
+        <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4"
           onClick={() => setViewingMail(null)}>
           <div className="glass rounded-2xl p-5 max-w-lg w-full max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}>
