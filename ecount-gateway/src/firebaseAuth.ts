@@ -4,6 +4,7 @@
 //    (TMS는 아이디 로그인 → 합성 이메일이라 이메일 allowlist 불가. 역할 기반 인가)
 import admin from 'firebase-admin';
 import { Firestore } from '@google-cloud/firestore';
+import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
 import type { AppConfig } from './config';
 
@@ -83,5 +84,20 @@ export function initAuth(config: AppConfig) {
     next();
   }
 
-  return { requireAdmin, requireAdminTms };
+  // 서버-투-서버(구 admin PHP): 공유 시크릿 헤더(x-server-key) 검증. serverKey 미설정 시 항상 거부(503).
+  function requireServerKey(req: AuthedRequest, res: Response, next: NextFunction): void {
+    const key = config.serverKey;
+    if (!key) { res.status(503).json({ ok: false, error: 'server_key_disabled', message: '서버 발행 경로 비활성' }); return; }
+    const provided = String(req.headers['x-server-key'] || '');
+    const a = Buffer.from(provided);
+    const b = Buffer.from(key);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      res.status(401).json({ ok: false, error: 'unauthorized', message: '서버 키가 올바르지 않습니다' });
+      return;
+    }
+    req.user = { uid: 'server-admin', email: '' };
+    next();
+  }
+
+  return { requireAdmin, requireAdminTms, requireServerKey };
 }

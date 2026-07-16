@@ -12,7 +12,7 @@ import { saveSale, EcountError } from './ecount';
 import { buildIdempotencyKey, hashInput, claim, markDone, markFailed } from './idempotency';
 
 const config = loadConfig(); // 필수 env 미설정 시 여기서 throw → 부팅 실패(의도)
-const { requireAdmin, requireAdminTms } = initAuth(config);
+const { requireAdmin, requireAdminTms, requireServerKey } = initAuth(config);
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1); // Cloud Run 프록시 1홉만 신뢰 (rate-limit IP 우회 방지)
@@ -141,8 +141,10 @@ app.post('/ecount/sale', limiter, requireAdmin, async (req: AuthedRequest, res: 
   }
 });
 
-// 6-TMS) ECOUNT 매출등록 (tms-local-frontend 전용) — 회원사별 거래처(CUST)·라인 요청당 주입
-app.post('/ecount/sale-tms', limiter, requireAdminTms, async (req: AuthedRequest, res: Response) => {
+// 6-TMS) ECOUNT 매출등록 (tms-local-frontend) — 회원사별 거래처(CUST)·라인 요청당 주입
+//   경로 공유: /ecount/sale-tms(브라우저·Firebase admin 토큰) + /ecount/sale-server(구 admin PHP·서버키)
+//   핸들러 로직 동일 — 인증 미들웨어만 다르게 체이닝(additive).
+async function handleTmsSale(req: AuthedRequest, res: Response): Promise<void> {
   const reqId = randomUUID();
   const comCode = String(req.body?.comCode ?? config.defaultComCode);
   const company = config.companies.get(comCode);
@@ -200,7 +202,9 @@ app.post('/ecount/sale-tms', limiter, requireAdminTms, async (req: AuthedRequest
     log('ERROR', 'sale-tms unexpected error', { reqId, key, message: msg });
     res.status(500).json({ ok: false, error: 'internal', reqId });
   }
-});
+}
+app.post('/ecount/sale-tms', limiter, requireAdminTms, handleTmsSale);
+app.post('/ecount/sale-server', limiter, requireServerKey, handleTmsSale);
 
 // 최종 에러 핸들러 — 원본 메시지/스택은 로그에만, 응답은 일반화
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

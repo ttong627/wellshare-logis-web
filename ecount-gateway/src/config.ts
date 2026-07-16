@@ -106,6 +106,7 @@ export interface AppConfig {
   tmsFirebaseProjectId: string; // TMS 앱(tms-local-frontend) 토큰 발급 프로젝트 (선택). /ecount/sale-tms 전용.
   adminEmails: Set<string>;
   allowedOrigins: Set<string>;
+  serverKey: string; // 서버-투-서버 발행(구 admin PHP)용 공유 시크릿. 미설정 시 /ecount/sale-server 비활성.
 }
 
 export function loadConfig(): AppConfig {
@@ -120,6 +121,7 @@ export function loadConfig(): AppConfig {
     tmsFirebaseProjectId: optional('TMS_FIREBASE_PROJECT_ID', ''),
     adminEmails: parseAdminEmails(required('ADMIN_EMAILS')),
     allowedOrigins: parseOrigins(required('ALLOWED_ORIGINS')),
+    serverKey: optional('TMS_SERVER_KEY', ''),
   };
 }
 
