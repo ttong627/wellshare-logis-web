@@ -14,7 +14,7 @@ import {
 import {
   ClipboardList, Download, Trash2, UploadCloud, Loader2, FileSpreadsheet, Lock,
   Folder, FolderOpen, FileText, Sparkles, SendHorizontal, Square, CheckSquare, Layers, X,
-  Key, Mail,
+  Key, Mail, Activity, AlertTriangle, CheckCircle2,
 } from 'lucide-react';
 import { db, storage, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
@@ -43,7 +43,40 @@ interface RosterFile {
   sourceMailBody?: string;     // 원본 메일 본문(태그 제거된 텍스트)
 }
 
+// 자동수집 상태(하트비트) — yanggok-collector가 매 실행 후 기록(Firestore: settings/yanggok_status).
+//   앱에서는 관리자에게만 "자동수집이 살아있는지"를 배너로 표시(회원사엔 비노출).
+interface CollectStatus {
+  lastRunAt?: string;     // ISO — 마지막 수집 실행 시각
+  lastRunKst?: string;    // 사람이 읽는 KST 문자열
+  newCount?: number;      // 이번 실행 신규 적재 건수
+  okAccounts?: number;    // 정상 접근된 메일 계정 수
+  totalAccounts?: number; // 전체 메일 계정 수
+  failCount?: number;     // 실패 건수
+  failures?: string;      // 실패 요약(계정: 사유 …)
+  windowDays?: number;    // 수집 창(일)
+  ok?: boolean;           // 계정 전부 정상 + 실패 0
+}
+
 const ROSTERS_PATH = ['artifacts', APP_ID, 'public', 'data', 'rosters'] as const;
+const STATUS_PATH = ['artifacts', APP_ID, 'public', 'data', 'settings', 'yanggok_status'] as const;
+
+// cron 2시간 주기 → 5시간 넘게 갱신 없으면 "지연/멈춤"으로 간주(경보 임계).
+const STATUS_STALE_MS = 5 * 60 * 60 * 1000;
+
+// 마지막 실행이 얼마나 지났는지 사람이 읽는 상대시간("방금 전"/"N분 전"/"N시간 전"/"N일 전")
+//   now는 렌더 순수성을 위해 state로 주입(렌더 중 Date.now() 직접 호출 회피).
+function timeAgo(iso: string | undefined, now: number): string {
+  if (!iso) return '기록 없음';
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return '기록 없음';
+  const diff = now - t;
+  if (diff < 60_000) return '방금 전';
+  const min = Math.floor(diff / 60_000);
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  return `${Math.floor(hr / 24)}일 전`;
+}
 const ALL_REGIONS = Object.keys(PARTNER_REGIONS)
   .flatMap((c) => PARTNER_REGIONS[c])
   .filter((v, i, a) => a.indexOf(v) === i)
@@ -59,6 +92,11 @@ export default function RosterTab() {
   const [files, setFiles] = useState<RosterFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // 자동수집 상태(관리자 전용 배너) — 상태 문서 실시간 구독
+  const [collectStatus, setCollectStatus] = useState<CollectStatus | null>(null);
+  // 현재 시각 — 상대시간("N분 전")·신선도 계산을 렌더 순수하게 하려고 state로 보유(1분마다 갱신)
+  const [now, setNow] = useState(() => Date.now());
 
   // zip "폴더" 열람 — 파일별 펼침 상태·목록·원본 blob 캐시(재열람 시 재다운로드 방지)
   const [zipOpen, setZipOpen] = useState<Record<string, boolean>>({});
@@ -109,6 +147,25 @@ export default function RosterTab() {
     );
     return () => unsub();
   }, [showToast]);
+
+  // 자동수집 상태 구독 — 관리자만(회원사엔 수집 내부상태 비노출).
+  //   렌더는 statusView가 isAdmin으로 다시 게이트하므로, 여기선 구독만 하고 초기화 setState는 하지 않음.
+  useEffect(() => {
+    if (!isAdmin) return;
+    const unsub = onSnapshot(
+      doc(db, ...STATUS_PATH),
+      (snap) => setCollectStatus(snap.exists() ? (snap.data() as CollectStatus) : null),
+      (err) => { console.error('수집 상태 구독 오류:', err); },
+    );
+    return () => unsub();
+  }, [isAdmin]);
+
+  // 상대시간("N분 전")·신선도가 실시간으로 늙도록 1분마다 now 갱신(관리자 배너 표시 중에만)
+  useEffect(() => {
+    if (!isAdmin || !collectStatus) return;
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, [isAdmin, collectStatus]);
 
   // 내가 볼 수 있는 지역 — 관리자는 전체, 회원사는 자기 담당 지역만
   const myRegions = useMemo<string[]>(
@@ -333,6 +390,21 @@ export default function RosterTab() {
 
   const regionList = Object.keys(grouped).sort();
 
+  // 자동수집 배너 상태 계산 — 신선도(stale)까지 반영해 초록/노랑/빨강 3단계로 요약
+  const statusView = useMemo(() => {
+    if (!isAdmin || !collectStatus) return null;
+    const s = collectStatus;
+    const runMs = s.lastRunAt ? new Date(s.lastRunAt).getTime() : NaN;
+    const stale = Number.isNaN(runMs) || (now - runMs) > STATUS_STALE_MS;
+    const healthy = s.ok === true && !stale;
+    const tone = healthy
+      ? { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', Icon: CheckCircle2, label: '자동수집 정상' }
+      : stale
+        ? { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', Icon: AlertTriangle, label: '자동수집 지연' }
+        : { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', Icon: AlertTriangle, label: '자동수집 실패' };
+    return { s, stale, tone };
+  }, [isAdmin, collectStatus, now]);
+
   return (
     <div className="anim-in space-y-4">
       {/* 헤더 */}
@@ -357,6 +429,38 @@ export default function RosterTab() {
             본 명단은 <b>수급자 개인정보</b>입니다. 배송 목적 외 사용·외부 유출을 금지하며, 다운로드·열람 기록이 관리됩니다.
           </p>
         </div>
+
+        {/* 자동수집 상태(관리자 전용) — 메일 자동수집기가 살아있는지 한눈에 */}
+        {isAdmin && (
+          <div className={`mt-3 flex items-start gap-2 rounded-xl px-3 py-2 border ${statusView ? `${statusView.tone.bg} ${statusView.tone.border}` : 'bg-slate-50 border-slate-200'}`}>
+            {statusView
+              ? <statusView.tone.Icon size={15} className={`mt-0.5 shrink-0 ${statusView.tone.text}`} />
+              : <Activity size={15} className="mt-0.5 shrink-0 text-slate-400" />}
+            <div className="min-w-0 flex-1">
+              {statusView ? (
+                <>
+                  <p className={`text-[11px] sm:text-xs font-black ${statusView.tone.text}`}>
+                    📬 {statusView.tone.label}
+                    <span className="font-bold"> · 마지막 수집 {timeAgo(statusView.s.lastRunAt, now)}</span>
+                    {statusView.s.lastRunKst && <span className="font-bold text-slate-400"> ({statusView.s.lastRunKst})</span>}
+                  </p>
+                  <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 mt-0.5">
+                    신규 {statusView.s.newCount ?? 0}건 · 계정 정상 {statusView.s.okAccounts ?? 0}/{statusView.s.totalAccounts ?? 0}
+                    {typeof statusView.s.windowDays === 'number' && statusView.s.windowDays > 0 && ` · 최근 ${statusView.s.windowDays}일`}
+                    {(statusView.s.failCount ?? 0) > 0 && statusView.s.failures && (
+                      <span className="text-red-500"> · 실패: {statusView.s.failures}</span>
+                    )}
+                    {statusView.stale && <span className="text-amber-600"> · ⚠️ 5시간 넘게 갱신 없음(수집 지연 의심)</span>}
+                  </p>
+                </>
+              ) : (
+                <p className="text-[11px] sm:text-xs font-bold text-slate-500">
+                  📬 자동수집 상태 기록이 아직 없습니다. 다음 수집 실행 후 표시됩니다.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 선택 항목 액션바 — 체크박스로 고른 엑셀 1~2개를 한 번에 정제(2개면 합쳐서 작업) */}
