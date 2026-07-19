@@ -190,6 +190,36 @@ export function cleanMailBodyForDisplay(html, maxLen = 3000) {
   return text.length > maxLen ? `${text.slice(0, maxLen)}…(생략)` : text;
 }
 
+// ── 수집 상태(하트비트) ─────────────────────────────────────────
+// 매 COMMIT 실행 후 단일 문서를 통째로 덮어써, 앱 명단 탭이 "자동수집이 살아있는지"를
+// 실시간 표시하게 한다(마지막 실행 시각·신규 건수·계정 정상 여부·실패 요약).
+//   경로: artifacts/{APP_ID}/public/data/settings/yanggok_status
+//         (규칙상 로그인 사용자 읽기 / SA 토큰은 규칙 우회 쓰기)
+//   ⚠️ 부분 갱신이 아니라 매번 동일한 전체 필드셋을 기록 → 필드 유실·잔존 우려 없음.
+const STATUS_DOC = `artifacts/${APP_ID}/public/data/settings/yanggok_status`;
+
+export async function writeCollectStatus(fsToken, s) {
+  const fields = {
+    lastRunAt:     { stringValue: String(s.lastRunAt || '') },
+    lastRunKst:    { stringValue: String(s.lastRunKst || '') },
+    newCount:      { integerValue: String(s.newCount ?? 0) },
+    okAccounts:    { integerValue: String(s.okAccounts ?? 0) },
+    totalAccounts: { integerValue: String(s.totalAccounts ?? 0) },
+    failCount:     { integerValue: String(s.failCount ?? 0) },
+    failures:      { stringValue: String(s.failures || '').slice(0, 500) },
+    windowDays:    { integerValue: String(s.windowDays ?? 0) },
+    ok:            { booleanValue: !!s.ok },
+  };
+  // PATCH(마스크 없음): 문서가 없으면 생성, 있으면 넘긴 필드로 갱신. 필드셋이 고정이라 전체 교체와 동일.
+  const r = await fetch(`${FS_BASE}/${STATUS_DOC}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${fsToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!r.ok) throw new Error(`상태 기록 HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+}
+
 // 결정적 ID로 문서 생성(멱등) — 이미 있으면 409 → false 반환
 export async function createRosterDoc(fsToken, docId, d) {
   const fields = {

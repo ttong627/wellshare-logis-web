@@ -17,6 +17,7 @@ import { planMail, extractCategory } from './classify-yanggok.mjs';
 import {
   getGoogleToken, listAttachments, downloadAttachment, uploadToStorage,
   loadExistingKeys, createRosterDoc, safeName, extContentType, cleanMailBodyForDisplay,
+  writeCollectStatus,
 } from './persist-rosters.mjs';
 import { sendTelegram } from './notify-telegram.mjs';
 import { extractPassword } from './password-extract.mjs';
@@ -195,7 +196,25 @@ async function main() {
     await sendTelegram(`📬 [양곡 명단 자동적재] ${registered.length}건\n${lines.join('\n')}${registered.length > 10 ? `\n…외 ${registered.length - 10}건` : ''}\n→ https://wellshare-logis.web.app 명단 탭`);
   }
 
-  if (COMMIT) await handleAlerts(failures, okAccounts); // dry-run은 부수효과 0 (알림 미발송)
+  if (COMMIT) {
+    await handleAlerts(failures, okAccounts); // dry-run은 부수효과 0 (알림 미발송)
+    // 수집 상태 하트비트 기록 — 앱 명단 탭이 "자동수집 살아있는지" 표시(실패해도 본작업 성공은 유지).
+    try {
+      await writeCollectStatus(fsToken, {
+        lastRunAt: new Date().toISOString(),
+        lastRunKst: kstNow(),
+        newCount: registered.length,
+        okAccounts, totalAccounts: ACCOUNTS.length,
+        failCount: failures.length,
+        failures: failures.map((f) => `${f.name}: ${f.reason}`).join(' / '),
+        windowDays: argDays,
+        ok: okAccounts > 0 && failures.length === 0,
+      });
+      log('  ✓ 수집 상태 기록');
+    } catch (e) {
+      log(`  · 수집 상태 기록 실패(무시): ${e.message.slice(0, 100)}`);
+    }
+  }
   log(`=== 완료 — 신규 ${registered.length}건 · 계정 정상 ${okAccounts}/${ACCOUNTS.length} · 실패 ${failures.length}건 ===`);
 }
 
