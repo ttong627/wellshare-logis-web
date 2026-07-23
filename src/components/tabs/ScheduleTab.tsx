@@ -671,7 +671,9 @@ export default function ScheduleTab() {
       const imgW = pageW - margin * 2;
       const imgH = (canvas.height / canvas.width) * imgW;
       if (imgH <= pageH - margin * 2) {
-        pdf.addImage(imgData, 'JPEG', margin, margin, imgW, imgH);
+        // 표가 한 페이지에 들어가면 세로 중앙에 배치(적은 지역도 페이지 가운데로 — 하단 쏠림 방지)
+        const yCentered = Math.max(margin, (pageH - imgH) / 2);
+        pdf.addImage(imgData, 'JPEG', margin, yCentered, imgW, imgH);
       } else {
         const ratio = imgW / canvas.width;
         const pageImgPx = ((pageH - margin * 2) / ratio);
