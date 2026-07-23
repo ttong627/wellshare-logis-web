@@ -30,8 +30,14 @@ export default function UsersTab() {
       (snap) => {
         const byEmail = new Map<string, SignupRequest>();
         snap.docs.forEach((d) => {
-          const data = d.data() as { signupEmail?: string; timestamp?: string };
-          const email = (data.signupEmail || '').trim();
+          const data = d.data() as { signupEmail?: string; message?: string; timestamp?: string };
+          let email = (data.signupEmail || '').trim();
+          // 배포(v2.16.0) 이전 가입요청 알림엔 signupEmail이 없다 →
+          // 가입요청 메시지 본문("회원사(이메일)")에서 이메일을 추출해 목록에 복원한다.
+          if (!email && typeof data.message === 'string' && data.message.includes('가입요청')) {
+            const m = data.message.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+            if (m) email = m[0];
+          }
           if (!email) return;
           const prev = byEmail.get(email);
           if (prev) {
