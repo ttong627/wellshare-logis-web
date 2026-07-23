@@ -609,7 +609,8 @@ export default function ScheduleTab() {
         <td style="${c}color:#555;">${escapeHtml(item.notes)}</td>
       </tr>`;
     }).join('');
-    const emptyCount = Math.max(0, 35 - items.length);
+    // 데이터 뒤 수기 기입용 여유 3줄만 — 과도한 빈 행(기존 35행 고정)으로 표가 세로로 길어지던 문제 제거
+    const emptyCount = 3;
     const emptyRows = Array.from({ length: emptyCount }).map((_, i) => {
       const bg = (items.length + i) % 2 === 0 ? '#fff' : '#f5f7fa';
       return `<tr style="height:${forPdf ? 17 : 19}px;background:${bg};">${Array.from({ length: 8 }).map(() => `<td style="border:1px solid #ccc;">&nbsp;</td>`).join('')}</tr>`;
