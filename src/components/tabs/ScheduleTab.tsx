@@ -22,9 +22,13 @@ const DONG_DATA: Record<string, string[]> = {
   '동대문구': ['답십리1동', '답십리2동', '신설동', '용두동', '이문1동', '이문2동', '장안1동', '장안2동', '전농1동', '전농2동', '제기동', '청량리동', '회기동', '휘경1동', '휘경2동'],
 };
 
+// 배송일정 관리 전용 경기 지역 — 정산·청구·통계·파트너매핑(전역 GYEONGGI_REGIONS)과 분리.
+// 배송 담당자/행정동 안내 용도로만 지역을 추가한다(전역 정산 로직 무영향).
+const SCHEDULE_GYEONGGI_REGIONS = [...GYEONGGI_REGIONS, '수원시 권선구'];
+
 const SIDO_MAP: Record<string, string> = Object.fromEntries([
   ...SEOUL_REGIONS.map(r => [r, '서울특별시']),
-  ...GYEONGGI_REGIONS.map(r => [r, '경기도']),
+  ...SCHEDULE_GYEONGGI_REGIONS.map(r => [r, '경기도']),
 ]);
 
 // ─── Chosung search helpers ─────────────────────────────────────────────────
@@ -861,7 +865,7 @@ export default function ScheduleTab() {
                 className="bg-[#244b8a] border-none rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
               >
                 <optgroup label="경기도">
-                  {GYEONGGI_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  {SCHEDULE_GYEONGGI_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
                 </optgroup>
                 <optgroup label="서울특별시">
                   {SEOUL_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
