@@ -1,35 +1,91 @@
-import React, { useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
-import { doc, setDoc } from 'firebase/firestore';
-import { db, APP_ID } from '../../firebase';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ShieldCheck, KeyRound } from 'lucide-react';
+import { doc, setDoc, deleteDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions, APP_ID } from '../../firebase';
 import { MEMBERS } from '../../constants/members';
 import { safeRender } from '../../lib/utils';
 import { useApp } from '../../context/AppContext';
+
+// 신규 가입요청(notifications의 signupEmail) → 이메일별 알림 문서ID 목록
+interface SignupRequest { email: string; notifIds: string[]; timestamp: string; }
 
 export default function UsersTab() {
   const { partnerAccountsDB, pendingUsers, showToast } = useApp();
   const [newEmail, setNewEmail] = useState('');
   const [newCompany, setNewCompany] = useState(MEMBERS[0]);
+  const [signupRequests, setSignupRequests] = useState<SignupRequest[]>([]);
+  const [pwTarget, setPwTarget] = useState<string | null>(null);
 
-  const validPending = pendingUsers.filter(e => !partnerAccountsDB[e]);
+  // ── 신규 가입요청 알림 구독 (승인 대기 목록의 진짜 소스) ─────────────────
+  // 신규 가입자는 rules상 pendingUsers(master_settings)에 직접 못 써서 가입요청을
+  // ADMIN 알림(signupEmail)으로 남긴다. 이를 파싱해 승인 대기 목록을 복구한다.
+  useEffect(() => {
+    const q = query(
+      collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'),
+      where('target', '==', 'ADMIN'),
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const byEmail = new Map<string, SignupRequest>();
+        snap.docs.forEach((d) => {
+          const data = d.data() as { signupEmail?: string; timestamp?: string };
+          const email = (data.signupEmail || '').trim();
+          if (!email) return;
+          const prev = byEmail.get(email);
+          if (prev) {
+            prev.notifIds.push(d.id);
+            if ((data.timestamp || '') > prev.timestamp) prev.timestamp = data.timestamp || '';
+          } else {
+            byEmail.set(email, { email, notifIds: [d.id], timestamp: data.timestamp || '' });
+          }
+        });
+        setSignupRequests(Array.from(byEmail.values()));
+      },
+      (err) => { console.error('가입요청 구독 오류:', err); setSignupRequests([]); },
+    );
+    return () => unsub();
+  }, []);
+
+  // 승인 대기 = pendingUsers(레거시) ∪ 가입요청 이메일 − 이미 승인된 계정
+  const validPending = useMemo(() => {
+    const set = new Set<string>();
+    pendingUsers.forEach((e) => set.add(e));
+    signupRequests.forEach((r) => set.add(r.email));
+    return Array.from(set).filter((e) => !partnerAccountsDB[e]);
+  }, [pendingUsers, signupRequests, partnerAccountsDB]);
+
+  // 이메일의 가입요청 알림들을 정리(삭제) — 관리자만 삭제 가능(rules)
+  const clearSignupNotifs = async (email: string) => {
+    const req = signupRequests.find((r) => r.email === email);
+    if (!req) return;
+    await Promise.all(
+      req.notifIds.map((id) =>
+        deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'notifications', id)).catch(() => {}),
+      ),
+    );
+  };
 
   const handleApprove = async (email: string, company: string) => {
     const updated = { ...partnerAccountsDB, [email]: company };
-    const filtered = pendingUsers.filter(e => e !== email);
+    const filtered = pendingUsers.filter((e) => e !== email);
     try {
       await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'settings', 'master_settings'), {
         partnerAccounts: updated, pendingUsers: filtered,
       }, { merge: true });
+      await clearSignupNotifs(email);
       showToast(`[${email}] 계정이 승인되었습니다.`);
     } catch (e) { showToast('승인 실패: ' + (e as Error).message); }
   };
 
   const handleReject = async (email: string) => {
-    const filtered = pendingUsers.filter(e => e !== email);
+    const filtered = pendingUsers.filter((e) => e !== email);
     try {
       await setDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'settings', 'master_settings'), {
         pendingUsers: filtered,
       }, { merge: true });
+      await clearSignupNotifs(email);
       showToast(`'${email}' 가입 요청이 삭제되었습니다.`);
     } catch (e) { showToast('삭제 실패: ' + (e as Error).message); }
   };
@@ -127,7 +183,7 @@ export default function UsersTab() {
               <tr>
                 <th className="p-3 sm:p-4 font-bold text-slate-500">승인된 이메일 계정</th>
                 <th className="p-3 sm:p-4 font-bold text-slate-500">부여된 권한</th>
-                <th className="p-3 sm:p-4 font-bold text-slate-500 text-center w-24">강제 해제</th>
+                <th className="p-3 sm:p-4 font-bold text-slate-500 text-center w-40">비번 / 해제</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -139,7 +195,10 @@ export default function UsersTab() {
                   <td className="p-3 sm:p-4 font-bold text-blue-600 bg-blue-50/50">
                     {company === 'ADMIN' ? <span className="text-orange-600">👑 최고 관리자 (본사)</span> : `🏢 ${safeRender(company)}`}
                   </td>
-                  <td className="p-2 sm:p-4 text-center">
+                  <td className="p-2 sm:p-4 text-center whitespace-nowrap">
+                    <button onClick={() => setPwTarget(email)} className="bg-sky-100 hover:bg-sky-500 hover:text-white text-sky-700 font-bold py-1.5 px-3 rounded-lg transition-colors shadow-sm text-xs mr-1 inline-flex items-center gap-1">
+                      <KeyRound size={13} /> 비번설정
+                    </button>
                     <button onClick={() => handleRemoveAccount(email)} className="bg-red-100 hover:bg-red-500 hover:text-white text-red-600 font-bold py-1.5 px-3 rounded-lg transition-colors shadow-sm text-xs">
                       해제
                     </button>
@@ -150,6 +209,10 @@ export default function UsersTab() {
           </table>
         </div>
       </div>
+
+      {pwTarget && (
+        <SetPasswordModal email={pwTarget} onClose={() => setPwTarget(null)} showToast={showToast} />
+      )}
     </div>
   );
 }
@@ -170,5 +233,57 @@ function PendingRow({ email, onApprove, onReject }: { email: string; onApprove: 
         <button onClick={() => onReject(email)} className="bg-slate-200 hover:bg-red-500 hover:text-white text-slate-600 font-bold py-1.5 px-4 rounded-md transition-colors shadow-sm text-xs sm:text-sm">삭제</button>
       </td>
     </tr>
+  );
+}
+
+// ── 관리자가 회원사 비밀번호를 직접 설정하는 모달 ─────────────────────────
+function SetPasswordModal({ email, onClose, showToast }: { email: string; onClose: () => void; showToast: (m: string) => void }) {
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  const submit = async () => {
+    setErr('');
+    if (pw.length < 6) { setErr('비밀번호는 6자리 이상이어야 합니다.'); return; }
+    if (pw !== pw2) { setErr('두 비밀번호가 일치하지 않습니다.'); return; }
+    setLoading(true);
+    try {
+      const call = httpsCallable(functions, 'adminSetPassword');
+      await call({ email, newPassword: pw });
+      showToast(`[${email}] 비밀번호가 변경되었습니다. 회원사에 새 비밀번호를 전달하세요.`);
+      onClose();
+    } catch (e) {
+      const msg = (e as { message?: string }).message || '비밀번호 변경에 실패했습니다.';
+      setErr(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(15,23,42,.55)', backdropFilter: 'blur(3px)' }} onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-8 anim-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 mb-1">
+          <KeyRound size={20} className="text-sky-600" />
+          <h3 className="text-lg font-black text-slate-800">비밀번호 직접 설정</h3>
+        </div>
+        <p className="text-xs font-bold text-slate-500 mb-5">대상 계정: <span className="text-sky-600">{email}</span></p>
+        <div className="space-y-3">
+          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="새 비밀번호 (6자리 이상)" className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm font-bold text-slate-800 outline-none focus:border-sky-500" />
+          <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="새 비밀번호 확인" className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm font-bold text-slate-800 outline-none focus:border-sky-500" />
+          {err && <p className="text-red-500 text-xs font-bold text-center bg-red-50 py-2 px-3 rounded-lg">{err}</p>}
+        </div>
+        <div className="flex gap-2 mt-6">
+          <button onClick={onClose} disabled={loading} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl text-sm transition-colors disabled:opacity-50">취소</button>
+          <button onClick={submit} disabled={loading} className="flex-1 btn-sky font-bold py-3 rounded-xl text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+            {loading ? <span className="animate-spin">🔄</span> : <KeyRound size={15} />} 변경하기
+          </button>
+        </div>
+        <p className="text-[10px] font-bold text-slate-400 mt-4 text-center leading-relaxed">
+          ※ 변경 후 회원사에 새 비밀번호를 직접 전달해 주세요.<br />회원사는 로그인 후 프로필에서 다시 변경할 수 있습니다.
+        </p>
+      </div>
+    </div>
   );
 }

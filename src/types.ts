@@ -64,6 +64,7 @@ export interface Notification {
   target: string;
   timestamp: string;
   readBy?: string[]; // 읽은 사용자 uid 목록 (다중 관리자 유실 방지 — 삭제 대신 읽음처리)
+  signupEmail?: string; // 신규 가입요청 알림에만 존재 — UsersTab 승인 대기 목록 파싱용
 }
 
 // ─── 공문 작성 (ttong) ───────────────────────────────────────────────
