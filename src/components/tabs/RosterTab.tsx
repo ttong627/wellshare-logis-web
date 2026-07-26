@@ -16,6 +16,7 @@ import {
   Folder, FolderOpen, FileText, Sparkles, SendHorizontal, Square, CheckSquare, Layers, X,
   Key, Mail,
 } from 'lucide-react';
+import { standardRosterFileName } from '../../utils/rosterFilename';
 import { db, storage, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { PARTNER_REGIONS } from '../../constants/members';
@@ -282,7 +283,9 @@ export default function RosterTab() {
     }
     setUploading(true);
     try {
-      const safe = file.name.replace(/[\\/:*?"<>|]+/g, '_');
+      // 형 규칙(2026-07-26): 저장 파일명 = 지자체_YYYY년MM월_원본명(다운로드명=fileName 필드 기준).
+      const displayName = standardRosterFileName(upRegion, upMonth, file.name);
+      const safe = displayName.replace(/[\\/:*?"<>|]+/g, '_');
       const base = upAdminOnly ? 'rosters_admin' : 'rosters';
       const path = `${base}/${upRegion}/${upMonth}/${Date.now()}_${safe}`;
       await uploadBytes(storageRef(storage, path), file, { contentType: file.type || 'application/octet-stream' });
@@ -290,7 +293,7 @@ export default function RosterTab() {
         region: upRegion,
         month: upMonth,
         category: upCategory || '전체',
-        fileName: file.name,
+        fileName: displayName,
         contentType: file.type || 'application/octet-stream',
         size: file.size,
         storagePath: path,
@@ -301,7 +304,7 @@ export default function RosterTab() {
       });
       setUpNote('');
       if (fileInputRef.current) fileInputRef.current.value = '';
-      showToast(`업로드 완료: ${file.name}`);
+      showToast(`업로드 완료: ${displayName}`);
     } catch (e) {
       console.error('업로드 실패:', e);
       showToast('업로드에 실패했습니다. 권한/네트워크를 확인해주세요.');

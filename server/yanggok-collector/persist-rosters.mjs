@@ -109,6 +109,7 @@ export async function uploadToStorage(gcsToken, objectPath, buffer, contentType,
 export async function loadExistingKeys(fsToken) {
   const ids = new Set();
   const legacy = new Set();
+  const regionPasswords = new Map(); // region -> Set<pw> (형 규칙 ② 폴백: 과거 확인 암호 재사용)
   let pageToken = null;
   do {
     const q = new URLSearchParams({ pageSize: '300' });
@@ -121,10 +122,16 @@ export async function loadExistingKeys(fsToken) {
       const f = doc.fields || {};
       legacy.add(`${f.region?.stringValue}|${f.month?.stringValue}|${f.fileName?.stringValue}`);
       legacy.add(`${f.region?.stringValue}|${f.fileName?.stringValue}`);
+      const region = f.region?.stringValue || '';
+      const pw = f.passwordFound?.stringValue || '';
+      if (region && pw) {
+        if (!regionPasswords.has(region)) regionPasswords.set(region, new Set());
+        regionPasswords.get(region).add(pw);
+      }
     }
     pageToken = j.nextPageToken || null;
   } while (pageToken);
-  return { ids, legacy };
+  return { ids, legacy, regionPasswords };
 }
 
 // 모든 rosters 문서(필드 포함) — backfill-decrypt-existing.mjs가 사용

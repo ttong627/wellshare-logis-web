@@ -21,6 +21,8 @@ import {
 import { sendTelegram } from './notify-telegram.mjs';
 import { extractPassword } from './password-extract.mjs';
 import { isXlsxEncrypted, decryptXlsx, decryptZipEntries, zipHasEncryptedXlsx } from './decrypt.mjs';
+import { standardRosterFileName } from './standardize-filename.mjs';
+import { pwCandidates } from './password-fallback.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const NW = path.join(os.homedir(), '.config', 'nworks');
@@ -97,8 +99,8 @@ async function main() {
 
   const fsToken = await getGoogleToken('https://www.googleapis.com/auth/datastore');
   const gcsToken = COMMIT ? await getGoogleToken('https://www.googleapis.com/auth/devstorage.read_write') : null;
-  const { ids: existingIds, legacy: legacyKeys } = await loadExistingKeys(fsToken);
-  log(`  기존 rosters ${existingIds.size}건`);
+  const { ids: existingIds, legacy: legacyKeys, regionPasswords } = await loadExistingKeys(fsToken);
+  log(`  기존 rosters ${existingIds.size}건 · 지자체 저장암호 ${regionPasswords.size}곳`);
 
   const failures = [];
   let okAccounts = 0;
@@ -133,16 +135,21 @@ async function main() {
       };
       for (const a of atts) {
         const docId = `MAIL_${acc.key}_${m.mailId}_${a.attachmentId}`;
-        const legacyKey = `${plan.region}|${plan.month}|${a.filename}`;
-        const regionFileKey = `${plan.region}|${a.filename}`;
-        if (existingIds.has(docId) || legacyKeys.has(legacyKey) || legacyKeys.has(regionFileKey)) continue; // 멱등
+        // 형 규칙(2026-07-26): 저장 파일명 = 지자체_YYYY년MM월_원본명. 다운로드·표시·멱등키 모두 규격명 기준.
+        const displayName = standardRosterFileName(plan.region, plan.month, a.filename);
+        // 멱등 2차키: 원본명·규격명 둘 다 대조(소급 규격화 전/후 문서 혼재 대비).
+        const legacyKeys2 = [
+          `${plan.region}|${plan.month}|${a.filename}`, `${plan.region}|${plan.month}|${displayName}`,
+          `${plan.region}|${a.filename}`, `${plan.region}|${displayName}`,
+        ];
+        if (existingIds.has(docId) || legacyKeys2.some((k) => legacyKeys.has(k))) continue; // 멱등
         const contentType = a.contentType === 'application/octet-stream' ? extContentType(a.filename) : a.contentType;
         const base = plan.adminOnly ? 'rosters_admin' : 'rosters';
-        const storagePath = `${base}/${plan.region}/${plan.month}/${docId}_${safeName(a.filename)}`;
+        const storagePath = `${base}/${plan.region}/${plan.month}/${docId}_${safeName(displayName)}`;
 
         if (!COMMIT) {
-          log(`    · [예정] ${plan.region} ${plan.month}${plan.adminOnly ? ' 🔒' : ''} ${a.filename} (${Math.round(a.size / 1024)}KB) ← ${m.subject.slice(0, 40)}`);
-          registered.push({ ...plan, fileName: a.filename });
+          log(`    · [예정] ${plan.region} ${plan.month}${plan.adminOnly ? ' 🔒' : ''} ${displayName} (${Math.round(a.size / 1024)}KB) ← ${m.subject.slice(0, 40)}`);
+          registered.push({ ...plan, fileName: displayName });
           continue;
         }
         try {
@@ -153,23 +160,43 @@ async function main() {
           const isZip = /\.zip$/i.test(a.filename);
           const rawBody = await getBody(); // 암호 유무와 무관하게 항상 저장(리스트에서 원문 열람용)
 
+          // 형 규칙 ②: 메일 추출 암호 → 실패 시 그 지자체의 과거 확인 암호(passwordFound) 순차 폴백.
+          const extracted = extractPassword({ subject: m.subject, body: rawBody, fileName: a.filename });
+          const candidates = pwCandidates(extracted, regionPasswords.get(plan.region));
+
           if (isXlsx && await isXlsxEncrypted(buf)) {
-            const pw = extractPassword({ subject: m.subject, body: rawBody, fileName: a.filename });
-            const plain = pw ? await decryptXlsx(buf, pw) : null;
-            if (plain) { buf = plain; passwordFound = pw; log(`    🔓 암호 해제(엑셀): ${a.filename} (pw=${pw})`); }
-            else note = [note, '🔒 암호 확인 필요(메일에서 못 찾음) — 담당자 확인'].filter(Boolean).join(' · ');
+            let usedPw = '';
+            for (const pw of candidates) {
+              const plain = await decryptXlsx(buf, pw);
+              if (plain) { buf = plain; usedPw = pw; break; }
+            }
+            if (usedPw) {
+              passwordFound = usedPw;
+              const via = usedPw === String(extracted ?? '') ? '메일' : '저장된 지자체 암호';
+              log(`    🔓 암호 해제(엑셀·${via}): ${a.filename} (pw=${usedPw})`);
+            } else {
+              note = [note, '🔒 암호 확인 필요(메일·저장암호 모두 실패) — 담당자 확인'].filter(Boolean).join(' · ');
+            }
           } else if (isZip && await zipHasEncryptedXlsx(buf)) {
-            const pw = extractPassword({ subject: m.subject, body: rawBody, fileName: a.filename });
-            const { changed, buf: outBuf, stillEncrypted } = await decryptZipEntries(buf, pw);
-            if (changed) { buf = outBuf; passwordFound = pw; log(`    🔓 암호 해제(zip 안 엑셀): ${a.filename} (pw=${pw})`); }
-            if (stillEncrypted) note = [note, '🔒 암호 확인 필요(메일에서 못 찾음) — 담당자 확인'].filter(Boolean).join(' · ');
+            let usedPw = '';
+            let stillEnc = true;
+            for (const pw of candidates) {
+              const { changed, buf: outBuf, stillEncrypted } = await decryptZipEntries(buf, pw);
+              if (changed) { buf = outBuf; usedPw = pw; stillEnc = stillEncrypted; if (!stillEncrypted) break; }
+            }
+            if (usedPw) {
+              passwordFound = usedPw;
+              const via = usedPw === String(extracted ?? '') ? '메일' : '저장된 지자체 암호';
+              log(`    🔓 암호 해제(zip 안 엑셀·${via}): ${a.filename} (pw=${usedPw})`);
+            }
+            if (stillEnc) note = [note, '🔒 암호 확인 필요(메일·저장암호 모두 실패) — 담당자 확인'].filter(Boolean).join(' · ');
           }
 
-          await uploadToStorage(gcsToken, storagePath, buf, contentType, a.filename);
+          await uploadToStorage(gcsToken, storagePath, buf, contentType, displayName);
           const created = await createRosterDoc(fsToken, docId, {
             region: plan.region, month: plan.month,
             category: extractCategory(m.subject, a.filename),
-            fileName: a.filename, contentType, size: buf.length, storagePath,
+            fileName: displayName, contentType, size: buf.length, storagePath,
             note, adminOnly: plan.adminOnly,
             uploadedAt: new Date().toISOString(), uploadedBy: '양곡 자동수집',
             sourceMailId: m.mailId, sourceAccount: acc.name,
@@ -177,9 +204,11 @@ async function main() {
             passwordFound,
           });
           if (created) {
-            existingIds.add(docId); legacyKeys.add(legacyKey); legacyKeys.add(regionFileKey);
-            registered.push({ ...plan, fileName: a.filename });
-            log(`    ✓ 적재 ${plan.region} ${plan.month}${plan.adminOnly ? ' 🔒' : ''} ${a.filename} (${Math.round(buf.length / 1024)}KB)`);
+            existingIds.add(docId);
+            legacyKeys.add(`${plan.region}|${plan.month}|${displayName}`);
+            legacyKeys.add(`${plan.region}|${displayName}`);
+            registered.push({ ...plan, fileName: displayName });
+            log(`    ✓ 적재 ${plan.region} ${plan.month}${plan.adminOnly ? ' 🔒' : ''} ${displayName} (${Math.round(buf.length / 1024)}KB)`);
           }
         } catch (e) {
           log(`    ✗ 적재 실패 ${a.filename}: ${e.message.slice(0, 120)}`);
