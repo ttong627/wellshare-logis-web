@@ -68,7 +68,7 @@ service cloud.firestore {
         || (isSignedIn()
               && existing().get('isClosed', false) != true
               && request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['partnerInputs', 'deliveryDates', 'publishDates', 'updatedAt', 'updatedBy']));
+                   .hasOnly(['partnerInputs', 'deliveryDates', 'publishDates', 'updatedAt', 'updatedBy', 'version']));
     }
 
     // master_settings: 계정 승인·권한 관리(partnerAccounts/pendingUsers)는 동적 관리자(ROLE ADMIN)도 가능.

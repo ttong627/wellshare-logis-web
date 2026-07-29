@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from 'firebase/auth';
-import { doc, getDoc, getDocs, setDoc, collection, query } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, query, runTransaction } from 'firebase/firestore';
 import { db, APP_ID } from '../firebase';
 import {
   ZonePrices, RegionsData, Orders, PartnerInputs,
@@ -34,6 +34,7 @@ export function useMonthData(user: User | null) {
   const [savedMonths, setSavedMonths] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const hasResolvedDefaultMonth = useRef(false);
+  const loadedVersionRef = useRef(0);   // 낙관적 잠금: 로드 시점 문서 버전(동시저장 충돌 감지 기준)
 
   // 저장된 월 목록 — 문서 ID(월)만 필요한데 onSnapshot으로 전체 컬렉션을 구독하면 어느 월이든
   // 저장할 때마다(orders/partnerInputs 등 큰 필드 포함) 모든 월 문서를 통째로 다시 내려받는
@@ -67,6 +68,7 @@ export function useMonthData(user: User | null) {
         setDeliveryDates(data.deliveryDates || {});
         setEcountSales(data.ecountSales || {});
         setIsClosed(data.isClosed || false);
+        loadedVersionRef.current = (data.version as number) ?? 0;
       } else {
         setZonePrices(INITIAL_ZONES);
         setRegions(INITIAL_REGIONS_DATA);
@@ -77,6 +79,7 @@ export function useMonthData(user: User | null) {
         setDeliveryDates({});
         setEcountSales({});
         setIsClosed(false);
+        loadedVersionRef.current = 0;
       }
     } catch (e) {
       console.error('월 데이터 로드 오류:', e);
@@ -113,32 +116,61 @@ export function useMonthData(user: User | null) {
     resolveDefaultMonth();
   }, [currentMonth, user]);
 
+  // 낙관적 잠금 병합 저장 — runTransaction 안에서 로드시점 버전과 DB 버전을 비교해
+  // 다른 탭·기기가 먼저 저장했으면(버전 불일치) 저장을 취소하고 최신 데이터를 재로드한다.
+  // ⚠️ 월 문서는 updateDoc 금지(CLAUDE.md) → 트랜잭션 안에서도 tx.set(..., {merge:true})로 병합.
+  const commitMerge = useCallback(async (data: Record<string, unknown>, email: string) => {
+    const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
+    let newVersion = loadedVersionRef.current;
+    try {
+      await runTransaction(db, async (tx) => {
+        const cur = await tx.get(ref);
+        const dbVersion = cur.exists() ? ((cur.data().version as number) ?? 0) : 0;
+        if (cur.exists() && dbVersion !== loadedVersionRef.current) {
+          const err = new Error('CONFLICT') as Error & { code?: string };
+          err.code = 'CONFLICT';
+          throw err;   // 동시저장 충돌 — 이전 저장 덮어쓰기 방지
+        }
+        newVersion = dbVersion + 1;
+        tx.set(ref, { ...data, version: newVersion, updatedAt: new Date().toISOString(), updatedBy: email }, { merge: true });
+      });
+      loadedVersionRef.current = newVersion;
+      if (!savedMonths.includes(currentMonth)) refreshSavedMonths();
+    } catch (e) {
+      if ((e as { code?: string })?.code === 'CONFLICT') {
+        if (typeof window !== 'undefined' && window.confirm(
+          '다른 기기·탭에서 이 달 정산 데이터를 먼저 저장했습니다.\n' +
+          '내 화면이 오래된 상태라 이번 저장을 취소했습니다.\n\n' +
+          '[확인]을 누르면 최신 데이터를 불러옵니다. (방금 입력한 값은 반영되지 않습니다)'
+        )) {
+          await loadMonth(currentMonth);
+        }
+        return;
+      }
+      throw e;
+    }
+  }, [currentMonth, savedMonths, refreshSavedMonths, loadMonth]);
+
   const saveAll = useCallback(async (email: string) => {
     setIsSaving(true);
     try {
-      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-      await setDoc(ref, {
+      await commitMerge({
         zonePrices, regions, orders, partnerInputs,
         publishDates, publishRequests, deliveryDates, isClosed,
-        updatedAt: new Date().toISOString(), updatedBy: email,
-      }, { merge: true });
-      // 이미 목록에 있는 월이면(대부분의 경우) 전체 컬렉션 재조회를 생략 — 신규 월일 때만 갱신
-      if (!savedMonths.includes(currentMonth)) refreshSavedMonths();
+      }, email);
     } finally {
       setIsSaving(false);
     }
-  }, [currentMonth, zonePrices, regions, orders, partnerInputs, publishDates, publishRequests, deliveryDates, isClosed, savedMonths, refreshSavedMonths]);
+  }, [commitMerge, zonePrices, regions, orders, partnerInputs, publishDates, publishRequests, deliveryDates, isClosed]);
 
   const saveField = useCallback(async (field: string, value: unknown, email: string) => {
     setIsSaving(true);
     try {
-      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-      await setDoc(ref, { [field]: value, updatedAt: new Date().toISOString(), updatedBy: email }, { merge: true });
-      if (!savedMonths.includes(currentMonth)) refreshSavedMonths();
+      await commitMerge({ [field]: value }, email);
     } finally {
       setIsSaving(false);
     }
-  }, [currentMonth, savedMonths, refreshSavedMonths]);
+  }, [commitMerge]);
 
   return {
     currentMonth, setCurrentMonth,
