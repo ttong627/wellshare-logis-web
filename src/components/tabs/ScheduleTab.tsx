@@ -3,7 +3,7 @@ import {
   Plus, Trash2, Search, RotateCcw, Printer, Download, FileDown,
   UserPlus, Calendar, Users, LayoutGrid,
 } from 'lucide-react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { REGION_ORDER, SEOUL_REGIONS, GYEONGGI_REGIONS } from '../../constants/regions';
@@ -420,6 +420,8 @@ export default function ScheduleTab() {
   const completedCount = items.filter(i => i.isCompleted).length;
   const pct = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
 
+  const loadedVersionRef = useRef(0);   // 낙관적 잠금: 로드 시점 문서 버전(동시저장 충돌 감지 기준)
+
   // ─── Load ─────────────────────────────────────────────────────────────────
   const loadSchedule = useCallback(async () => {
     setLoading(true);
@@ -428,12 +430,14 @@ export default function ScheduleTab() {
       const snap = await getDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'schedule_records', docId));
       if (snap.exists()) {
         const data = snap.data() as ScheduleData;
+        loadedVersionRef.current = (data.version as number) ?? 0;
         setScheduleData(data);
         setItems([...(data.items || [])].map(item => ({
           ...item,
           deliveryDates: item.deliveryDates ?? [],
         })).sort((a, b) => (a.dong || '').localeCompare(b.dong || '', 'ko')));
       } else {
+        loadedVersionRef.current = 0;
         const newData: ScheduleData = {
           year: Number(yr), month: Number(mo),
           sido: SIDO_MAP[selectedRegion] || '', sigungu: selectedRegion, items: [],
@@ -450,6 +454,41 @@ export default function ScheduleTab() {
 
   useEffect(() => { loadSchedule(); }, [loadSchedule]);
 
+  // ─── Save (낙관적 잠금) ───────────────────────────────────────────────────
+  // runTransaction 안에서 로드시점 버전과 DB 버전을 비교해 다른 탭·기기가 먼저
+  // 저장했으면(버전 불일치) 저장을 취소하고 최신 데이터를 재로드한다. 성공 true·충돌 false.
+  const commitSchedule = async (updated: ScheduleData): Promise<boolean> => {
+    const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'schedule_records', docId);
+    let newVersion = loadedVersionRef.current;
+    try {
+      await runTransaction(db, async (tx) => {
+        const cur = await tx.get(ref);
+        const dbVersion = cur.exists() ? ((cur.data().version as number) ?? 0) : 0;
+        if (cur.exists() && dbVersion !== loadedVersionRef.current) {
+          const err = new Error('CONFLICT') as Error & { code?: string };
+          err.code = 'CONFLICT';
+          throw err;   // 동시저장 충돌 — 이전 저장 덮어쓰기 방지
+        }
+        newVersion = dbVersion + 1;
+        tx.set(ref, { ...updated, version: newVersion, lastUpdated: new Date().toISOString() });
+      });
+      loadedVersionRef.current = newVersion;
+      return true;
+    } catch (e) {
+      if ((e as { code?: string })?.code === 'CONFLICT') {
+        if (typeof window !== 'undefined' && window.confirm(
+          '다른 기기·탭에서 이 배송일정을 먼저 저장했습니다.\n' +
+          '내 화면이 오래된 상태라 이번 저장을 취소했습니다.\n\n' +
+          '[확인]을 누르면 최신 데이터를 불러옵니다. (방금 입력한 값은 반영되지 않습니다)'
+        )) {
+          await loadSchedule();
+        }
+        return false;
+      }
+      throw e;
+    }
+  };
+
   // ─── Save ─────────────────────────────────────────────────────────────────
   const saveSchedule = async (newItems?: ScheduleItem[]) => {
     const toSave = newItems ?? items;
@@ -460,14 +499,13 @@ export default function ScheduleTab() {
     };
     setIsSaving(true);
     try {
-      await setDoc(
-        doc(db, 'artifacts', APP_ID, 'public', 'data', 'schedule_records', docId),
-        { ...updated, lastUpdated: new Date().toISOString() }
-      );
-      setScheduleData(updated);
-      setItems(toSave);
-      setHasChanges(false);
-      showToast('배송일정이 저장되었습니다.');
+      const ok = await commitSchedule(updated);
+      if (ok) {
+        setScheduleData(updated);
+        setItems(toSave);
+        setHasChanges(false);
+        showToast('배송일정이 저장되었습니다.');
+      }
     } catch (e) { showToast('저장 오류: ' + (e as Error).message); }
     finally { setIsSaving(false); }
   };
@@ -490,11 +528,11 @@ export default function ScheduleTab() {
     setItems(newItems);
     setIsSaving(true);
     try {
-      await setDoc(
-        doc(db, 'artifacts', APP_ID, 'public', 'data', 'schedule_records', docId),
-        { ...scheduleData!, items: newItems, lastUpdated: new Date().toISOString() }
-      );
-      setScheduleData(prev => prev ? { ...prev, items: newItems } : null);
+      const ok = await commitSchedule({ ...scheduleData!, items: newItems });
+      if (ok) {
+        setScheduleData(prev => prev ? { ...prev, items: newItems } : null);
+      }
+      // 충돌 시 commitSchedule이 최신 데이터를 재로드 처리 → 별도 롤백 불필요
     } catch (e) {
       showToast('오류: ' + (e as Error).message);
       setItems(items);

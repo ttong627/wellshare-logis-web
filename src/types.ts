@@ -416,4 +416,5 @@ export interface ScheduleData {
   sigungu: string;
   items: ScheduleItem[];
   lastUpdated?: string;
+  version?: number;   // 낙관적 잠금: 동시저장 충돌 감지용
 }
