@@ -160,7 +160,7 @@ function FmtToggle({ label, value, onChange }: { label: string; value: boolean; 
   return (
     <div className="flex items-center gap-2 cursor-pointer" onClick={() => onChange(!value)}>
       <div className={`relative w-9 h-5 rounded-full transition-all flex-shrink-0 ${value ? 'bg-gradient-to-r from-sky-500 to-sky-400' : 'bg-slate-200'}`}
-        style={value ? { boxShadow: '0 0 8px rgba(14,165,233,.5)' } : {}}>
+        style={value ? { boxShadow: '0 0 8px rgba(24,168,216,.5)' } : {}}>
         <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${value ? 'translate-x-4' : ''}`} />
       </div>
       <span className="text-xs font-bold text-sky-700 select-none">{label}</span>
@@ -202,7 +202,7 @@ function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }
   return (
     <div className="flex items-center gap-2 mb-3">
       <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-        style={{ background: 'linear-gradient(135deg,#0284c7,#38bdf8)', boxShadow: '0 2px 8px rgba(14,165,233,.4)' }}>
+        style={{ background: 'linear-gradient(135deg,#0E7FA8,#5CCBEE)', boxShadow: '0 2px 8px rgba(24,168,216,.4)' }}>
         <span className="text-white" style={{ fontSize: 12 }}>{icon}</span>
       </div>
       <p className="text-[11px] font-black text-sky-700 uppercase tracking-widest">{title}</p>
@@ -420,7 +420,7 @@ export default function DocsTab() {
       representativeTitle: newTmpl.representativeTitle || '대표',
       address: newTmpl.address || '', postalCode: newTmpl.postalCode || '',
       tel: newTmpl.tel || '', fax: newTmpl.fax || '', email: newTmpl.email || '',
-      themeColor: newTmpl.themeColor || '#0369a1', publicStatus: '공개',
+      themeColor: newTmpl.themeColor || '#0B6F94', publicStatus: '공개',
       logoUrl: '', sealUrl: '', format: { ...DEFAULT_FORMAT },
       createdAt: new Date().toISOString(),
     };
@@ -925,8 +925,8 @@ export default function DocsTab() {
       {/* ── Hero bar ── */}
       <div className="rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden"
         style={{
-          background: 'linear-gradient(135deg,#0369a1 0%,#0284c7 30%,#0ea5e9 65%,#38bdf8 100%)',
-          boxShadow: '0 8px 40px rgba(2,132,199,.4)',
+          background: 'linear-gradient(135deg,#0B6F94 0%,#0E7FA8 30%,#18A8D8 65%,#5CCBEE 100%)',
+          boxShadow: '0 8px 40px rgba(14,127,168,.4)',
         }}>
         {/* shine line */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent)' }} />
@@ -964,7 +964,7 @@ export default function DocsTab() {
         <div className="flex items-center justify-between mb-3">
           <label className="text-xs font-black text-sky-600 uppercase tracking-widest">공문 양식 선택</label>
           {isAdmin && (
-            <button onClick={() => { setShowAddTemplate(true); setNewTmpl({ themeColor: '#0369a1', representativeTitle: '대표', publicStatus: '공개' }); }}
+            <button onClick={() => { setShowAddTemplate(true); setNewTmpl({ themeColor: '#0B6F94', representativeTitle: '대표', publicStatus: '공개' }); }}
               className="flex items-center gap-1 text-sky-600 hover:text-sky-800 text-xs font-bold border border-sky-200 hover:border-sky-400 hover:bg-sky-50 px-3 py-1.5 rounded-xl transition-all">
               <Plus size={13} /> 새 양식 추가
             </button>
@@ -1022,10 +1022,10 @@ export default function DocsTab() {
             <div>
               <label className="text-[10px] font-bold text-sky-600 mb-1 block">테마 색상</label>
               <div className="flex items-center gap-2">
-                <input type="color" value={newTmpl.themeColor || '#0369a1'}
+                <input type="color" value={newTmpl.themeColor || '#0B6F94'}
                   onChange={e => setNewTmpl(p => ({ ...p, themeColor: e.target.value }))}
                   className="h-9 w-14 rounded-xl border border-sky-200 cursor-pointer p-0.5 bg-sky-50" />
-                <span className="text-xs font-mono text-sky-600">{newTmpl.themeColor || '#0369a1'}</span>
+                <span className="text-xs font-mono text-sky-600">{newTmpl.themeColor || '#0B6F94'}</span>
               </div>
             </div>
           </div>
@@ -1041,7 +1041,7 @@ export default function DocsTab() {
         <div className="glass rounded-2xl overflow-hidden border border-sky-100">
           {/* Header */}
           <div className="px-5 py-3 border-b border-sky-100 flex items-center justify-between"
-            style={{ background: 'linear-gradient(135deg, rgba(14,165,233,.08), rgba(56,189,248,.04))' }}>
+            style={{ background: 'linear-gradient(135deg, rgba(24,168,216,.08), rgba(92,203,238,.04))' }}>
             <h4 className="font-black text-sky-700 text-sm flex items-center gap-2">
               <Settings size={15} className="text-sky-500" /> 서식 편집 — <span style={{ color: template.themeColor }}>{template.name}</span>
             </h4>
@@ -1153,7 +1153,7 @@ export default function DocsTab() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[11px] font-black text-sky-700 uppercase tracking-widest flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[12px]" style={{ background: 'linear-gradient(135deg,#0284c7,#38bdf8)', boxShadow: '0 2px 8px rgba(14,165,233,.4)' }}><Type size={11} /></span>
+                      <span className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[12px]" style={{ background: 'linear-gradient(135deg,#0E7FA8,#5CCBEE)', boxShadow: '0 2px 8px rgba(24,168,216,.4)' }}><Type size={11} /></span>
                       슬로건
                     </p>
                     <FmtToggle label="슬로건 표시" value={fmt.showSlogan} onChange={v => updateFormat('showSlogan', v)} />
@@ -1175,7 +1175,7 @@ export default function DocsTab() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[11px] font-black text-sky-700 uppercase tracking-widest flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[12px]" style={{ background: 'linear-gradient(135deg,#0284c7,#38bdf8)', boxShadow: '0 2px 8px rgba(14,165,233,.4)' }}><Type size={11} /></span>
+                      <span className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[12px]" style={{ background: 'linear-gradient(135deg,#0E7FA8,#5CCBEE)', boxShadow: '0 2px 8px rgba(24,168,216,.4)' }}><Type size={11} /></span>
                       연락처 (머리말)
                     </p>
                     <FmtToggle label="연락처 표시" value={fmt.showContact} onChange={v => updateFormat('showContact', v)} />
@@ -1484,7 +1484,7 @@ export default function DocsTab() {
       {showHistory && (
         <div className="glass rounded-2xl overflow-hidden">
           <div className="px-5 py-3 border-b border-sky-100 flex items-center justify-between gap-3"
-            style={{ background: 'linear-gradient(135deg,rgba(14,165,233,.06),rgba(56,189,248,.03))' }}>
+            style={{ background: 'linear-gradient(135deg,rgba(24,168,216,.06),rgba(92,203,238,.03))' }}>
             <h4 className="font-black text-sky-700 text-sm">공문 발송 이력</h4>
             <div className="flex items-center gap-2 flex-wrap">
               <div className="flex gap-1 text-xs font-bold flex-wrap">
@@ -1508,7 +1508,7 @@ export default function DocsTab() {
               <p className="text-center py-8 text-sky-300 text-sm font-bold">발송 이력이 없습니다.</p>
             )}
             {filteredHistory.map(h => {
-              const tmpl = templates.find(t => t.id === h.type) || { name: h.type, themeColor: '#0ea5e9' };
+              const tmpl = templates.find(t => t.id === h.type) || { name: h.type, themeColor: '#18A8D8' };
               return (
                 <div key={h.id} className="px-5 py-3 hover:bg-sky-50/60 transition-colors flex items-center justify-between gap-4">
                   <div className="min-w-0">
@@ -1759,7 +1759,7 @@ export default function DocsTab() {
 
         {/* Preview */}
         <div className={showPreview ? 'block' : 'hidden xl:block'}>
-          <div className="glass rounded-2xl p-4 sticky top-4" style={{ boxShadow: '0 8px 32px rgba(14,165,233,.15)' }}>
+          <div className="glass rounded-2xl p-4 sticky top-4" style={{ boxShadow: '0 8px 32px rgba(24,168,216,.15)' }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Eye size={15} className="text-sky-500" />

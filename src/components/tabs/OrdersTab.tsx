@@ -76,7 +76,7 @@ export default function OrdersTab({ onOpenConflict }: OrdersTabProps) {
               <span className="text-xl sm:text-3xl font-black text-slate-800">{formatNumber(orderSummaries.basicTotal)} <small className="text-[10px] sm:text-xs font-bold text-slate-400">포</small></span>
             </div>
             <div className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg sm:rounded-xl text-white"
-              style={{ background: 'linear-gradient(135deg,#0284c7,#38bdf8)', boxShadow: '0 4px 16px rgba(14,165,233,.4)' }}>
+              style={{ background: 'linear-gradient(135deg,#0E7FA8,#5CCBEE)', boxShadow: '0 4px 16px rgba(24,168,216,.4)' }}>
               <span className="text-[10px] sm:text-xs font-bold text-sky-100 mb-0.5 sm:mb-1">전체 배송량</span>
               <span className="text-xl sm:text-3xl font-black">{formatNumber(orderSummaries.overallTotal)}</span>
             </div>

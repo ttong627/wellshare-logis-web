@@ -77,7 +77,7 @@ export function useConfirm() {
               <button
                 onClick={() => close(true)}
                 className="flex-1 py-3 rounded-2xl font-bold text-sm text-white transition-colors shadow-md hover:brightness-105"
-                style={{ background: isDanger ? '#ef4444' : 'linear-gradient(160deg,#38bdf8,#0284c7)' }}
+                style={{ background: isDanger ? '#ef4444' : 'linear-gradient(160deg,#5CCBEE,#0E7FA8)' }}
               >
                 {state.confirmText || '확인'}
               </button>

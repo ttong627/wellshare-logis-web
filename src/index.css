@@ -1,35 +1,38 @@
 @import "tailwindcss";
 
 /* ══════════════════════════════════════════════════════════
-   WELLSHARE — Sky Blue Water Drop Theme
+   WELLSHARE — 다크 프리미엄 CI 테마
+   (wslos.kr 정산앱과 통일 · 시안 #18A8D8 · 보라 #8C288C · 핑크 #D8307B)
+   ⚠️ 물방울(wdrop)·마우스 커서리플 제거 — 다크 프리미엄과 부적합
    ══════════════════════════════════════════════════════════ */
 
 :root {
-  --sky-deep:    #0284c7;
-  --sky-mid:     #0ea5e9;
-  --sky-light:   #38bdf8;
+  --sky-deep:    #0E7FA8;
+  --sky-mid:     #18A8D8;
+  --sky-light:   #5CCBEE;
   --sky-pale:    #7dd3fc;
   --sky-crystal: #bae6fd;
-  --glass-bg:    rgba(255, 255, 255, 0.82);
-  --glass-border:rgba(255, 255, 255, 0.5);
-  --shadow-sky:  0 8px 32px rgba(14, 165, 233, 0.16), 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.7);
+  --ci-cyan:     #18A8D8;
+  --ci-purple:   #8C288C;
+  --ci-pink:     #D8307B;
+  --glass-bg:    rgba(15, 23, 42, 0.82);
+  --glass-border:rgba(255, 255, 255, 0.12);
+  --shadow-sky:  0 8px 32px rgba(24, 168, 216, 0.20), 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
-/* ── Background ─────────────────────────────────────────── */
+/* ── Background: 다크 프리미엄. .wsdark(imported-dark.css)가 오브 배경을
+   담당하며, 여기 폴백으로 딥네이비를 깔아 미적용 시에도 다크 유지. ── */
 html, body {
   min-height: 100vh;
-  background:
-    radial-gradient(ellipse at 12% 8%,  rgba(56,189,248,.32) 0%, transparent 42%),
-    radial-gradient(ellipse at 88% 85%, rgba(14,165,233,.22) 0%, transparent 42%),
-    radial-gradient(ellipse at 55% 50%, rgba(125,211,252,.14) 0%, transparent 58%),
-    linear-gradient(168deg, #dff4ff 0%, #f0f9ff 45%, #e8f5ff 100%);
+  background: #060810;
+  color: #e2e8f0;
 }
 
 /* ── Custom scrollbar ───────────────────────────────────── */
 ::-webkit-scrollbar              { width: 5px; height: 5px; }
-::-webkit-scrollbar-track        { background: rgba(186,230,253,.25); border-radius: 10px; }
-::-webkit-scrollbar-thumb        { background: rgba(14,165,233,.45); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover  { background: rgba(14,165,233,.7); }
+::-webkit-scrollbar-track        { background: rgba(24,168,216,.12); border-radius: 10px; }
+::-webkit-scrollbar-thumb        { background: rgba(24,168,216,.45); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover  { background: rgba(24,168,216,.7); }
 
 /* ── Glass card ─────────────────────────────────────────── */
 .glass {
@@ -47,12 +50,12 @@ html, body {
   box-shadow: 0 8px 32px rgba(2,132,199,.4), 0 2px 8px rgba(0,0,0,0.12);
 }
 
-/* ── Sky button — 3D pressed effect ────────────────────── */
+/* ── Sky button — 3D pressed effect (CI 시안·강조) ─────────── */
 .btn-sky {
-  background: linear-gradient(160deg, #38bdf8 0%, #0ea5e9 40%, #0284c7 100%);
+  background: linear-gradient(160deg, #5CCBEE 0%, #18A8D8 40%, #0E7FA8 100%);
   box-shadow:
     0 7px 0 rgba(1,96,155,.72),
-    0 9px 20px rgba(14,165,233,.45),
+    0 9px 22px rgba(24,168,216,.5),
     inset 0 1px 0 rgba(255,255,255,.35),
     inset 0 -1px 0 rgba(0,0,0,.08);
   color: white;
@@ -62,25 +65,25 @@ html, body {
   position: relative;
 }
 .btn-sky:hover {
-  background: linear-gradient(160deg, #48c8ff 0%, #1ab5f9 40%, #0390d7 100%);
+  background: linear-gradient(160deg, #7DD9F0 0%, #18A8D8 40%, #0E7FA8 100%);
   box-shadow:
     0 9px 0 rgba(1,96,155,.72),
-    0 14px 32px rgba(14,165,233,.6),
+    0 14px 34px rgba(24,168,216,.65),
     inset 0 1px 0 rgba(255,255,255,.35);
   transform: translateY(-2px);
 }
 .btn-sky:active {
   box-shadow:
     0 2px 0 rgba(1,96,155,.72),
-    0 4px 10px rgba(14,165,233,.3),
+    0 4px 10px rgba(24,168,216,.3),
     inset 0 2px 4px rgba(0,0,0,.12);
   transform: translateY(5px);
 }
 
-/* ── Sky hero banner (shared by all tabs) ───────────────── */
+/* ── Sky hero banner (shared by all tabs · CI 시안 그라디언트) ─ */
 .sky-hero {
-  background: linear-gradient(135deg, #0369a1 0%, #0284c7 28%, #0ea5e9 62%, #38bdf8 100%);
-  box-shadow: 0 8px 40px rgba(2,132,199,.42), inset 0 1px 0 rgba(255,255,255,.2);
+  background: linear-gradient(135deg, #0B6F94 0%, #0E7FA8 28%, #18A8D8 62%, #5CCBEE 100%);
+  box-shadow: 0 8px 40px rgba(24,168,216,.42), inset 0 1px 0 rgba(255,255,255,.2);
   border-radius: 20px;
   position: relative;
   overflow: hidden;
@@ -92,57 +95,21 @@ html, body {
   pointer-events: none;
 }
 
-/* ── Cursor water-drop ripple ───────────────────────────── */
-@keyframes cursorRipple {
-  0%   { transform: translate(-50%,-50%) scale(0);   opacity: 0.85; }
-  40%  { opacity: 0.55; }
-  100% { transform: translate(-50%,-50%) scale(4.5); opacity: 0; }
-}
-.cursor-ripple {
-  position: fixed;
-  pointer-events: none;
-  border-radius: 50%;
-  z-index: 9998;
-  will-change: transform, opacity;
-  animation: cursorRipple 0.65s ease-out forwards;
-  transform: translate(-50%, -50%) scale(0);
-}
-
-/* ── Active tab ─────────────────────────────────────────── */
+/* ── Active tab (CI 시안) ────────────────────────────────── */
 .tab-active {
-  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 55%, #38bdf8 100%);
-  box-shadow: 0 4px 20px rgba(14,165,233,.52), 0 1px 3px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.3);
+  background: linear-gradient(135deg, #0E7FA8 0%, #18A8D8 55%, #5CCBEE 100%);
+  box-shadow: 0 4px 20px rgba(24,168,216,.52), 0 1px 3px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.3);
   color: #fff !important;
 }
 
-/* ── Water drop floating decorations ───────────────────── */
-@keyframes wdrop {
-  0%   { transform: translateY(110vh) rotate(-5deg) scale(.75); opacity: 0; }
-  6%   { opacity: .55; }
-  92%  { opacity: .3; }
-  100% { transform: translateY(-12vh) rotate(12deg) scale(1.15); opacity: 0; }
-}
-.wdrop {
-  position: fixed;
-  pointer-events: none;
-  z-index: 0;
-  border-radius: 55% 45% 50% 50% / 58% 42% 58% 42%;
-  background: radial-gradient(ellipse at 32% 32%,
-    rgba(255,255,255,.65) 0%,
-    rgba(125,211,252,.35) 38%,
-    rgba(14,165,233,.12) 100%);
-  border: 1px solid rgba(255,255,255,.42);
-  animation: wdrop linear infinite;
-}
-
-/* ── Focus rings ────────────────────────────────────────── */
+/* ── Focus rings (CI 시안) ───────────────────────────────── */
 input:focus, textarea:focus, select:focus {
   outline: none !important;
-  border-color: #0ea5e9 !important;
-  box-shadow: 0 0 0 3px rgba(14,165,233,.18) !important;
+  border-color: #18A8D8 !important;
+  box-shadow: 0 0 0 3px rgba(24,168,216,.18) !important;
 }
 
-/* ── Animate-in utility (already in Tailwind v4 but kept) ─ */
+/* ── Animate-in utility ─────────────────────────────────── */
 @keyframes fade-in  { from { opacity:0 } to { opacity:1 } }
 @keyframes slide-up { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
 .anim-in { animation: slide-up .4s cubic-bezier(.4,0,.2,1) both; }
@@ -158,24 +125,24 @@ input:focus, textarea:focus, select:focus {
   border-radius: 10px;
   padding: 14px;
   resize: vertical;
-  caret-color: #38bdf8;
+  caret-color: #5CCBEE;
 }
 .code-editor:focus {
-  border-color: #0ea5e9 !important;
-  box-shadow: 0 0 0 3px rgba(14,165,233,.25) !important;
+  border-color: #18A8D8 !important;
+  box-shadow: 0 0 0 3px rgba(24,168,216,.25) !important;
 }
 
 /* ══════════════════════════════════════════════════════════
-   PREMIUM FINANCE — 결제·정산 4탭 프리미엄 레이어
+   PREMIUM FINANCE — 결제·정산 4탭 프리미엄 레이어 (다크)
    ══════════════════════════════════════════════════════════ */
 
-/* ── 시맨틱 상태 토큰 ───────────────────────────────────── */
+/* ── 시맨틱 상태 토큰 (다크) ─────────────────────────────── */
 :root {
-  --st-wait-bg:      #f1f5f9;   --st-wait-fg:      #64748b;   --st-wait-bd:      #e2e8f0;
-  --st-requested-bg: #fff7ed;   --st-requested-fg: #c2410c;   --st-requested-bd: #fed7aa;
-  --st-issued-bg:    #eff6ff;   --st-issued-fg:    #1d4ed8;   --st-issued-bd:    #bfdbfe;
-  --st-done-bg:      #ecfeff;   --st-done-fg:      #0369a1;   --st-done-bd:      #a5f3fc;
-  --st-paid-bg:      #f0fdf4;   --st-paid-fg:      #15803d;   --st-paid-bd:      #bbf7d0;
+  --st-wait-bg:      rgba(148,163,184,.16);  --st-wait-fg:      #cbd5e1;  --st-wait-bd:      rgba(148,163,184,.30);
+  --st-requested-bg: rgba(249,115,22,.16);   --st-requested-fg: #fdba74;  --st-requested-bd: rgba(249,115,22,.35);
+  --st-issued-bg:    rgba(24,168,216,.16);   --st-issued-fg:    #5CCBEE;  --st-issued-bd:    rgba(24,168,216,.35);
+  --st-done-bg:      rgba(24,168,216,.13);   --st-done-fg:      #7FDAF0;  --st-done-bd:      rgba(24,168,216,.30);
+  --st-paid-bg:      rgba(34,197,94,.16);    --st-paid-fg:      #86efac;  --st-paid-bd:      rgba(34,197,94,.35);
 }
 
 /* ── 고정폭 숫자 (금액 정렬) ────────────────────────────── */
@@ -191,18 +158,18 @@ input:focus, textarea:focus, select:focus {
   border-radius: 18px;
   transition: transform .18s cubic-bezier(.4,0,.2,1), box-shadow .18s cubic-bezier(.4,0,.2,1);
 }
-.fin-card:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(14,165,233,.22), 0 4px 12px rgba(0,0,0,.06); }
+.fin-card:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(24,168,216,.28), 0 4px 12px rgba(0,0,0,.4); }
 
-/* ── 정산 표: 프리미엄 헤더 + 얼룩무늬 행 ───────────────── */
+/* ── 정산 표: 프리미엄 헤더 + 얼룩무늬 행 (다크) ─────────── */
 .fin-table { border-collapse: separate; border-spacing: 0; }
 .fin-table thead th {
-  background: linear-gradient(135deg, #0369a1 0%, #0284c7 55%, #0ea5e9 100%);
+  background: linear-gradient(135deg, #0B6F94 0%, #0E7FA8 55%, #18A8D8 100%);
   color: #fff; font-weight: 800;
   position: sticky; top: 0; z-index: 1;
 }
 .fin-table tbody tr { transition: background .14s; }
-.fin-table tbody tr:hover { background: rgba(186,230,253,.28) !important; }
-.fin-zebra:nth-child(even) > * { background: rgba(240,249,255,.55); }
+.fin-table tbody tr:hover { background: rgba(255,255,255,.05) !important; }
+.fin-zebra:nth-child(even) > * { background: rgba(255,255,255,.03); }
 
 /* ── 상태 배지 (색+아이콘+텍스트) ───────────────────────── */
 .fin-badge {

@@ -30,31 +30,6 @@ declare global {
   interface Window { XLSX: any; }
 }
 
-function WaterDrops() {
-  const drops = [
-    { s: 90,  x: 7,  dur: 13, delay: 0  },
-    { s: 55,  x: 19, dur: 9,  delay: 3  },
-    { s: 130, x: 42, dur: 16, delay: 7  },
-    { s: 65,  x: 63, dur: 11, delay: 1  },
-    { s: 100, x: 77, dur: 14, delay: 5  },
-    { s: 45,  x: 88, dur: 8,  delay: 9  },
-    { s: 78,  x: 32, dur: 12, delay: 2  },
-    { s: 58,  x: 54, dur: 10, delay: 6  },
-  ];
-  return (
-    <>
-      {drops.map((d, i) => (
-        <div key={i} className="wdrop" style={{
-          width: d.s, height: d.s * 1.12,
-          left: `${d.x}%`,
-          animationDuration: `${d.dur}s`,
-          animationDelay: `${d.delay}s`,
-        }} />
-      ))}
-    </>
-  );
-}
-
 function AppContent() {
   const {
     user, isAdmin, partnerCompany, authLoading, isDbLoaded,
@@ -80,25 +55,6 @@ function AppContent() {
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
     script.async = true;
     document.head.appendChild(script);
-  }, []);
-
-  // Cursor water-drop ripple effect
-  useEffect(() => {
-    let lastTime = 0;
-    const handleMove = (e: MouseEvent) => {
-      const now = Date.now();
-      if (now - lastTime < 55) return;
-      lastTime = now;
-      const drop = document.createElement('div');
-      drop.className = 'cursor-ripple';
-      const size = Math.random() * 18 + 7;
-      const hue = Math.random() > 0.6 ? 'rgba(56,189,248,0.55)' : 'rgba(14,165,233,0.45)';
-      drop.style.cssText = `left:${e.clientX}px;top:${e.clientY}px;width:${size}px;height:${size}px;background:radial-gradient(circle,${hue} 0%,rgba(14,165,233,0.1) 65%,transparent 100%);border:1px solid rgba(56,189,248,0.35);`;
-      document.body.appendChild(drop);
-      setTimeout(() => drop.remove(), 700);
-    };
-    document.addEventListener('mousemove', handleMove);
-    return () => document.removeEventListener('mousemove', handleMove);
   }, []);
 
   // Reset routing flag on logout
@@ -132,11 +88,10 @@ function AppContent() {
   // ─── Auth states ─────────────────────────────────────────────────────
   const loadingScreen = (icon: string, msg: string, spin = false) => (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      <WaterDrops />
       <div className="glass rounded-3xl p-12 text-center max-w-sm mx-4 relative z-10 anim-in">
         <div className={`text-6xl mb-5 ${spin ? 'animate-spin' : 'animate-pulse'}`}>{icon}</div>
         <div className="w-12 h-1 rounded-full mx-auto mb-4"
-          style={{ background: 'linear-gradient(90deg,#0ea5e9,#38bdf8)' }} />
+          style={{ background: 'linear-gradient(90deg,#18A8D8,#5CCBEE)' }} />
         <p className="text-sky-700 font-black text-lg">{msg}</p>
       </div>
     </div>
@@ -148,7 +103,6 @@ function AppContent() {
     if (pendingEmail) {
       return (
         <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-          <WaterDrops />
           <div className="glass rounded-3xl p-10 max-w-md w-full text-center relative z-10 anim-in">
             <div className="text-5xl mb-5">⏳</div>
             <h2 className="text-xl font-black text-sky-800 mb-3">승인 대기 중</h2>
@@ -172,7 +126,6 @@ function AppContent() {
   if (!isAdmin && !partnerCompany) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-        <WaterDrops />
         <div className="glass rounded-3xl p-10 max-w-md w-full text-center relative z-10 anim-in">
           <div className="text-5xl mb-5">🔐</div>
           <h2 className="text-xl font-black text-sky-800 mb-3">접근 권한 없음</h2>
@@ -214,7 +167,6 @@ function AppContent() {
 
   return (
     <div className="min-h-screen font-sans relative">
-      <WaterDrops />
       <div className="relative z-10 py-4 sm:py-6 px-2 sm:px-4">
         <Navbar
           activeTab={activeTab}

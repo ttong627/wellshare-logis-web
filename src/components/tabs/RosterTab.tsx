@@ -342,7 +342,7 @@ export default function RosterTab() {
       <div className="glass rounded-2xl p-5 sm:p-6">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg,#0ea5e9,#38bdf8)' }}>
+            style={{ background: 'linear-gradient(135deg,#18A8D8,#5CCBEE)' }}>
             <ClipboardList size={22} className="text-white" />
           </div>
           <div>

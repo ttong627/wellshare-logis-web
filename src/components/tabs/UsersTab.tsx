@@ -135,14 +135,14 @@ export default function UsersTab() {
       </div>
       <div className="glass rounded-2xl overflow-hidden">
         <div className="px-5 py-3 border-b border-sky-100 flex items-center gap-2"
-          style={{ background: 'linear-gradient(135deg,rgba(14,165,233,.07),rgba(56,189,248,.03))' }}>
+          style={{ background: 'linear-gradient(135deg,rgba(24,168,216,.07),rgba(92,203,238,.03))' }}>
           <ShieldCheck size={15} className="text-sky-500" />
           <h3 className="font-black text-sky-700 text-sm">승인 대기 중 신규 가입자</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs sm:text-sm min-w-[500px]">
             <thead>
-              <tr style={{ background: 'linear-gradient(135deg,rgba(14,165,233,.1),rgba(56,189,248,.05))' }}>
+              <tr style={{ background: 'linear-gradient(135deg,rgba(24,168,216,.1),rgba(92,203,238,.05))' }}>
                 <th className="p-3 sm:p-4 font-bold text-sky-700">가입한 이메일 계정</th>
                 <th className="p-3 sm:p-4 font-bold text-sky-700">연결할 회원사 선택</th>
                 <th className="p-3 sm:p-4 font-bold text-sky-700 text-center w-32">승인 처리</th>

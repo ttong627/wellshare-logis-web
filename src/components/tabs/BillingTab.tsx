@@ -239,7 +239,7 @@ export default function BillingTab() {
           <div className="sm:hidden space-y-3">
             {billingReport.report.map((item, idx) => (
               <div key={idx} className="fin-card overflow-hidden">
-                <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)' }}>
+                <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0B6F94,#18A8D8)' }}>
                   <span className="text-white font-black text-sm">{item.region}</span>
                   <span className="text-sky-100 text-[11px] font-bold">{item.city}</span>
                 </div>
@@ -277,7 +277,7 @@ export default function BillingTab() {
           <div className="hidden sm:block glass rounded-2xl overflow-hidden overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
             <table className="w-full border-collapse text-[11px] md:text-xs font-sans text-center whitespace-nowrap">
               <thead>
-                <tr className="text-white font-bold" style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)' }}>
+                <tr className="text-white font-bold" style={{ background: 'linear-gradient(135deg,#0B6F94,#18A8D8)' }}>
                   {['행정시','행정구','구분','단위','품명','수량','공급가','세액','합계','비고'].map((h, i) => (
                     <th key={i} className="border border-sky-300/40 p-1.5 break-keep">{h}</th>
                   ))}
@@ -325,7 +325,7 @@ export default function BillingTab() {
               <tfoot>
                 {totalsFooter.map(({ label, data, strong }) => (
                   <tr key={label} className={strong ? 'text-white' : 'text-sky-900'}
-                      style={strong ? { background: 'linear-gradient(135deg,#0284c7,#0ea5e9)' } : { background: '#e0f2fe' }}>
+                      style={strong ? { background: 'linear-gradient(135deg,#0E7FA8,#18A8D8)' } : { background: '#e0f2fe' }}>
                     <td colSpan={3} className="border border-sky-200 p-2 text-left font-black break-keep">{label}</td>
                     <td className="border border-sky-200 p-2 text-center font-bold">10Kg</td>
                     <td className="border border-sky-200 p-2 text-left font-bold">배송비</td>
@@ -366,7 +366,7 @@ export default function BillingTab() {
             <button
               onClick={() => setShowGuide(false)}
               className="w-full py-3 rounded-2xl font-bold text-sm text-white shadow-md"
-              style={{ background: 'linear-gradient(160deg,#38bdf8,#0284c7)' }}
+              style={{ background: 'linear-gradient(160deg,#5CCBEE,#0E7FA8)' }}
             >
               확인
             </button>

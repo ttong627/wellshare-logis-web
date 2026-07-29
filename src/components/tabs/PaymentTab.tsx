@@ -200,7 +200,7 @@ export default function PaymentTab() {
         )}
         {billingSummary.sorted.map(m => (
           <div key={m.member} className="fin-card overflow-hidden">
-            <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)' }}>
+            <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0B6F94,#18A8D8)' }}>
               <span className="text-white font-black text-sm break-keep">{shortNameOf(m.member)}</span>
               <span className="fin-num text-white font-black text-base">{formatNumber(m.totalAmount)}<span className="text-[10px] font-bold ml-0.5">원</span></span>
             </div>
@@ -276,7 +276,7 @@ export default function PaymentTab() {
                 <td colSpan={9} className="bg-sky-100 font-black border border-sky-200 text-left p-2 px-4 text-sky-800 break-keep">{shortNameOf(m.member)} — 조합사 → 웰쉐어 발행 내역</td>
                 <td className="text-center font-bold p-2 bg-sky-200 border border-sky-300 text-sky-900 text-xs whitespace-nowrap">{formattedMonthStr}</td>
               </tr>
-              <tr className="text-white font-bold leading-tight" style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)' }}>
+              <tr className="text-white font-bold leading-tight" style={{ background: 'linear-gradient(135deg,#0B6F94,#18A8D8)' }}>
                 {['조합사','행정구','단위','품명','수량','공급가','세액','합계','배송현황','계산서 (요청)'].map((h, i) => (
                   <th key={i} className="border border-sky-300/40 p-1.5">{h}</th>
                 ))}

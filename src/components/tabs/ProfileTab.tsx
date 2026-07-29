@@ -61,7 +61,7 @@ export default function ProfileTab() {
               <span className="text-xl sm:text-2xl font-black text-emerald-500">{partnerProgress.percent}%</span>
             </div>
           </div>
-          <div className="w-full rounded-full h-4 overflow-hidden shadow-inner" style={{ background: 'rgba(14,165,233,.12)' }}>
+          <div className="w-full rounded-full h-4 overflow-hidden shadow-inner" style={{ background: 'rgba(24,168,216,.12)' }}>
             <div className="h-4 rounded-full transition-all duration-1000"
               style={{
                 width: `${partnerProgress.percent}%`,

@@ -1,9 +1,12 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
+import './imported-dark.css';
 import App from './App';
 
-createRoot(document.getElementById('root')!).render(
+const rootEl = document.getElementById('root')!;
+rootEl.classList.add('wsdark');   // 다크 프리미엄 CI 스코프(로그인 포함 전체)
+createRoot(rootEl).render(
   <StrictMode>
     <App />
   </StrictMode>,

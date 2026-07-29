@@ -1205,7 +1205,7 @@ export default function ScheduleTab() {
 
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="text-white font-bold text-xs" style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)' }}>
+                  <tr className="text-white font-bold text-xs" style={{ background: 'linear-gradient(135deg,#0B6F94,#18A8D8)' }}>
                     <th className="px-4 py-2.5 text-center w-10">#</th>
                     <th className="px-4 py-2.5">이름</th>
                     <th className="px-4 py-2.5">연락처</th>

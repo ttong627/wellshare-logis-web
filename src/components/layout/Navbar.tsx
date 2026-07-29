@@ -73,8 +73,8 @@ export default function Navbar({
       <div
         className="relative z-[2000] rounded-2xl sm:rounded-3xl mb-3 overflow-visible"
         style={{
-          background: 'linear-gradient(135deg, #0369a1 0%, #0284c7 30%, #0ea5e9 65%, #38bdf8 100%)',
-          boxShadow: '0 8px 40px rgba(2,132,199,.45), 0 2px 12px rgba(0,0,0,.12)',
+          background: 'linear-gradient(135deg, #0B6F94 0%, #0E7FA8 30%, #18A8D8 65%, #5CCBEE 100%)',
+          boxShadow: '0 8px 40px rgba(14,127,168,.45), 0 2px 12px rgba(0,0,0,.12)',
         }}
       >
         {/* Top water-shine line */}
@@ -314,7 +314,7 @@ export default function Navbar({
         {isGearOpen && (
           <div
             className="glass rounded-2xl overflow-hidden mb-2"
-            style={{ minWidth: 160, boxShadow: '0 12px 40px rgba(14,165,233,.3)' }}
+            style={{ minWidth: 160, boxShadow: '0 12px 40px rgba(24,168,216,.3)' }}
           >
             {gearTabs.map(t => (
               <button
