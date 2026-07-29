@@ -1,6 +1,6 @@
 import React from 'react';
 import { Save, Building2 } from 'lucide-react';
-import { addDoc, collection, setDoc, doc, updateDoc, deleteField } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc, deleteField } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { MEMBERS, PARTNER_REGIONS } from '../../constants/members';
@@ -14,7 +14,7 @@ export default function DeliveryCompletionTab() {
     localDeliveryInputs, setLocalDeliveryInputs,
     undeliveredPartners, selectedAdminViewCompany, setSelectedAdminViewCompany,
     isAdmin, partnerCompany, isClosed, isSaving, setIsSaving,
-    showToast, currentMonth, user,
+    showToast, currentMonth, user, saveField,
   } = useApp();
 
   const handleLocalDeliveryChange = (company: string, region: string, field: string, value: string) => {
@@ -53,26 +53,26 @@ export default function DeliveryCompletionTab() {
       };
       setDeliveryDates(newDeliveryDates);
 
-      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-      await setDoc(ref, { deliveryDates: newDeliveryDates, updatedAt: new Date().toISOString(), updatedBy: user?.email }, { merge: true });
-
-      setLocalDeliveryInputs(prev => {
-        const newLocal = { ...prev };
-        if (newLocal[company]) {
-          newLocal[company] = { ...newLocal[company] };
-          delete newLocal[company][region];
-        }
-        return newLocal;
-      });
-
-      if (!isAdmin) {
-        const msgText = `[📦배송완료] ${company} 해당지자체(${region}) 배송완료 하였습니다.`;
-        await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'), {
-          message: msgText, target: 'ADMIN', timestamp: new Date().toISOString(),
+      const ok = await saveField('deliveryDates', newDeliveryDates, user?.email || '');
+      if (ok) {
+        setLocalDeliveryInputs(prev => {
+          const newLocal = { ...prev };
+          if (newLocal[company]) {
+            newLocal[company] = { ...newLocal[company] };
+            delete newLocal[company][region];
+          }
+          return newLocal;
         });
-      }
 
-      showToast(`[${region}] 배송 상태가 저장되었습니다.`);
+        if (!isAdmin) {
+          const msgText = `[📦배송완료] ${company} 해당지자체(${region}) 배송완료 하였습니다.`;
+          await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'), {
+            message: msgText, target: 'ADMIN', timestamp: new Date().toISOString(),
+          });
+        }
+
+        showToast(`[${region}] 배송 상태가 저장되었습니다.`);
+      }
     } catch (e) { showToast('저장 오류: ' + (e as Error).message); }
     finally { setIsSaving(false); }
   };

@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { ReceiptText, Info } from 'lucide-react';
-import { addDoc, collection, setDoc, doc } from 'firebase/firestore';
+import { addDoc, collection } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { MEMBERS } from '../../constants/members';
@@ -16,7 +16,7 @@ export default function PartnerBillingTab() {
     deliveryDates, publishRequests, publishDates, setPublishDates,
     selectedAdminViewCompany, setSelectedAdminViewCompany,
     isAdmin, partnerCompany, isClosed, isSaving, setIsSaving,
-    showToast, user,
+    showToast, user, saveField,
   } = useApp();
 
   const { confirm, dialog } = useConfirm();
@@ -49,14 +49,14 @@ export default function PartnerBillingTab() {
         [company]: { ...(publishDates[company] || {}), [region]: dateVal },
       };
       setPublishDates(newPublishDates);
-      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-      await setDoc(ref, { publishDates: newPublishDates, updatedAt: new Date().toISOString(), updatedBy: user?.email }, { merge: true });
-
-      const msgText = `[🧾발행완료] ${company} ${region} 세금계산서(${dateVal}) 발행이 완료되었습니다. 대금 결제 부탁드립니다.`;
-      await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'), {
-        message: msgText, target: 'ADMIN', timestamp: new Date().toISOString(),
-      });
-      showToast(`[${region}] 세금계산서 발급 처리가 완료되었습니다.`);
+      const saved = await saveField('publishDates', newPublishDates, user?.email || '');
+      if (saved) {
+        const msgText = `[🧾발행완료] ${company} ${region} 세금계산서(${dateVal}) 발행이 완료되었습니다. 대금 결제 부탁드립니다.`;
+        await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'), {
+          message: msgText, target: 'ADMIN', timestamp: new Date().toISOString(),
+        });
+        showToast(`[${region}] 세금계산서 발급 처리가 완료되었습니다.`);
+      }
     } catch (e) { showToast('저장 오류: ' + (e as Error).message); }
     finally { setIsSaving(false); }
   };
@@ -79,9 +79,8 @@ export default function PartnerBillingTab() {
         delete newPublishDates[company][region];
       }
       setPublishDates(newPublishDates);
-      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-      await setDoc(ref, { publishDates: newPublishDates, updatedAt: new Date().toISOString(), updatedBy: user?.email }, { merge: true });
-      showToast(`[${region}] 세금계산서 발행이 일자수정 모드로 전환되었습니다.`);
+      const saved = await saveField('publishDates', newPublishDates, user?.email || '');
+      if (saved) showToast(`[${region}] 세금계산서 발행이 일자수정 모드로 전환되었습니다.`);
     } catch (e) { showToast('취소 오류: ' + (e as Error).message); }
     finally { setIsSaving(false); }
   };

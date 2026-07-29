@@ -119,7 +119,7 @@ export function useMonthData(user: User | null) {
   // 낙관적 잠금 병합 저장 — runTransaction 안에서 로드시점 버전과 DB 버전을 비교해
   // 다른 탭·기기가 먼저 저장했으면(버전 불일치) 저장을 취소하고 최신 데이터를 재로드한다.
   // ⚠️ 월 문서는 updateDoc 금지(CLAUDE.md) → 트랜잭션 안에서도 tx.set(..., {merge:true})로 병합.
-  const commitMerge = useCallback(async (data: Record<string, unknown>, email: string) => {
+  const commitMerge = useCallback(async (data: Record<string, unknown>, email: string): Promise<boolean> => {
     const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
     let newVersion = loadedVersionRef.current;
     try {
@@ -136,6 +136,7 @@ export function useMonthData(user: User | null) {
       });
       loadedVersionRef.current = newVersion;
       if (!savedMonths.includes(currentMonth)) refreshSavedMonths();
+      return true;   // 저장 성공
     } catch (e) {
       if ((e as { code?: string })?.code === 'CONFLICT') {
         if (typeof window !== 'undefined' && window.confirm(
@@ -145,7 +146,7 @@ export function useMonthData(user: User | null) {
         )) {
           await loadMonth(currentMonth);
         }
-        return;
+        return false;   // 동시저장 충돌 — 저장 취소됨(호출부는 후속작업 스킵)
       }
       throw e;
     }
@@ -163,10 +164,10 @@ export function useMonthData(user: User | null) {
     }
   }, [commitMerge, zonePrices, regions, orders, partnerInputs, publishDates, publishRequests, deliveryDates, isClosed]);
 
-  const saveField = useCallback(async (field: string, value: unknown, email: string) => {
+  const saveField = useCallback(async (field: string, value: unknown, email: string): Promise<boolean> => {
     setIsSaving(true);
     try {
-      await commitMerge({ [field]: value }, email);
+      return await commitMerge({ [field]: value }, email);
     } finally {
       setIsSaving(false);
     }

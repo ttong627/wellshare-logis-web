@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { CreditCard, Info } from 'lucide-react';
-import { addDoc, collection, setDoc, doc } from 'firebase/firestore';
+import { addDoc, collection } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatCur, CLOSED_MSG } from '../../lib/utils';
@@ -13,7 +13,7 @@ export default function PaymentTab() {
   const {
     billingSummary, formattedMonthStr, currentMonth,
     deliveryDates, publishRequests, setPublishRequests,
-    isClosed, isSaving, setIsSaving, showToast, user, isAdmin,
+    isClosed, isSaving, setIsSaving, showToast, user, isAdmin, saveField,
   } = useApp();
 
   const { confirm, dialog } = useConfirm();
@@ -60,14 +60,14 @@ export default function PaymentTab() {
         [company]: { ...(publishRequests[company] || {}), [region]: dateVal },
       };
       setPublishRequests(newPublishRequests);
-      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-      await setDoc(ref, { publishRequests: newPublishRequests, updatedAt: new Date().toISOString(), updatedBy: user?.email }, { merge: true });
-
-      const msgText = `[💰정산요청] ${company} ${region} 배송이 확인되었습니다. ${dateVal} 일자로 세금계산서를 발행해 주세요.`;
-      await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'), {
-        message: msgText, target: company, timestamp: new Date().toISOString(),
-      });
-      showToast(`[${region}] 세금계산서 발급 요청이 전송되었습니다.`);
+      const saved = await saveField('publishRequests', newPublishRequests, user?.email || '');
+      if (saved) {
+        const msgText = `[💰정산요청] ${company} ${region} 배송이 확인되었습니다. ${dateVal} 일자로 세금계산서를 발행해 주세요.`;
+        await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'), {
+          message: msgText, target: company, timestamp: new Date().toISOString(),
+        });
+        showToast(`[${region}] 세금계산서 발급 요청이 전송되었습니다.`);
+      }
     } catch (e) { showToast('저장 오류: ' + (e as Error).message); }
     finally { setIsSaving(false); }
   };
@@ -98,15 +98,16 @@ export default function PaymentTab() {
         newPublishRequests[company] = { ...(newPublishRequests[company] || {}), [region]: bulkReqDate };
       });
       setPublishRequests(newPublishRequests);
-      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-      await setDoc(ref, { publishRequests: newPublishRequests, updatedAt: new Date().toISOString(), updatedBy: user?.email }, { merge: true });
-      for (const { company, region } of targets) {
-        const msgText = `[💰정산요청] ${company} ${region} 배송이 확인되었습니다. ${bulkReqDate} 일자로 세금계산서를 발행해 주세요.`;
-        await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'), {
-          message: msgText, target: company, timestamp: new Date().toISOString(),
-        });
+      const saved = await saveField('publishRequests', newPublishRequests, user?.email || '');
+      if (saved) {
+        for (const { company, region } of targets) {
+          const msgText = `[💰정산요청] ${company} ${region} 배송이 확인되었습니다. ${bulkReqDate} 일자로 세금계산서를 발행해 주세요.`;
+          await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'), {
+            message: msgText, target: company, timestamp: new Date().toISOString(),
+          });
+        }
+        showToast(`${targets.length}건의 세금계산서 발급 요청이 전송되었습니다.`);
       }
-      showToast(`${targets.length}건의 세금계산서 발급 요청이 전송되었습니다.`);
     } catch (e) { showToast('저장 오류: ' + (e as Error).message); }
     finally { setIsSaving(false); }
   };
@@ -129,9 +130,8 @@ export default function PaymentTab() {
         delete newPublishRequests[company][region];
       }
       setPublishRequests(newPublishRequests);
-      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
-      await setDoc(ref, { publishRequests: newPublishRequests, updatedAt: new Date().toISOString(), updatedBy: user?.email }, { merge: true });
-      showToast(`[${region}] 발급 요청이 취소되었습니다.`);
+      const saved = await saveField('publishRequests', newPublishRequests, user?.email || '');
+      if (saved) showToast(`[${region}] 발급 요청이 취소되었습니다.`);
     } catch (e) { showToast('취소 오류: ' + (e as Error).message); }
     finally { setIsSaving(false); }
   };

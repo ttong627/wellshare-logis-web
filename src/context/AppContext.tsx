@@ -46,7 +46,7 @@ interface AppContextType extends AuthState {
   isSaving: boolean;
   setIsSaving: React.Dispatch<React.SetStateAction<boolean>>;
   loadMonth: (month: string) => Promise<void>;
-  saveField: (field: string, value: unknown, email: string) => Promise<void>;
+  saveField: (field: string, value: unknown, email: string) => Promise<boolean>;
 
   // Computed
   partnerAggregatedOrders: Record<string, PartnerAggregated>;
