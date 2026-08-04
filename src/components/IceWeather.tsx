@@ -33,15 +33,27 @@ export default function IceWeather() {
     let timer: number | undefined;
     let stopped = false;
 
-    /** 돌풍 1회 — 형태·방향·좌표·입자 전부 랜덤 */
+    /** 돌풍 1회 — 형태·세기·방향·좌표·입자 전부 랜덤 */
     const gust = () => {
       if (stopped || document.hidden) return;
 
-      const kind: Kind = pick(['blizzard', 'blizzard', 'whirl', 'drift']); // 눈보라가 조금 더 자주
+      const kind: Kind = pick(['blizzard', 'blizzard', 'blizzard', 'whirl', 'whirl', 'drift']);
+      // 세기 — 가끔 화면을 통째로 휩쓰는 폭설이 온다
+      const power = pick(['gentle', 'strong', 'strong', 'storm'] as const);
+      const mul = power === 'storm' ? 2.6 : power === 'strong' ? 1.6 : 1;
       const fromLeft = Math.random() < 0.5;
-      const count = kind === 'whirl'
-        ? Math.round(rand(isPhone ? 8 : 14, isPhone ? 12 : 24))
-        : Math.round(rand(isPhone ? 6 : 12, isPhone ? 10 : 22));
+      const base = kind === 'whirl'
+        ? rand(isPhone ? 16 : 30, isPhone ? 26 : 52)
+        : rand(isPhone ? 14 : 32, isPhone ? 24 : 58);
+      const count = Math.round(base * mul);
+
+      // 폭설·강풍이면 냉기 베일이 화면을 스쳐 지나간다(더위 날리는 연출)
+      if (power !== 'gentle') {
+        const veil = document.createElement('div');
+        veil.className = `ice-veil ${fromLeft ? 'from-left' : 'from-right'}${power === 'storm' ? ' storm' : ''}`;
+        veil.addEventListener('animationend', () => veil.remove(), { once: true });
+        layer.appendChild(veil);
+      }
 
       // 돌개바람은 화면 위 한 지점을 중심으로 감아 올라간다
       const originX = rand(10, 90);
@@ -51,21 +63,23 @@ export default function IceWeather() {
         const p = document.createElement('span');
         p.className = `ice-p ice-${kind}`;
 
-        const size = rand(2, kind === 'drift' ? 7 : 5);
-        const dur = kind === 'drift' ? rand(7, 12) : kind === 'whirl' ? rand(3.4, 6.5) : rand(2.6, 5.2);
-        const delay = rand(0, kind === 'whirl' ? 1.6 : 2.4);
+        const size = rand(4, kind === 'drift' ? 12 : 9) * (power === 'storm' ? 1.25 : 1);
+        // 세면 셀수록 빠르게 지나간다
+        const speed = power === 'storm' ? 0.62 : power === 'strong' ? 0.8 : 1;
+        const dur = (kind === 'drift' ? rand(6, 10) : kind === 'whirl' ? rand(3, 5.6) : rand(1.9, 4.2)) * speed;
+        const delay = rand(0, kind === 'whirl' ? 2.2 : 3.4);
 
         p.style.setProperty('--size', `${size.toFixed(1)}px`);
         p.style.setProperty('--dur', `${dur.toFixed(2)}s`);
         p.style.setProperty('--delay', `${delay.toFixed(2)}s`);
         p.style.setProperty('--spin', `${Math.round(rand(180, 900)) * (Math.random() < 0.5 ? -1 : 1)}deg`);
-        p.style.setProperty('--peak', rand(0.35, 0.9).toFixed(2));
+        p.style.setProperty('--peak', rand(0.55, 1).toFixed(2));
 
         if (kind === 'whirl') {
           // 소용돌이: 중심에서 시작해 반경을 키우며 감아 돈다
           p.style.left = `${originX}%`;
           p.style.top = `${originY}%`;
-          p.style.setProperty('--r', `${rand(60, 260).toFixed(0)}px`);
+          p.style.setProperty('--r', `${(rand(110, 420) * (power === 'storm' ? 1.3 : 1)).toFixed(0)}px`);
           p.style.setProperty('--a0', `${rand(0, 360).toFixed(0)}deg`);
           p.style.setProperty('--lift', `${rand(-160, -40).toFixed(0)}px`);
         } else {
@@ -83,11 +97,13 @@ export default function IceWeather() {
       }
     };
 
-    /** 다음 돌풍 예약 — 간격도 랜덤 */
+    /** 다음 돌풍 예약 — 간격도 랜덤(자주 몰아친다) */
     const schedule = (first = false) => {
-      const wait = first ? rand(4000, 12000) : rand(30000, 75000);
+      const wait = first ? rand(1200, 3500) : rand(7000, 20000);
       timer = window.setTimeout(() => {
         gust();
+        // 강풍은 종종 연달아 몰아친다
+        if (Math.random() < 0.45) window.setTimeout(gust, rand(700, 2200));
         schedule();
       }, wait);
     };

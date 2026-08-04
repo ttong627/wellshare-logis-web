@@ -81,9 +81,12 @@ export default function Navbar({
   const mainTabs = ALL_TABS.filter(t => !t.inGear && t.visible);
   const gearTabs = ALL_TABS.filter(t => t.inGear && t.visible);
 
+  // ⚠️ 최상위 래퍼를 두지 않는다(Fragment).
+  //    sticky 요소는 "부모의 높이 안에서만" 고정된다 — 래퍼가 헤더 높이(200px)뿐이면
+  //    탭바도 그만큼만 붙어 있다가 풀린다. App의 본문 컨테이너를 부모로 삼아야
+  //    페이지 끝까지 상단에 고정된다.
   return (
-    <div className="max-w-[1400px] mx-auto px-2 sm:px-4 relative z-[1000]">
-
+    <>
       {/* ── Hero header bar ─────────────────────────────── */}
       <div
         className="ws-grad relative z-[2000] rounded-2xl sm:rounded-3xl mb-2 overflow-visible"
@@ -362,6 +365,6 @@ export default function Navbar({
           />
         </button>
       </div>
-    </div>
+    </>
   );
 }

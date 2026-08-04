@@ -173,7 +173,10 @@ function AppContent() {
 
   return (
     <div className="min-h-screen font-sans relative">
+      {/* 헤더와 본문을 같은 컨테이너에 둔다 — 탭바 sticky의 부모가 페이지 전체가 되어
+          스크롤 끝까지 상단에 고정된다(sticky는 부모 높이 안에서만 유효). */}
       <div className="relative z-10 py-2 sm:py-3 px-2 sm:px-3">
+        <div className="max-w-[1400px] mx-auto px-2 sm:px-4 relative">
         <Navbar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -193,7 +196,6 @@ function AppContent() {
           onSignOut={signOut}
         />
 
-        <div className="max-w-[1400px] mx-auto px-2 sm:px-4">
           <ErrorBoundary fallback="탭 로딩 중 오류가 발생했습니다. 다시 시도해주세요.">
             <Suspense fallback={
               /* 스켈레톤 — 빈 화면 대신 최종 레이아웃을 미리 잡아 화면 흔들림(CLS)을 막는다 */

@@ -131,14 +131,54 @@ body::after {
   overflow: hidden;
   contain: strict;            /* 바깥 레이아웃에 영향 주지 않음 */
 }
+/* 입자 — 밝은 빙하 배경에서도 보이도록 '흰 코어 + 시안 링' 구조로 만든다.
+   (흰색만 쓰면 라이트 테마에서 배경에 묻혀 아무것도 안 보인다) */
 .ice-p {
   position: absolute;
-  width: var(--size, 3px); height: var(--size, 3px);
+  width: var(--size, 4px); height: var(--size, 4px);
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 32%, #FFFFFF 0%, #DCF2FB 46%, rgba(127,214,239,.55) 100%);
-  box-shadow: 0 0 6px rgba(255,255,255,.75), 0 0 14px rgba(24,168,216,.35);
+  background: radial-gradient(circle at 34% 32%, #FFFFFF 0%, #EAF7FD 38%, rgba(24,168,216,.85) 100%);
+  border: 1px solid rgba(11,111,148,.55);
+  box-shadow: 0 0 8px rgba(24,168,216,.55), 0 1px 3px rgba(11,46,68,.25);
   opacity: 0;
   will-change: transform, opacity;
+}
+/* 눈보라 입자는 바람에 늘어난 형태(가로로 흐르는 궤적) */
+.ice-blizzard {
+  width: calc(var(--size, 4px) * 4.5);
+  border-radius: 50%;
+}
+
+/* 냉기 베일 — 강풍·폭설일 때 화면을 훑고 지나가는 서늘한 바람의 결 */
+.ice-veil {
+  position: absolute; top: -10%; bottom: -10%;
+  width: 46vw;
+  pointer-events: none;
+  background: linear-gradient(100deg,
+    transparent 0%,
+    rgba(214,240,250,.42) 30%,
+    rgba(127,214,239,.55) 50%,
+    rgba(214,240,250,.42) 70%,
+    transparent 100%);
+  filter: blur(14px);
+  opacity: 0;
+}
+.ice-veil.storm { width: 78vw; filter: blur(20px); }
+.ice-veil.from-left  { left: -60vw;  animation: iceVeilL 2.6s cubic-bezier(.32,.06,.28,.98) both; }
+.ice-veil.from-right { right: -60vw; animation: iceVeilR 2.6s cubic-bezier(.32,.06,.28,.98) both; }
+.ice-veil.storm.from-left  { animation-duration: 3.1s; }
+.ice-veil.storm.from-right { animation-duration: 3.1s; }
+@keyframes iceVeilL {
+  0%   { transform: translate3d(0,0,0) skewX(-9deg);        opacity: 0; }
+  22%  { opacity: .95; }
+  78%  { opacity: .8; }
+  100% { transform: translate3d(190vw,0,0) skewX(-9deg);    opacity: 0; }
+}
+@keyframes iceVeilR {
+  0%   { transform: translate3d(0,0,0) skewX(9deg);         opacity: 0; }
+  22%  { opacity: .95; }
+  78%  { opacity: .8; }
+  100% { transform: translate3d(-190vw,0,0) skewX(9deg);    opacity: 0; }
 }
 
 /* 눈보라 — 화면을 가로질러 몰아친다(위아래로 살짝 흔들림) */
