@@ -4,7 +4,7 @@ import {
   FileSignature, CreditCard, ReceiptText, Contact, ShieldCheck,
   DatabaseBackup, HelpCircle, FileText, Calendar, LogOut,
   Bell, Users, ChevronLeft, ChevronRight, BarChart3,
-  ClipboardList,
+  ClipboardList, Lock, Unlock, FolderOpen, RotateCw,
 } from 'lucide-react';
 import { Notification } from '../../types';
 import { safeRender } from '../../lib/utils';
@@ -71,11 +71,8 @@ export default function Navbar({
 
       {/* ── Hero header bar ─────────────────────────────── */}
       <div
-        className="relative z-[2000] rounded-2xl sm:rounded-3xl mb-3 overflow-visible"
-        style={{
-          background: 'linear-gradient(135deg, #0B6F94 0%, #0E7FA8 30%, #18A8D8 65%, #5CCBEE 100%)',
-          boxShadow: '0 8px 40px rgba(14,127,168,.45), 0 2px 12px rgba(0,0,0,.12)',
-        }}
+        className="ws-grad relative z-[2000] rounded-2xl sm:rounded-3xl mb-3 overflow-visible"
+        style={{ boxShadow: '0 10px 30px rgba(14,127,168,.28), 0 2px 10px rgba(15,41,66,.08)' }}
       >
         {/* Top water-shine line */}
         <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent)' }} />
@@ -239,12 +236,14 @@ export default function Navbar({
                   : 'bg-sky-100 hover:bg-sky-200 text-sky-700 border border-sky-200'
               }`}
             >
-              {isClosed ? '🔒 마감해제' : '🔓 마감하기'}
+              {isClosed
+                ? <><Unlock size={15} aria-hidden="true" /> 마감해제</>
+                : <><Lock size={15} aria-hidden="true" /> 마감하기</>}
             </button>
           )}
           {isClosed && (
             <span className="bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-xl font-black text-sm flex items-center gap-1.5 whitespace-nowrap">
-              🔒 마감완료
+              <Lock size={15} aria-hidden="true" /> 마감완료
             </span>
           )}
         </div>
@@ -259,9 +258,9 @@ export default function Navbar({
             >
               <ChevronLeft size={16} />
             </button>
-            <span className="text-lg">📅</span>
+            <Calendar size={16} className="text-sky-600 shrink-0" aria-hidden="true" />
             <input
-              type="month" value={currentMonth}
+              type="month" value={currentMonth} aria-label="정산 월 선택"
               onChange={e => setCurrentMonth(e.target.value)}
               disabled={!isAdmin}
               className="border-none bg-transparent font-black text-sky-800 outline-none cursor-pointer text-sm w-24 sm:w-auto p-0"
@@ -276,15 +275,18 @@ export default function Navbar({
           </div>
           {/* Saved months */}
           <div className="flex items-center gap-1.5 bg-sky-50 border border-sky-200 px-3 py-2 rounded-xl">
-            <span className="text-lg">📂</span>
+            <FolderOpen size={16} className="text-sky-600 shrink-0" aria-hidden="true" />
             <select
-              value="" onChange={e => setCurrentMonth(e.target.value)}
+              value="" onChange={e => setCurrentMonth(e.target.value)} aria-label="저장된 정산월 열기"
               className="border-none bg-transparent outline-none cursor-pointer text-sky-700 text-sm font-bold focus:ring-0 w-24 sm:w-32 p-0"
             >
               <option value="" disabled>열기</option>
               {savedMonths.map(m => <option key={m} value={m}>{safeRender(m)} 정산분</option>)}
             </select>
-            <button onClick={onReload} className="text-sky-400 hover:text-sky-600 transition-colors" title="새로고침">🔄</button>
+            <button onClick={onReload} aria-label="데이터 새로고침" title="새로고침"
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-sky-600 hover:bg-sky-100 transition-colors">
+              <RotateCw size={15} aria-hidden="true" />
+            </button>
           </div>
         </div>
       </div>

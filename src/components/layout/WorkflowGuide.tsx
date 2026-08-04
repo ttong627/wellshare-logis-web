@@ -19,7 +19,7 @@ export default function WorkflowGuide({ loginCount, onClose }: WorkflowGuideProp
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
-        <div className="bg-blue-600 px-6 py-4 flex justify-between items-center shrink-0">
+        <div className="ws-grad px-6 py-4 flex justify-between items-center shrink-0">
           <h3 className="font-black text-white text-lg sm:text-xl flex items-center gap-2">🚀 웰쉐어 4단계 정산 핑퐁 가이드</h3>
           <button onClick={handleClose} className="text-blue-200 hover:text-white transition-colors"><XCircle size={24} /></button>
         </div>

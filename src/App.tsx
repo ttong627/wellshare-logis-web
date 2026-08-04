@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { Hourglass, ShieldAlert } from 'lucide-react';
 import { AppProvider, useApp } from './context/AppContext';
 import Navbar, { TabId } from './components/layout/Navbar';
 import Toast from './components/layout/Toast';
@@ -86,25 +87,27 @@ function AppContent() {
   const validPendingUsers = pendingUsers.filter(email => !partnerAccountsDB[email]);
 
   // ─── Auth states ─────────────────────────────────────────────────────
-  const loadingScreen = (icon: string, msg: string, spin = false) => (
+  // 로딩 화면 — 얼음 링 스피너(이모지 대신 벡터 그래픽으로 통일)
+  const loadingScreen = (msg: string) => (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      <div className="glass rounded-3xl p-12 text-center max-w-sm mx-4 relative z-10 anim-in">
-        <div className={`text-6xl mb-5 ${spin ? 'animate-spin' : 'animate-pulse'}`}>{icon}</div>
-        <div className="w-12 h-1 rounded-full mx-auto mb-4"
-          style={{ background: 'linear-gradient(90deg,#18A8D8,#5CCBEE)' }} />
-        <p className="text-sky-700 font-black text-lg">{msg}</p>
+      <div className="glass rounded-3xl px-12 py-14 text-center max-w-sm mx-4 relative z-10 anim-in">
+        <div className="ice-spinner mx-auto mb-6" role="status" aria-label={msg} />
+        <p className="text-sky-700 font-black text-lg tracking-tight">{msg}</p>
+        <p className="text-slate-400 text-xs font-bold mt-1.5">잠시만 기다려 주세요</p>
       </div>
     </div>
   );
 
-  if (authLoading) return loadingScreen('💧', '시스템 초기화 중...', true);
+  if (authLoading) return loadingScreen('시스템 초기화 중');
 
   if (!user) {
     if (pendingEmail) {
       return (
         <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
           <div className="glass rounded-3xl p-10 max-w-md w-full text-center relative z-10 anim-in">
-            <div className="text-5xl mb-5">⏳</div>
+            <div className="ws-grad w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">
+              <Hourglass size={30} aria-hidden="true" />
+            </div>
             <h2 className="text-xl font-black text-sky-800 mb-3">승인 대기 중</h2>
             <p className="text-sky-600 font-bold text-sm mb-2">
               <span className="text-sky-500">{pendingEmail}</span> 계정이 생성되었습니다.
@@ -121,13 +124,15 @@ function AppContent() {
     return <LoginForm onPendingRegistered={(email) => setPendingEmail(email)} />;
   }
 
-  if (!isDbLoaded) return loadingScreen('🌊', '데이터 로딩 중...');
+  if (!isDbLoaded) return loadingScreen('정산 데이터 불러오는 중');
 
   if (!isAdmin && !partnerCompany) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
         <div className="glass rounded-3xl p-10 max-w-md w-full text-center relative z-10 anim-in">
-          <div className="text-5xl mb-5">🔐</div>
+          <div className="ws-grad w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">
+            <ShieldAlert size={30} aria-hidden="true" />
+          </div>
           <h2 className="text-xl font-black text-sky-800 mb-3">접근 권한 없음</h2>
           <p className="text-sky-600 font-bold text-sm mb-2">
             <span className="text-sky-500">{user.email}</span> 계정은 아직 승인되지 않았습니다.
@@ -189,7 +194,16 @@ function AppContent() {
 
         <div className="max-w-[1400px] mx-auto px-2 sm:px-4">
           <ErrorBoundary fallback="탭 로딩 중 오류가 발생했습니다. 다시 시도해주세요.">
-            <Suspense fallback={<div className="text-center py-20 text-sky-400 font-bold text-sm anim-in">불러오는 중…</div>}>
+            <Suspense fallback={
+              /* 스켈레톤 — 빈 화면 대신 최종 레이아웃을 미리 잡아 화면 흔들림(CLS)을 막는다 */
+              <div className="anim-in" aria-busy="true" aria-label="화면 불러오는 중">
+                <div className="skel h-28 rounded-2xl mb-4" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  {[0,1,2,3].map(i => <div key={i} className="skel h-24 rounded-2xl" />)}
+                </div>
+                <div className="skel h-72 rounded-2xl" />
+              </div>
+            }>
               {renderTab()}
             </Suspense>
           </ErrorBoundary>

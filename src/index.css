@@ -1,203 +1,421 @@
 @import "tailwindcss";
 
-/* ══════════════════════════════════════════════════════════
-   WELLSHARE — 다크 프리미엄 CI 테마
-   (wslos.kr 정산앱과 통일 · 시안 #18A8D8 · 보라 #8C288C · 핑크 #D8307B)
-   ⚠️ 물방울(wdrop)·마우스 커서리플 제거 — 다크 프리미엄과 부적합
-   ══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
+   WELLSHARE 나라미 정산포털 — "ICEBERG" 라이트 테마
+   ────────────────────────────────────────────────────────────────────
+   컨셉 : 무더위를 식히는 빙산. 맑은 빙하수 위에 떠 있는 얼음 유리판.
+          깊은 바다(딥 시안) → 빙벽(아이스 시안) → 눈(화이트) 3단 명도.
+   원칙 :
+   ① 집중 : 움직임은 '배경·헤더'에만. 숫자·표가 있는 데이터 영역은
+      정적으로 두어 눈이 금액에 머물게 한다(정산 프로그램의 본분).
+   ② 가독성 : 본문은 어떤 표면 위에서도 대비 4.5:1 이상. 옅은 Tailwind
+      색 유틸은 [가독성 승격] 레이어에서 실측값으로 끌어올린다.
+   ③ 3D : 얼음판의 두께감(상단 하이라이트 + 하단 굴절 그림자)과
+      hover 시 미세한 기울기로 입체를 표현. 과한 회전은 쓰지 않는다.
+   ④ CI 준수 : 시안 #18A8D8 · 보라 #8C288C · 핑크 #D8307B
+   ══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --sky-deep:    #0E7FA8;
-  --sky-mid:     #18A8D8;
-  --sky-light:   #5CCBEE;
-  --sky-pale:    #7dd3fc;
-  --sky-crystal: #bae6fd;
-  --ci-cyan:     #18A8D8;
-  --ci-purple:   #8C288C;
-  --ci-pink:     #D8307B;
-  --glass-bg:    rgba(15, 23, 42, 0.82);
-  --glass-border:rgba(255, 255, 255, 0.12);
-  --shadow-sky:  0 8px 32px rgba(24, 168, 216, 0.20), 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+  /* ── 빙산 팔레트 ── */
+  --ice-abyss:  #084C68;   /* 심해 */
+  --ice-deep:   #0A5F82;   /* 수면 아래 빙벽 */
+  --ice-ocean:  #0E7FA8;   /* CI 딥 시안 */
+  --ice-cyan:   #18A8D8;   /* CI 시안(액센트 전용) */
+  --ice-glacier:#7FD6EF;   /* 빙하 */
+  --ice-frost:  #D6F0FA;   /* 서리 */
+  --ice-snow:   #F2FAFE;   /* 눈 */
+  --ice-mint:   #E6F8F4;   /* 빙하 그늘 */
+
+  /* ── CI ── */
+  --ci-cyan:   #18A8D8;
+  --ci-purple: #8C288C;
+  --ci-pink:   #D8307B;
+
+  /* ── 표면 ── */
+  --page-bg:  #EAF4FA;
+  --card-bg:  rgba(255, 255, 255, .95);
+  --card-bd:  rgba(24, 168, 216, .18);
+
+  /* ── 잉크(실측 대비) ── */
+  --ink-900: #0B2E44;   /* 제목    14.6:1 */
+  --ink-700: #1E4B63;   /* 본문     8.6:1 */
+  --ink-500: #4E6C82;   /* 보조     5.5:1 */
+
+  /* ── 얼음 그림자(깊이 3단) ── */
+  --sh-ice-1: 0 1px 0 rgba(255,255,255,.9) inset, 0 2px 10px rgba(10, 95, 130, .10);
+  --sh-ice-2: 0 1px 0 rgba(255,255,255,.9) inset, 0 8px 24px rgba(10, 95, 130, .16), 0 2px 6px rgba(11, 46, 68, .06);
+  --sh-ice-3: 0 1px 0 rgba(255,255,255,.95) inset, 0 18px 44px rgba(10, 95, 130, .22), 0 6px 14px rgba(11, 46, 68, .10);
+
+  /* ── 브랜드 그라디언트(흰 글씨 전용 면) — 테마 교체 지점 ──
+     세 스톱 모두 흰 글씨 대비 4.5:1 이상(실측 9.36 / 5.65 / 4.67)이라
+     그라디언트 어느 지점에 글씨가 걸려도 읽힌다. */
+  --grad-1: #084C68;
+  --grad-2: #0B6F94;
+  --grad-3: #0F7DA5;
+
+  /* ── 하위 호환(기존 컴포넌트 참조) ── */
+  --sky-deep: #0E7FA8; --sky-mid: #18A8D8; --sky-light: #7FD6EF;
+  --sky-pale: #D6F0FA; --sky-crystal: #F2FAFE;
+  --glass-bg: var(--card-bg);
+  --glass-border: var(--card-bd);
+  --shadow-sky: var(--sh-ice-2);
 }
 
-/* ── Background: 다크 프리미엄. .wsdark(imported-dark.css)가 오브 배경을
-   담당하며, 여기 폴백으로 딥네이비를 깔아 미적용 시에도 다크 유지. ── */
+/* ══ 기반 ══════════════════════════════════════════════════════════ */
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 html, body {
-  min-height: 100vh;
-  background: #060810;
-  color: #e2e8f0;
+  min-height: 100vh; max-width: 100%; overflow-x: hidden;
+  color: var(--ink-700);
+  font-family: 'Noto Sans KR', 'Pretendard', -apple-system, BlinkMacSystemFont,
+               'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Custom scrollbar ───────────────────────────────────── */
-::-webkit-scrollbar              { width: 5px; height: 5px; }
-::-webkit-scrollbar-track        { background: rgba(24,168,216,.12); border-radius: 10px; }
-::-webkit-scrollbar-thumb        { background: rgba(24,168,216,.45); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover  { background: rgba(24,168,216,.7); }
+/* 빙하수 — 위는 맑은 하늘, 아래로 갈수록 깊은 물빛 */
+body {
+  background:
+    linear-gradient(180deg, #F4FBFE 0%, #E4F3FA 42%, #D8ECF7 100%) fixed,
+    var(--page-bg);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
 
-/* ── Glass card ─────────────────────────────────────────── */
+/* 떠다니는 빙산 — 배경 깊이감(움직임은 여기서만) */
+body::before {
+  content: '';
+  position: fixed; inset: -14% -8%;
+  z-index: 0; pointer-events: none;
+  background:
+    /* 빛나는 빙벽 */
+    radial-gradient(circle 420px at 14% 20%, rgba(127, 214, 239, .40), transparent 66%),
+    /* 깊은 물 그림자 */
+    radial-gradient(circle 480px at 86% 74%, rgba(14, 127, 168, .20), transparent 64%),
+    /* 오로라 한 줄기(CI 보라) */
+    radial-gradient(circle 340px at 66% 8%,  rgba(140, 40, 140, .10), transparent 66%);
+  filter: blur(48px);
+  animation: iceDrift 30s ease-in-out infinite;
+}
+@keyframes iceDrift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(30px, -24px, 0) scale(1.06); }
+}
+
+/* 서리 반짝임 — opacity만 바꿔 저비용 */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  z-index: 0; pointer-events: none;
+  background-image:
+    radial-gradient(circle 2px at 12% 22%, rgba(255,255,255,.95), transparent 60%),
+    radial-gradient(circle 1.5px at 34% 62%, rgba(255,255,255,.85), transparent 60%),
+    radial-gradient(circle 2px at 68% 34%, rgba(255,255,255,.9), transparent 60%),
+    radial-gradient(circle 1.5px at 84% 70%, rgba(255,255,255,.8), transparent 60%),
+    radial-gradient(circle 1.5px at 52% 86%, rgba(255,255,255,.85), transparent 60%);
+  animation: frostTwinkle 6s ease-in-out infinite;
+}
+@keyframes frostTwinkle { 0%,100% { opacity: .35 } 50% { opacity: .9 } }
+
+/* 앱 콘텐츠는 항상 배경 위 */
+#root { position: relative; z-index: 1; }
+
+/* ══ 스크롤바 — 얼음 ═══════════════════════════════════════════════ */
+::-webkit-scrollbar             { width: 10px; height: 10px; }
+::-webkit-scrollbar-track       { background: rgba(24,168,216,.08); border-radius: 10px; }
+::-webkit-scrollbar-thumb       { background: linear-gradient(180deg, #7FD6EF, #18A8D8); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #18A8D8, #0E7FA8); background-clip: padding-box; }
+
+/* ══ 얼음판 카드(.glass) ═══════════════════════════════════════════
+   두께감의 정체 : 위쪽 흰 하이라이트(inset) + 아래쪽 물빛 그림자.
+   내용 가독성을 위해 불투명도 95%로 충분히 불투명하게 유지한다. */
 .glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-sky);
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.99) 0%, rgba(246,252,255,.95) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--card-bd);
+  border-radius: 20px;
+  box-shadow: var(--sh-ice-2);
+  transition: box-shadow .26s cubic-bezier(.4,0,.2,1), transform .26s cubic-bezier(.4,0,.2,1);
 }
+/* 얼음 표면의 빛 — 상단 가장자리 */
+.glass::before {
+  content: '';
+  position: absolute; inset: 0 0 auto 0; height: 42%;
+  border-radius: 20px 20px 60% 60% / 20px 20px 22% 22%;
+  background: linear-gradient(180deg, rgba(255,255,255,.65), rgba(255,255,255,0));
+  pointer-events: none;
+}
+.glass:hover { box-shadow: var(--sh-ice-3); transform: translateY(-2px); }
+
+/* 심해 카드 — 흰 글씨용 */
 .glass-dark {
-  background: rgba(2, 132, 199, 0.88);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(255,255,255,0.2);
-  box-shadow: 0 8px 32px rgba(2,132,199,.4), 0 2px 8px rgba(0,0,0,0.12);
+  background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 58%, var(--grad-3) 100%);
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 20px;
+  box-shadow: var(--sh-ice-2);
+  color: #fff;
 }
 
-/* ── Sky button — 3D pressed effect (CI 시안·강조) ─────────── */
+/* ══ 얼음 큐브 버튼 — 3D ══════════════════════════════════════════ */
 .btn-sky {
-  background: linear-gradient(160deg, #5CCBEE 0%, #18A8D8 40%, #0E7FA8 100%);
-  box-shadow:
-    0 7px 0 rgba(1,96,155,.72),
-    0 9px 22px rgba(24,168,216,.5),
-    inset 0 1px 0 rgba(255,255,255,.35),
-    inset 0 -1px 0 rgba(0,0,0,.08);
-  color: white;
-  font-weight: 800;
-  transition: all 0.14s cubic-bezier(.4,0,.2,1);
-  transform: translateY(0);
   position: relative;
-}
-.btn-sky:hover {
-  background: linear-gradient(160deg, #7DD9F0 0%, #18A8D8 40%, #0E7FA8 100%);
+  /* 위가 밝고 아래가 깊은 얼음 큐브. 단, 가장 밝은 윗면도 흰 글씨 4.5:1을 지킨다 */
+  background: linear-gradient(180deg, #0F7DA5 0%, #0B6F94 52%, #084C68 100%);
   box-shadow:
-    0 9px 0 rgba(1,96,155,.72),
-    0 14px 34px rgba(24,168,216,.65),
-    inset 0 1px 0 rgba(255,255,255,.35);
+    0 5px 0 #0A5F82,                       /* 얼음 두께 */
+    0 10px 22px rgba(10, 95, 130, .34),    /* 물에 비친 그림자 */
+    inset 0 1px 0 rgba(255,255,255,.55),   /* 윗면 광택 */
+    inset 0 -2px 6px rgba(8, 76, 104, .25);/* 아랫면 굴절 */
+  color: #fff;
+  font-weight: 800;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform .16s cubic-bezier(.34,1.56,.64,1), box-shadow .16s ease;
+}
+/* 표면을 스치는 빛 */
+.btn-sky::after {
+  content: '';
+  position: absolute; top: -60%; left: -40%;
+  width: 36%; height: 220%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent);
+  transform: rotate(14deg);
+  transition: left .5s ease;
+}
+.btn-sky:hover::after { left: 130%; }
+.btn-sky:hover {
+  background: linear-gradient(180deg, #128BB6 0%, #0C769D 52%, #084C68 100%);
+  box-shadow: 0 7px 0 #0A5F82, 0 14px 30px rgba(10,95,130,.42), inset 0 1px 0 rgba(255,255,255,.6), inset 0 -2px 6px rgba(8,76,104,.22);
   transform: translateY(-2px);
 }
 .btn-sky:active {
-  box-shadow:
-    0 2px 0 rgba(1,96,155,.72),
-    0 4px 10px rgba(24,168,216,.3),
-    inset 0 2px 4px rgba(0,0,0,.12);
-  transform: translateY(5px);
+  box-shadow: 0 1px 0 #0A5F82, 0 3px 8px rgba(10,95,130,.3), inset 0 3px 8px rgba(8,76,104,.35);
+  transform: translateY(4px);
 }
+.btn-sky:disabled { opacity: .5; box-shadow: 0 2px 0 #0A5F82; transform: none; cursor: not-allowed; }
 
-/* ── Sky hero banner (shared by all tabs · CI 시안 그라디언트) ─ */
+/* ══ 브랜드 그라디언트 면 — 흰 글씨/아이콘 전용 ═══════════════════
+   CI 원색(#18A8D8)은 흰 글씨 대비가 2.7:1뿐이라 본문 면에 쓰지 않는다.
+   테마를 바꿀 땐 --grad-1/2/3 세 값만 고치면 전 화면이 함께 바뀐다. */
+.ws-grad      { background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 55%, var(--grad-3) 100%); color: #fff; }
+.ws-grad-soft { background: linear-gradient(160deg, var(--grad-3) 0%, var(--grad-2) 45%, var(--grad-1) 100%); color: #fff; }
+.ws-grad svg, .ws-grad-soft svg { color: #fff; }
+
+/* ══ 빙산 히어로 — 각 페이지 머리 ════════════════════════════════ */
 .sky-hero {
-  background: linear-gradient(135deg, #0B6F94 0%, #0E7FA8 28%, #18A8D8 62%, #5CCBEE 100%);
-  box-shadow: 0 8px 40px rgba(24,168,216,.42), inset 0 1px 0 rgba(255,255,255,.2);
-  border-radius: 20px;
   position: relative;
   overflow: hidden;
+  border-radius: 22px;
+  color: #fff;
+  background:
+    /* 수면 아래 푸른 깊이 — 전 구간 흰 글씨 4.5:1 이상 */
+    linear-gradient(135deg, #062F44 0%, var(--grad-1) 32%, var(--grad-2) 68%, var(--grad-3) 100%);
+  box-shadow: 0 14px 34px rgba(8, 76, 104, .30), inset 0 1px 0 rgba(255,255,255,.34);
 }
+/* 빙벽 상단 설선(雪線) */
 .sky-hero::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent);
   pointer-events: none;
 }
-
-/* ── Active tab (CI 시안) ────────────────────────────────── */
-.tab-active {
-  background: linear-gradient(135deg, #0E7FA8 0%, #18A8D8 55%, #5CCBEE 100%);
-  box-shadow: 0 4px 20px rgba(24,168,216,.52), 0 1px 3px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.3);
-  color: #fff !important;
+/* 빙하 위를 천천히 지나가는 빛 */
+.sky-hero::after {
+  content: '';
+  position: absolute; top: -60%; left: -30%;
+  width: 42%; height: 220%;
+  background: linear-gradient(100deg, transparent, rgba(214, 240, 250, .22), transparent);
+  transform: rotate(12deg);
+  animation: glacierShine 9s ease-in-out infinite;
+  pointer-events: none;
 }
+@keyframes glacierShine { 0%, 70% { left: -30%; } 100% { left: 125%; } }
 
-/* ── Focus rings (CI 시안) ───────────────────────────────── */
+/* ══ 탭 — 얼음 조각 pill ═════════════════════════════════════════ */
+.tab-active {
+  background: linear-gradient(180deg, var(--grad-3) 0%, var(--grad-2) 55%, var(--grad-1) 100%);
+  box-shadow: 0 4px 0 #084C68, 0 8px 18px rgba(10,95,130,.32), inset 0 1px 0 rgba(255,255,255,.42);
+  color: #fff !important;
+  transform: translateY(-2px);
+}
+.tab-active svg { color: #fff !important; }
+
+/* ══ 폼 — 얼음 위에 새긴 입력창 ══════════════════════════════════ */
+input, select, textarea { color: var(--ink-900); border-radius: 12px; }
 input:focus, textarea:focus, select:focus {
   outline: none !important;
-  border-color: #18A8D8 !important;
-  box-shadow: 0 0 0 3px rgba(24,168,216,.18) !important;
+  border-color: var(--ci-cyan) !important;
+  box-shadow: 0 0 0 3px rgba(24,168,216,.24), inset 0 1px 3px rgba(10,95,130,.10) !important;
 }
+::placeholder { color: #7C99AC !important; opacity: 1; }
+:focus-visible { outline: 3px solid rgba(24,168,216,.5); outline-offset: 2px; }
 
-/* ── Animate-in utility ─────────────────────────────────── */
-@keyframes fade-in  { from { opacity:0 } to { opacity:1 } }
-@keyframes slide-up { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
-.anim-in { animation: slide-up .4s cubic-bezier(.4,0,.2,1) both; }
+/* ══ 모션 유틸 ════════════════════════════════════════════════════ */
+@keyframes fade-in   { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slide-up  { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes wsPop     { 0% { transform: scale(.94); opacity: 0 } 60% { transform: scale(1.02) } 100% { transform: scale(1); opacity: 1 } }
+@keyframes iceFloat  { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+.anim-in   { animation: slide-up .42s cubic-bezier(.34,1.56,.64,1) both; }
+.anim-pop  { animation: wsPop .28s cubic-bezier(.34,1.56,.64,1) both; }
+.ice-float { animation: iceFloat 5s ease-in-out infinite; }
 
-/* ── Code textarea (HTML editor) ────────────────────────── */
+/* ══ 로딩 표현 ════════════════════════════════════════════════════
+   ① 얼음 링 스피너 — 회전은 transform만 사용(리플로우 없음)
+   ② 스켈레톤 — 최종 레이아웃을 미리 차지해 화면 흔들림(CLS)을 막는다 */
+.ice-spinner {
+  width: 54px; height: 54px; border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(24,168,216,0) 0deg, #7FD6EF 140deg, #0E7FA8 300deg, rgba(24,168,216,0) 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px));
+  animation: iceSpin 1.05s linear infinite;
+  box-shadow: 0 6px 18px rgba(10,95,130,.18);
+}
+@keyframes iceSpin { to { transform: rotate(360deg) } }
+
+.skel {
+  position: relative; overflow: hidden;
+  background: linear-gradient(180deg, #FFFFFF, #F3FAFE);
+  border: 1px solid rgba(24,168,216,.14);
+}
+.skel::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(214,240,250,.75) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: skelSweep 1.35s ease-in-out infinite;
+}
+@keyframes skelSweep { to { transform: translateX(100%) } }
+
+/* ══ 코드 에디터 ══════════════════════════════════════════════════ */
 .code-editor {
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-  font-size: 12px;
-  line-height: 1.6;
-  background: #0f172a;
-  color: #7dd3fc;
-  border: 1px solid #1e3a5f;
-  border-radius: 10px;
-  padding: 14px;
-  resize: vertical;
-  caret-color: #5CCBEE;
+  font-size: 12.5px; line-height: 1.65;
+  background: #F2FAFE; color: #0B2E44;
+  border: 1px solid rgba(24,168,216,.3);
+  border-radius: 12px; padding: 14px; resize: vertical;
+  caret-color: var(--ci-cyan);
 }
-.code-editor:focus {
-  border-color: #18A8D8 !important;
-  box-shadow: 0 0 0 3px rgba(24,168,216,.25) !important;
-}
+.code-editor:focus { border-color: var(--ci-cyan) !important; box-shadow: 0 0 0 3px rgba(24,168,216,.22) !important; }
 
-/* ══════════════════════════════════════════════════════════
-   PREMIUM FINANCE — 결제·정산 4탭 프리미엄 레이어 (다크)
-   ══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════
+   FINANCE — 정산·결제 표 (집중 구역: 애니메이션 최소)
+   ══════════════════════════════════════════════════════════════════ */
 
-/* ── 시맨틱 상태 토큰 (다크) ─────────────────────────────── */
+/* 상태 토큰 — 파스텔 얼음 배경 + 진한 글씨(전부 4.5:1 이상) */
 :root {
-  --st-wait-bg:      rgba(148,163,184,.16);  --st-wait-fg:      #cbd5e1;  --st-wait-bd:      rgba(148,163,184,.30);
-  --st-requested-bg: rgba(249,115,22,.16);   --st-requested-fg: #fdba74;  --st-requested-bd: rgba(249,115,22,.35);
-  --st-issued-bg:    rgba(24,168,216,.16);   --st-issued-fg:    #5CCBEE;  --st-issued-bd:    rgba(24,168,216,.35);
-  --st-done-bg:      rgba(24,168,216,.13);   --st-done-fg:      #7FDAF0;  --st-done-bd:      rgba(24,168,216,.30);
-  --st-paid-bg:      rgba(34,197,94,.16);    --st-paid-fg:      #86efac;  --st-paid-bd:      rgba(34,197,94,.35);
+  --st-wait-bg:      #EDF3F7;  --st-wait-fg:      #445A6B;  --st-wait-bd:      #C9DBE6;
+  --st-requested-bg: #FFF2E3;  --st-requested-fg: #A34B00;  --st-requested-bd: #FFD4AA;
+  --st-issued-bg:    #E1F3FB;  --st-issued-fg:    #0A6285;  --st-issued-bd:    #A6DDF1;
+  --st-done-bg:      #E4F6F2;  --st-done-fg:      #0A6B4B;  --st-done-bd:      #A6E2D3;
+  --st-paid-bg:      #E6F6E9;  --st-paid-fg:      #1B6B2B;  --st-paid-bd:      #A9DFB2;
 }
 
-/* ── 고정폭 숫자 (금액 정렬) ────────────────────────────── */
-.fin-num { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; font-feature-settings: 'tnum' 1; }
+/* 금액 — 고정폭으로 자릿수 정렬(눈이 금액에 머물게) */
+.fin-num { font-variant-numeric: tabular-nums; letter-spacing: -.01em; font-feature-settings: 'tnum' 1; }
 
-/* ── 정산 글래스 카드 ───────────────────────────────────── */
+/* 정산 카드 — 살짝 떠 있는 얼음판 */
 .fin-card {
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-sky);
+  background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(244,251,255,.96));
+  border: 1px solid var(--card-bd);
   border-radius: 18px;
-  transition: transform .18s cubic-bezier(.4,0,.2,1), box-shadow .18s cubic-bezier(.4,0,.2,1);
+  box-shadow: var(--sh-ice-1);
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s ease;
 }
-.fin-card:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(24,168,216,.28), 0 4px 12px rgba(0,0,0,.4); }
+.fin-card:hover { transform: translateY(-3px); box-shadow: var(--sh-ice-3); }
 
-/* ── 정산 표: 프리미엄 헤더 + 얼룩무늬 행 (다크) ─────────── */
-.fin-table { border-collapse: separate; border-spacing: 0; }
+/* 정산 표 — 헤더는 심해, 본문은 눈 */
+.fin-table { border-collapse: separate; border-spacing: 0; background: #fff; }
 .fin-table thead th {
-  background: linear-gradient(135deg, #0B6F94 0%, #0E7FA8 55%, #18A8D8 100%);
+  background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 55%, var(--grad-3) 100%);
   color: #fff; font-weight: 800;
   position: sticky; top: 0; z-index: 1;
+  box-shadow: 0 2px 6px rgba(8,76,104,.22);
 }
-.fin-table tbody tr { transition: background .14s; }
-.fin-table tbody tr:hover { background: rgba(255,255,255,.05) !important; }
-.fin-zebra:nth-child(even) > * { background: rgba(255,255,255,.03); }
+.fin-table tbody tr { transition: background .12s; }
+.fin-table tbody tr:hover > * { background: #E4F3FB !important; }   /* 읽는 줄 강조 */
+.fin-zebra:nth-child(even) > * { background: #F5FBFE; }
 
-/* ── 상태 배지 (색+아이콘+텍스트) ───────────────────────── */
+/* 상태 배지 */
 .fin-badge {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 9px; border-radius: 9999px;
-  font-size: 11px; font-weight: 800; line-height: 1.4;
+  padding: 3px 10px; border-radius: 9999px;
+  font-size: 11px; font-weight: 800; line-height: 1.45;
   border: 1px solid transparent; white-space: nowrap;
 }
 
-/* ── 확인 다이얼로그 진입 애니메이션 ────────────────────── */
-@keyframes confirmPop {
-  0%   { opacity: 0; transform: translateY(10px) scale(.96); }
-  100% { opacity: 1; transform: translateY(0)    scale(1);   }
-}
-.confirm-pop { animation: confirmPop .22s cubic-bezier(.34,1.56,.64,1) both; }
+/* 확인 다이얼로그 */
+@keyframes confirmPop { 0% { opacity: 0; transform: translateY(10px) scale(.96) } 100% { opacity: 1; transform: translateY(0) scale(1) } }
+.confirm-pop   { animation: confirmPop .22s cubic-bezier(.34,1.56,.64,1) both; }
 .confirm-scrim { animation: fade-in .2s ease-out both; }
 
-/* ── 인쇄: [인쇄] 버튼 → 새 창 출력, Ctrl+P 직접 인쇄 차단 ─ */
+/* ══════════════════════════════════════════════════════════════════
+   [가독성 승격] 옅은 유틸리티를 실측 기반으로 끌어올린다.
+   흰 카드뿐 아니라 옅은 틴트 배경(sky-50/100·slate-50/100·red-50·
+   rose-50·amber-50·violet-50) 위에서도 전부 4.5:1 이상 나오는
+   최소 명도를 골랐다.
+   ⚠️ text-white·text-sky-100·text-sky-200 (진한 배경 위 글씨)은 제외.
+   ⚠️ 새 색을 쓸 때 4.5:1 미만이면 반드시 여기에 추가할 것.
+   ══════════════════════════════════════════════════════════════════ */
+.text-sky-300, .text-sky-400, .text-sky-500, .text-blue-400, .text-blue-500,
+.text-cyan-400, .text-cyan-500, .text-teal-400, .text-teal-500 { color: #0C7396 !important; }
+.text-sky-600, .text-blue-600, .text-cyan-600, .text-teal-600 { color: #0A6285 !important; }
+.text-slate-300, .text-gray-300, .text-slate-400, .text-gray-400 { color: #556E80 !important; }
+.text-slate-500, .text-gray-500 { color: #4E6C82 !important; }
+.text-emerald-400, .text-emerald-500, .text-emerald-600, .text-green-400, .text-green-500 { color: #0A6B4B !important; }
+.text-red-400, .text-red-500, .text-red-600, .text-rose-400, .text-rose-500, .text-rose-600 { color: #C2263F !important; }
+.text-amber-400, .text-amber-500, .text-amber-600,
+.text-yellow-400, .text-yellow-500, .text-yellow-600,
+.text-orange-400, .text-orange-500, .text-orange-600 { color: #A34B00 !important; }
+.text-violet-400, .text-violet-500, .text-purple-400, .text-purple-500,
+.text-indigo-400, .text-indigo-500 { color: #8C288C !important; }
+
+/* 예외 ① 다크 로그 콘솔 안의 초록 글씨는 원래 밝기 유지 */
+.bg-slate-900.text-green-400, .bg-slate-900 .text-green-400,
+.bg-slate-800.text-green-400, .bg-slate-800 .text-green-400 { color: #4ADE80 !important; }
+
+/* 예외 ② 진한 배경(히어로·심해카드·활성탭) 안에서는 승격을 되돌린다 */
+.ws-grad [class*="text-sky-3"], .ws-grad [class*="text-sky-4"], .ws-grad [class*="text-sky-5"],
+.sky-hero [class*="text-sky-3"], .sky-hero [class*="text-sky-4"], .sky-hero [class*="text-sky-5"],
+.glass-dark [class*="text-sky-3"], .glass-dark [class*="text-sky-4"], .glass-dark [class*="text-sky-5"],
+.tab-active [class*="text-sky-"] { color: #DCF2FB !important; }
+.ws-grad [class*="text-slate-3"], .ws-grad [class*="text-slate-4"],
+.sky-hero [class*="text-slate-3"], .sky-hero [class*="text-slate-4"],
+.glass-dark [class*="text-slate-3"], .glass-dark [class*="text-slate-4"] { color: #E6EEF4 !important; }
+
+/* ══ 모바일(≤640px) ═══════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* iOS 자동확대 방지 — Tailwind의 text-xs/text-sm 유틸리티(0,1,0)를 이기려면
+     [class] 속성 선택자로 특이성을 (0,1,1)까지 올려야 한다. */
+  input[class], select[class], textarea[class],
+  input, select, textarea { font-size: 16px !important; }
+  button, [role="button"], select { min-height: 42px; }        /* 터치 타깃 */
+  button.w-9, button.w-10, button.h-9, button.h-10 { min-height: 0; }
+  .glass, .fin-card { border-radius: 16px; }
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+  .fixed.bottom-6 { bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+  .text-\[9px\], .text-\[10px\] { font-size: 11px !important; }
+  body::after { display: none; }                                /* 반짝임 생략(성능) */
+}
+
+/* 모션 최소화 선호 존중 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* ══ 인쇄 ══════════════════════════════════════════════════════════ */
 @media print {
   body > * { display: none !important; }
+  body::before, body::after { display: none !important; }
   body::after {
     display: flex !important;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
+    align-items: center; justify-content: center; height: 100vh;
     font-family: '맑은 고딕', 'Malgun Gothic', sans-serif;
-    font-size: 14pt;
-    color: #555;
+    font-size: 14pt; color: #555;
     content: '상단의 [인쇄] 버튼을 사용해 주세요.';
   }
 }

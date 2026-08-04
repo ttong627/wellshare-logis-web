@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { User } from 'lucide-react';
+import {
+  User, KeyRound, LogIn, UserPlus, Mail, Loader2,
+  AlertCircle, CheckCircle2, ArrowLeft,
+} from 'lucide-react';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -80,68 +83,113 @@ export default function LoginForm({ onPendingRegistered }: LoginFormProps) {
     }
   };
 
-  const title = isReset ? '비밀번호 재설정' : isSignUp ? '신규 계정 생성하기' : '시스템 접속';
-  const icon = isReset ? '📧' : isSignUp ? '📝' : '🔑';
+  const SubmitIcon = isReset ? Mail : isSignUp ? UserPlus : LogIn;
 
   return (
-    <div style={{ backgroundColor: '#f1f5f9' }} className="min-h-screen flex items-center justify-center p-4 font-sans">
-      <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-xl w-full max-w-md border border-gray-200">
+    <div className="min-h-screen flex items-center justify-center p-4 font-sans relative">
+      <div className="glass w-full max-w-md rounded-3xl p-7 sm:p-10 anim-in relative z-10">
+
+        {/* 로고 — 얼음판 위에 놓인 배지 */}
         <div className="flex justify-center mb-6">
-          <div className="bg-white p-2 sm:p-3 rounded-2xl shadow-sm border border-gray-100">
-            <img src="/logo.png" alt="logo" className="w-16 h-16 sm:w-20 sm:h-20 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center ice-float"
+            style={{
+              background: 'linear-gradient(180deg,#FFFFFF,#EAF6FC)',
+              border: '1px solid rgba(24,168,216,.22)',
+              boxShadow: '0 10px 26px rgba(10,95,130,.18), inset 0 1px 0 #fff',
+            }}>
+            <img src="/logo.png" alt="웰쉐어로지스 로고" className="w-14 h-14 sm:w-16 sm:h-16 object-contain"
+              onError={(e) => (e.currentTarget.style.display = 'none')} />
           </div>
         </div>
+
         <div className="text-center mb-8">
-          <h2 className="text-[10px] sm:text-xs font-bold text-blue-700 tracking-widest uppercase mb-1">(주)웰쉐어로지스 정산System</h2>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">나라미 정산포털</h1>
-          <p className="text-slate-500 text-[10px] sm:text-sm mt-3 font-medium">
+          <h2 className="text-[10px] sm:text-xs font-bold text-sky-600 tracking-[0.2em] uppercase mb-1.5">
+            (주)웰쉐어로지스 정산 System
+          </h2>
+          <h1 className="text-2xl sm:text-3xl font-black text-sky-900 tracking-tight">나라미 정산포털</h1>
+          <p className="text-slate-500 text-xs sm:text-sm mt-3 font-medium break-keep">
             {isReset ? '가입한 이메일로 재설정 링크를 보내드립니다.' : '관리자 및 인가된 협력사 전용 보안 시스템입니다.'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
           <div>
-            <label className="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 sm:mb-2">이메일 계정</label>
+            <label htmlFor="login-email" className="block text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+              이메일 계정
+            </label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-3 sm:left-4 flex items-center pointer-events-none"><User size={18} /></span>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="block w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none" placeholder="partner@wellshare.com" />
+              <span className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-sky-500">
+                <User size={18} aria-hidden="true" />
+              </span>
+              <input
+                id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                required autoComplete="email"
+                className="block w-full pl-11 pr-4 py-3 sm:py-3.5 bg-white border border-sky-200 rounded-xl text-sm font-bold text-sky-900 transition-all outline-none"
+                placeholder="partner@wellshare.com"
+              />
             </div>
           </div>
+
           {!isReset && (
             <div>
-              <label className="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 sm:mb-2">비밀번호</label>
+              <label htmlFor="login-password" className="block text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                비밀번호
+              </label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-3 sm:left-4 flex items-center pointer-events-none">🗝️</span>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="block w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none" placeholder="••••••••" />
+                <span className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-sky-500">
+                  <KeyRound size={18} aria-hidden="true" />
+                </span>
+                <input
+                  id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                  required autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  className="block w-full pl-11 pr-4 py-3 sm:py-3.5 bg-white border border-sky-200 rounded-xl text-sm font-bold text-sky-900 transition-all outline-none"
+                  placeholder="••••••••"
+                />
               </div>
               {!isSignUp && (
-                <div className="text-right mt-1.5">
-                  <button type="button" onClick={() => switchMode('reset')} className="text-[10px] sm:text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors">
+                <div className="text-right mt-2">
+                  <button type="button" onClick={() => switchMode('reset')}
+                    className="text-[11px] sm:text-xs font-bold text-slate-400 hover:text-sky-700 transition-colors">
                     비밀번호를 잊으셨나요? 비밀번호 찾기
                   </button>
                 </div>
               )}
             </div>
           )}
-          {error && <p className="text-red-500 text-[10px] sm:text-sm font-bold text-center bg-red-50 py-2 px-3 rounded-lg">{error}</p>}
-          {info && <p className="text-emerald-600 text-[10px] sm:text-sm font-bold text-center bg-emerald-50 py-2 px-3 rounded-lg">{info}</p>}
-          <button type="submit" disabled={loading} className={`w-full flex items-center justify-center gap-2 font-bold py-3 sm:py-4 rounded-lg sm:rounded-xl shadow-md transition-all disabled:opacity-50 text-xs sm:text-base ${isSignUp ? 'bg-blue-600 hover:bg-blue-700 text-white' : isReset ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-800 hover:bg-slate-900 text-white'}`}>
-            {loading ? <span className="animate-spin">🔄</span> : <span>{icon}</span>}
-            {isReset ? '재설정 메일 보내기' : isSignUp ? '신규 계정 생성하기' : '시스템 접속'}
+
+          {error && (
+            <p role="alert" className="flex items-start gap-2 text-red-600 text-xs sm:text-sm font-bold bg-red-50 border border-red-200 py-2.5 px-3 rounded-xl break-keep">
+              <AlertCircle size={16} className="shrink-0 mt-px" aria-hidden="true" />{error}
+            </p>
+          )}
+          {info && (
+            <p role="status" className="flex items-start gap-2 text-emerald-700 text-xs sm:text-sm font-bold bg-emerald-50 border border-emerald-200 py-2.5 px-3 rounded-xl break-keep">
+              <CheckCircle2 size={16} className="shrink-0 mt-px" aria-hidden="true" />{info}
+            </p>
+          )}
+
+          <button type="submit" disabled={loading}
+            className="btn-sky w-full flex items-center justify-center gap-2 py-3.5 sm:py-4 text-sm sm:text-base">
+            {loading
+              ? <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+              : <SubmitIcon size={18} aria-hidden="true" />}
+            {loading ? '처리 중…' : isReset ? '재설정 메일 보내기' : isSignUp ? '신규 계정 생성하기' : '시스템 접속'}
           </button>
         </form>
 
-        <div className="mt-5 sm:mt-6 text-center border-t border-slate-100 pt-5 sm:pt-6 space-y-2">
+        <div className="mt-6 text-center border-t border-sky-100 pt-6 space-y-2">
           {isReset ? (
-            <button onClick={() => switchMode('login')} className="text-[10px] sm:text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors">
-              ← 로그인 화면으로 돌아가기
+            <button onClick={() => switchMode('login')}
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-slate-500 hover:text-sky-700 transition-colors">
+              <ArrowLeft size={15} aria-hidden="true" /> 로그인 화면으로 돌아가기
             </button>
           ) : (
-            <button onClick={() => switchMode(isSignUp ? 'login' : 'signup')} className="text-[10px] sm:text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors">
+            <button onClick={() => switchMode(isSignUp ? 'login' : 'signup')}
+              className="text-xs sm:text-sm font-bold text-slate-500 hover:text-sky-700 transition-colors">
               {isSignUp ? '이미 계정이 있으신가요? 로그인하기' : '처음 오셨나요? 파트너사 신규 계정 생성'}
             </button>
           )}
-          <p className="mt-4 text-[10px] font-bold text-slate-300 tracking-wider">v{APP_VERSION}</p>
+          <p className="mt-4 text-[11px] font-bold text-slate-400 tracking-wider">v{APP_VERSION}</p>
         </div>
       </div>
     </div>

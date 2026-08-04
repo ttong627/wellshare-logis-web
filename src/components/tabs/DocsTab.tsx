@@ -201,8 +201,8 @@ function FmtColor({ label, value, onChange }: { label: string; value: string; on
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="flex items-center gap-2 mb-3">
-      <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-        style={{ background: 'linear-gradient(135deg,#0E7FA8,#5CCBEE)', boxShadow: '0 2px 8px rgba(24,168,216,.4)' }}>
+      <div className="ws-grad w-6 h-6 rounded-lg flex items-center justify-center"
+        style={{ boxShadow: '0 2px 8px rgba(24,168,216,.4)' }}>
         <span className="text-white" style={{ fontSize: 12 }}>{icon}</span>
       </div>
       <p className="text-[11px] font-black text-sky-700 uppercase tracking-widest">{title}</p>
@@ -923,9 +923,8 @@ export default function DocsTab() {
     <div className="anim-in space-y-5">
 
       {/* ── Hero bar ── */}
-      <div className="rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden"
+      <div className="sky-hero p-6 sm:p-8 text-white relative overflow-hidden"
         style={{
-          background: 'linear-gradient(135deg,#0B6F94 0%,#0E7FA8 30%,#18A8D8 65%,#5CCBEE 100%)',
           boxShadow: '0 8px 40px rgba(14,127,168,.4)',
         }}>
         {/* shine line */}
@@ -1153,7 +1152,7 @@ export default function DocsTab() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[11px] font-black text-sky-700 uppercase tracking-widest flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[12px]" style={{ background: 'linear-gradient(135deg,#0E7FA8,#5CCBEE)', boxShadow: '0 2px 8px rgba(24,168,216,.4)' }}><Type size={11} /></span>
+                      <span className="ws-grad w-6 h-6 rounded-lg flex items-center justify-center text-white text-[12px]" style={{ boxShadow: '0 2px 8px rgba(24,168,216,.4)' }}><Type size={11} /></span>
                       슬로건
                     </p>
                     <FmtToggle label="슬로건 표시" value={fmt.showSlogan} onChange={v => updateFormat('showSlogan', v)} />
@@ -1175,7 +1174,7 @@ export default function DocsTab() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[11px] font-black text-sky-700 uppercase tracking-widest flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[12px]" style={{ background: 'linear-gradient(135deg,#0E7FA8,#5CCBEE)', boxShadow: '0 2px 8px rgba(24,168,216,.4)' }}><Type size={11} /></span>
+                      <span className="ws-grad w-6 h-6 rounded-lg flex items-center justify-center text-white text-[12px]" style={{ boxShadow: '0 2px 8px rgba(24,168,216,.4)' }}><Type size={11} /></span>
                       연락처 (머리말)
                     </p>
                     <FmtToggle label="연락처 표시" value={fmt.showContact} onChange={v => updateFormat('showContact', v)} />
@@ -1442,7 +1441,7 @@ export default function DocsTab() {
                     placeholder={`머리말 문구 ${i + 1}`}
                     className="flex-1 border border-sky-200 rounded-lg px-2 py-1.5 text-xs font-medium outline-none bg-white focus:border-sky-400 transition-colors" />
                   <button onClick={() => setEditingTmpl(p => p ? { ...p, headerExtraLines: (p.headerExtraLines || []).filter((_, j) => j !== i) } : p)}
-                    className="text-sky-200 hover:text-red-500 transition-colors p-1"><Minus size={13} /></button>
+                    className="text-sky-500 hover:text-red-600 transition-colors p-1"><Minus size={13} /></button>
                 </div>
               ))}
               {!(editingTmpl.headerExtraLines?.length) && <p className="text-[10px] text-sky-400">머리말 하단에 표시할 추가 문구를 입력하세요.</p>}
@@ -1464,7 +1463,7 @@ export default function DocsTab() {
                     placeholder={`꼬리말 문구 ${i + 1}`}
                     className="flex-1 border border-sky-200 rounded-lg px-2 py-1.5 text-xs font-medium outline-none bg-white focus:border-sky-400 transition-colors" />
                   <button onClick={() => setEditingTmpl(p => p ? { ...p, footerExtraLines: (p.footerExtraLines || []).filter((_, j) => j !== i) } : p)}
-                    className="text-sky-200 hover:text-red-500 transition-colors p-1"><Minus size={13} /></button>
+                    className="text-sky-500 hover:text-red-600 transition-colors p-1"><Minus size={13} /></button>
                 </div>
               ))}
               {!(editingTmpl.footerExtraLines?.length) && <p className="text-[10px] text-sky-400">꼬리말 하단에 표시할 추가 문구를 입력하세요.</p>}
@@ -1528,7 +1527,7 @@ export default function DocsTab() {
                       className="bg-sky-50 hover:bg-sky-100 text-sky-600 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors border border-sky-200">
                       불러오기
                     </button>
-                    <button onClick={() => handleDeleteHistory(h.id)} className="text-sky-200 hover:text-red-500 p-1.5 transition-colors">
+                    <button onClick={() => handleDeleteHistory(h.id)} className="text-sky-500 hover:text-red-600 p-1.5 transition-colors">
                       <Trash2 size={13} />
                     </button>
                   </div>
@@ -1730,7 +1729,7 @@ export default function DocsTab() {
                     className="flex-1 border border-sky-200 rounded-xl px-3 py-2 text-sm font-medium outline-none bg-sky-50/50 focus:border-sky-400 transition-colors" />
                   {form.items.length > 1 && (
                     <button onClick={() => setForm(f => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))}
-                      className="shrink-0 text-sky-200 hover:text-red-500 transition-colors p-1">
+                      className="shrink-0 text-sky-500 hover:text-red-600 transition-colors p-1">
                       <Minus size={14} />
                     </button>
                   )}

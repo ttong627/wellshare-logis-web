@@ -899,11 +899,11 @@ export default function ScheduleTab() {
         {activeSubTab === 'schedule' && (
           <div className="space-y-4">
             {/* Toolbar */}
-            <div className="bg-[#1a3a6b] rounded-xl p-4 flex flex-wrap items-center gap-3 text-white shadow-lg">
+            <div className="ws-grad rounded-xl p-4 flex flex-wrap items-center gap-3 text-white shadow-lg">
               <select
                 value={selectedRegion}
                 onChange={e => setSelectedRegion(e.target.value)}
-                className="bg-[#244b8a] border-none rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
+                className="border-none rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-sky-300 cursor-pointer text-white" style={{ background: "rgba(255,255,255,.18)" }}
               >
                 <optgroup label="경기도">
                   {SCHEDULE_GYEONGGI_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
@@ -1129,7 +1129,7 @@ export default function ScheduleTab() {
                               <button
                                 onClick={() => addRowForDong(item.dong, item.no)}
                                 title="같은 행정동에 기사 추가"
-                                className="text-blue-300 hover:text-blue-600 p-1 transition-colors"
+                                className="text-sky-500 hover:text-sky-700 p-1 transition-colors"
                               >
                                 <UserPlus size={13} />
                               </button>
@@ -1243,7 +1243,7 @@ export default function ScheduleTab() {
 
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="text-white font-bold text-xs" style={{ background: 'linear-gradient(135deg,#0B6F94,#18A8D8)' }}>
+                  <tr className="ws-grad text-white font-bold text-xs">
                     <th className="px-4 py-2.5 text-center w-10">#</th>
                     <th className="px-4 py-2.5">이름</th>
                     <th className="px-4 py-2.5">연락처</th>

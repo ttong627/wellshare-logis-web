@@ -157,14 +157,14 @@ export default function PerformanceTab() {
       return (
         <div key={company} className="glass rounded-2xl overflow-hidden mb-5 w-full">
           {isAdmin && selectedAdminViewCompany === '전체' && (
-            <div className="px-4 py-2.5 font-black text-white text-sm sm:text-base flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#0B6F94,#18A8D8)' }}>
+            <div className="ws-grad px-4 py-2.5 font-black text-white text-sm sm:text-base flex items-center gap-2">
               <Building2 size={16} /> {safeRender(company)}
             </div>
           )}
           <div className="w-full overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
             <table className="w-full text-left text-[9px] sm:text-sm border-collapse tracking-tighter sm:tracking-normal table-fixed sm:table-auto">
               <thead>
-                <tr className="text-white font-bold" style={{ background: 'linear-gradient(135deg,#0B6F94,#18A8D8)' }}>
+                <tr className="ws-grad text-white font-bold">
                   <th className="p-1.5 sm:p-3 border border-sky-300/40 text-center whitespace-nowrap">배정 지역</th>
                   <th className="p-1.5 sm:p-3 border border-sky-300/40 text-center whitespace-nowrap">차상위 포수</th>
                   <th className="p-1.5 sm:p-3 border border-sky-300/40 text-center whitespace-nowrap">수급자 포수</th>

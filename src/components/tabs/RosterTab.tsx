@@ -341,8 +341,8 @@ export default function RosterTab() {
       {/* 헤더 */}
       <div className="glass rounded-2xl p-5 sm:p-6">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg,#18A8D8,#5CCBEE)' }}>
+          <div className="ws-grad w-11 h-11 rounded-2xl flex items-center justify-center"
+            >
             <ClipboardList size={22} className="text-white" />
           </div>
           <div>
@@ -457,7 +457,7 @@ export default function RosterTab() {
         </div>
       ) : regionList.length === 0 ? (
         <div className="glass rounded-2xl p-12 text-center">
-          <FileSpreadsheet size={36} className="mx-auto text-sky-200 mb-3" />
+          <FileSpreadsheet size={36} className="mx-auto text-sky-300 mb-3" />
           <p className="text-sky-500 font-bold text-sm">
             {myRegions.length === 0
               ? '담당 지역이 지정되지 않았습니다. 본사에 문의해주세요.'

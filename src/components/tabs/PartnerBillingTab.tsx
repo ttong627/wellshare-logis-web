@@ -215,7 +215,7 @@ export default function PartnerBillingTab() {
           <div className="sm:hidden space-y-4">
             {filteredData.map(m => (
               <div key={m.member} className="fin-card overflow-hidden">
-                <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0B6F94,#18A8D8)' }}>
+                <div className="ws-grad px-4 py-3 flex items-center justify-between">
                   <span className="text-white font-black text-sm break-keep">{shortNameOf(m.member)}</span>
                   <span className="fin-num text-white font-black text-base">{formatNumber(m.totalAmount)}<span className="text-[10px] font-bold ml-0.5">원</span></span>
                 </div>
@@ -262,7 +262,7 @@ export default function PartnerBillingTab() {
                     <td colSpan={9} className="text-left font-black p-2 px-4 bg-sky-100 border border-sky-200 text-sky-800">{shortNameOf(m.member)} — 조합사 → 웰쉐어 발행 내역</td>
                     <td className="text-center font-bold p-2 bg-sky-200 border border-sky-300 text-sky-900 whitespace-nowrap">{formattedMonthStr}</td>
                   </tr>
-                  <tr className="text-white font-bold leading-tight" style={{ background: 'linear-gradient(135deg,#0B6F94,#18A8D8)' }}>
+                  <tr className="ws-grad text-white font-bold leading-tight">
                     {['조합사','행정구','단위','품명','수량','공급가액','세액','합계','배송현황','계산서 (요청/발급)'].map((h, i) => (
                       <th key={i} className="border border-sky-300/40 p-1.5">{h}</th>
                     ))}
