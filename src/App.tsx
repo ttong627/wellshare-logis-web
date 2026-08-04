@@ -8,6 +8,7 @@ import ConflictModal from './components/layout/ConflictModal';
 import LoginForm from './components/auth/LoginForm';
 import ErrorBoundary from './components/ErrorBoundary';
 import InstallPWAButton from './components/InstallPWAButton';
+import IceWeather from './components/IceWeather';
 
 // Tab components — 코드 스플리팅(탭별 청크 분리로 초기 번들 축소)
 const ProfileTab = lazy(() => import('./components/tabs/ProfileTab'));
@@ -172,7 +173,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen font-sans relative">
-      <div className="relative z-10 py-4 sm:py-6 px-2 sm:px-4">
+      <div className="relative z-10 py-2 sm:py-3 px-2 sm:px-3">
         <Navbar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -234,6 +235,7 @@ export default function App() {
     <AppProvider>
       <AppContent />
       <InstallPWAButton />
+      <IceWeather />
     </AppProvider>
   );
 }

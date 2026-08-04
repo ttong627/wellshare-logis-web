@@ -64,7 +64,9 @@
 /* ══ 기반 ══════════════════════════════════════════════════════════ */
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 html, body {
-  min-height: 100vh; max-width: 100%; overflow-x: hidden;
+  min-height: 100vh; max-width: 100%;
+  /* clip(hidden 아님) — hidden은 스크롤 컨테이너를 만들어 sticky 탭바를 깨뜨린다 */
+  overflow-x: clip;
   color: var(--ink-700);
   font-family: 'Noto Sans KR', 'Pretendard', -apple-system, BlinkMacSystemFont,
                'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
@@ -119,6 +121,78 @@ body::after {
 /* 앱 콘텐츠는 항상 배경 위 */
 #root { position: relative; z-index: 1; }
 
+/* ══ 배경 기상 효과 — 눈보라 · 돌개바람 · 흩날림 ═══════════════════
+   IceWeather 컴포넌트가 랜덤 값(--dx/--dy/--r/--spin…)을 심어 넣는다.
+   클릭을 가로채지 않으며(pointer-events:none), transform/opacity만 움직인다. */
+.ice-weather {
+  position: fixed; inset: 0;
+  z-index: 2;                 /* 배경 오브(0) 위, 앱 콘텐츠(#root=1)보다 위지만 클릭 불가 */
+  pointer-events: none;
+  overflow: hidden;
+  contain: strict;            /* 바깥 레이아웃에 영향 주지 않음 */
+}
+.ice-p {
+  position: absolute;
+  width: var(--size, 3px); height: var(--size, 3px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 32%, #FFFFFF 0%, #DCF2FB 46%, rgba(127,214,239,.55) 100%);
+  box-shadow: 0 0 6px rgba(255,255,255,.75), 0 0 14px rgba(24,168,216,.35);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* 눈보라 — 화면을 가로질러 몰아친다(위아래로 살짝 흔들림) */
+.ice-blizzard {
+  animation: iceBlizzard var(--dur, 4s) linear var(--delay, 0s) 1 both;
+}
+@keyframes iceBlizzard {
+  0%   { transform: translate3d(0,0,0) rotate(0deg);            opacity: 0; }
+  8%   { opacity: var(--peak, .8); }
+  50%  { transform: translate3d(calc(var(--dx) * .5), calc(var(--dy) * .5 + var(--sway, 12px)), 0) rotate(calc(var(--spin) * .5)); }
+  88%  { opacity: var(--peak, .8); }
+  100% { transform: translate3d(var(--dx), var(--dy), 0) rotate(var(--spin)); opacity: 0; }
+}
+
+/* 흩날림 — 느리고 부드럽게 떠간다 */
+.ice-drift {
+  animation: iceDriftP var(--dur, 9s) cubic-bezier(.36,.1,.3,.9) var(--delay, 0s) 1 both;
+}
+@keyframes iceDriftP {
+  0%   { transform: translate3d(0,0,0);                          opacity: 0; }
+  12%  { opacity: calc(var(--peak, .7) * .8); }
+  40%  { transform: translate3d(calc(var(--dx) * .4), calc(var(--dy) * .35 - var(--sway, 14px)), 0); }
+  70%  { transform: translate3d(calc(var(--dx) * .72), calc(var(--dy) * .74 + var(--sway, 14px)), 0); }
+  90%  { opacity: calc(var(--peak, .7) * .6); }
+  100% { transform: translate3d(var(--dx), var(--dy), 0);        opacity: 0; }
+}
+
+/* 돌개바람 — 한 점을 중심으로 반경을 키우며 감아 올라간다 */
+.ice-whirl {
+  animation: iceWhirl var(--dur, 5s) cubic-bezier(.22,.7,.3,1) var(--delay, 0s) 1 both;
+}
+@keyframes iceWhirl {
+  0% {
+    transform: rotate(var(--a0, 0deg)) translateX(0) rotate(calc(var(--a0, 0deg) * -1)) translateY(0) scale(.6);
+    opacity: 0;
+  }
+  12% { opacity: var(--peak, .85); }
+  72% { opacity: calc(var(--peak, .85) * .8); }   /* 감아 도는 동안 충분히 보이게 */
+  100% {
+    transform:
+      rotate(calc(var(--a0, 0deg) + 720deg))
+      translateX(var(--r, 140px))
+      rotate(calc((var(--a0, 0deg) + 720deg) * -1))
+      translateY(var(--lift, -90px))
+      scale(1.05);
+    opacity: 0;
+  }
+}
+
+/* 모바일에서는 입자를 조금 더 작게(성능·시야 확보) */
+@media (max-width: 640px) {
+  .ice-p { box-shadow: 0 0 4px rgba(255,255,255,.7); }
+}
+
 /* ══ 스크롤바 — 얼음 ═══════════════════════════════════════════════ */
 ::-webkit-scrollbar             { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track       { background: rgba(24,168,216,.08); border-radius: 10px; }
@@ -148,6 +222,16 @@ body::after {
   pointer-events: none;
 }
 .glass:hover { box-shadow: var(--sh-ice-3); transform: translateY(-2px); }
+
+/* 상단 고정 바 — .glass가 position:relative를 쓰므로(::before 기준) Tailwind의
+   sticky 유틸이 덮인다. 고정이 필요한 곳은 이 클래스를 쓴다. */
+.ws-sticky {
+  position: sticky !important;
+  top: 4px;
+  transition: box-shadow .2s ease;
+}
+.ws-sticky:hover { transform: none; }          /* 고정 바는 뜨지 않게 */
+.ws-sticky.is-stuck { box-shadow: var(--sh-ice-3); }
 
 /* 심해 카드 — 흰 글씨용 */
 .glass-dark {
@@ -383,12 +467,66 @@ input:focus, textarea:focus, select:focus {
 .sky-hero [class*="text-slate-3"], .sky-hero [class*="text-slate-4"],
 .glass-dark [class*="text-slate-3"], .glass-dark [class*="text-slate-4"] { color: #E6EEF4 !important; }
 
+/* ══════════════════════════════════════════════════════════════════
+   [밀도 압축] 한 화면에 더 많은 데이터를 담는다 (데스크톱 전용)
+   ────────────────────────────────────────────────────────────────
+   정산 화면은 스크롤 없이 비교·검산하는 일이 많아, 카드 여백과 행 간격을
+   약 30% 줄여 표시 행 수를 늘린다. 글자 크기는 건드리지 않는다(가독성 유지).
+   모바일(≤640px)에는 적용하지 않는다 — 손가락 터치 여백이 필요하다.
+   ══════════════════════════════════════════════════════════════════ */
+@media (min-width: 641px) {
+  /* 카드 안쪽 여백 */
+  .p-4  { padding: .70rem }   .sm\:p-4 { padding: .70rem }
+  .p-5  { padding: .85rem }   .sm\:p-5 { padding: .85rem }
+  .p-6  { padding: 1.00rem }  .sm\:p-6 { padding: 1.00rem }  .md\:p-6 { padding: 1.00rem }
+  .p-7  { padding: 1.15rem }  .sm\:p-7 { padding: 1.15rem }
+  .p-8  { padding: 1.30rem }  .sm\:p-8 { padding: 1.30rem }
+  .py-4 { padding-block: .55rem }  .sm\:py-4 { padding-block: .55rem }
+  .py-5 { padding-block: .70rem }  .sm\:py-5 { padding-block: .70rem }
+  .py-6 { padding-block: .85rem }  .sm\:py-6 { padding-block: .85rem }
+  .px-6 { padding-inline: 1.00rem } .sm\:px-6 { padding-inline: 1.00rem }
+  .px-7 { padding-inline: 1.15rem } .sm\:px-7 { padding-inline: 1.15rem }
+  .px-8 { padding-inline: 1.30rem } .sm\:px-8 { padding-inline: 1.30rem }
+
+  /* 블록 사이 간격 */
+  .space-y-4 > * + * { margin-top: .60rem }
+  .space-y-5 > * + * { margin-top: .70rem }
+  .space-y-6 > * + * { margin-top: .85rem }
+  .sm\:space-y-5 > * + * { margin-top: .70rem }
+  .sm\:space-y-6 > * + * { margin-top: .85rem }
+  .gap-4 { gap: .70rem }  .sm\:gap-4 { gap: .70rem }
+  .gap-5 { gap: .80rem }  .sm\:gap-5 { gap: .80rem }
+  .gap-6 { gap: .90rem }  .sm\:gap-6 { gap: .90rem }
+  .mb-4 { margin-bottom: .60rem }  .sm\:mb-4 { margin-bottom: .60rem }
+  .mb-5 { margin-bottom: .70rem }  .sm\:mb-5 { margin-bottom: .70rem }
+  .mb-6 { margin-bottom: .85rem }  .sm\:mb-6 { margin-bottom: .85rem }
+  .mt-6 { margin-top: .85rem }
+  .mt-8 { margin-top: 1.00rem }
+
+  /* 표 행 높이 — 셀 상하 여백만 줄여 행을 더 많이 노출 */
+  .fin-table th, .fin-table td { padding-top: .3rem; padding-bottom: .3rem; }
+  table td.p-2, table th.p-2 { padding-block: .3rem }
+  table td.p-3, table th.p-3 { padding-block: .35rem }
+}
+
 /* ══ 모바일(≤640px) ═══════════════════════════════════════════════ */
 @media (max-width: 640px) {
   /* iOS 자동확대 방지 — Tailwind의 text-xs/text-sm 유틸리티(0,1,0)를 이기려면
      [class] 속성 선택자로 특이성을 (0,1,1)까지 올려야 한다. */
   input[class], select[class], textarea[class],
   input, select, textarea { font-size: 16px !important; }
+
+  /* 탭 이동을 손가락으로 편하게 — 한 탭씩 착 붙고, 탭 자체를 크게 잡는다 */
+  .ws-tabnav { scroll-snap-type: x proximity; scroll-padding-inline: 12px; }
+  .ws-tabnav > button { scroll-snap-align: center; min-height: 44px; padding-inline: .8rem; }
+  /* 고정 탭바가 화면을 너무 먹지 않게 폰에서는 살짝 더 얇게 */
+  .ws-sticky { top: 2px; }
+  /* 탭 전환 시 본문이 탭바에 가려지지 않도록 스크롤 여유 */
+  html { scroll-padding-top: 64px; }
+  /* 누를 때 반응을 눈으로 확인 — 모바일엔 hover가 없다 */
+  button:active, [role="button"]:active { transform: scale(.97); }
+  /* 링크·버튼 탭 지연(300ms) 제거 */
+  button, a, [role="button"], select, label { touch-action: manipulation; }
   button, [role="button"], select { min-height: 42px; }        /* 터치 타깃 */
   button.w-9, button.w-10, button.h-9, button.h-10 { min-height: 0; }
   .glass, .fin-card { border-radius: 16px; }

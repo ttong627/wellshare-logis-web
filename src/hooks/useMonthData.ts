@@ -119,7 +119,16 @@ export function useMonthData(user: User | null) {
   // 낙관적 잠금 병합 저장 — runTransaction 안에서 로드시점 버전과 DB 버전을 비교해
   // 다른 탭·기기가 먼저 저장했으면(버전 불일치) 저장을 취소하고 최신 데이터를 재로드한다.
   // ⚠️ 월 문서는 updateDoc 금지(CLAUDE.md) → 트랜잭션 안에서도 tx.set(..., {merge:true})로 병합.
-  const commitMerge = useCallback(async (data: Record<string, unknown>, email: string): Promise<boolean> => {
+  // rebase=true : 충돌 시 서버 최신 버전에 맞춰 1회 자동 재시도한다.
+  //   단일 필드 저장(saveField)에만 허용 — 병합 저장이라 내가 건드린 필드 외에는
+  //   서버 값이 그대로 유지되므로 남의 작업을 덮어쓰지 않는다.
+  //   ⚠️ 전체 저장(saveAll)은 모든 필드를 덮어쓰므로 자동 재시도하지 않는다(기존대로 확인 후 재로드).
+  //   폰↔PC를 함께 켜두면 폰 화면의 버전이 쉽게 낡아 저장이 조용히 취소되던 문제를 이 재시도로 없앤다.
+  const commitMerge = useCallback(async (
+    data: Record<string, unknown>,
+    email: string,
+    opts: { rebase?: boolean } = {},
+  ): Promise<boolean> => {
     const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
     let newVersion = loadedVersionRef.current;
     try {
@@ -127,8 +136,9 @@ export function useMonthData(user: User | null) {
         const cur = await tx.get(ref);
         const dbVersion = cur.exists() ? ((cur.data().version as number) ?? 0) : 0;
         if (cur.exists() && dbVersion !== loadedVersionRef.current) {
-          const err = new Error('CONFLICT') as Error & { code?: string };
+          const err = new Error('CONFLICT') as Error & { code?: string; dbVersion?: number };
           err.code = 'CONFLICT';
+          err.dbVersion = dbVersion;
           throw err;   // 동시저장 충돌 — 이전 저장 덮어쓰기 방지
         }
         newVersion = dbVersion + 1;
@@ -138,7 +148,13 @@ export function useMonthData(user: User | null) {
       if (!savedMonths.includes(currentMonth)) refreshSavedMonths();
       return true;   // 저장 성공
     } catch (e) {
-      if ((e as { code?: string })?.code === 'CONFLICT') {
+      const err = e as { code?: string; dbVersion?: number };
+      if (err?.code === 'CONFLICT') {
+        if (opts.rebase) {
+          // 서버 최신 버전으로 기준을 맞춘 뒤 내 필드만 다시 병합 커밋한다(1회만).
+          loadedVersionRef.current = err.dbVersion ?? loadedVersionRef.current;
+          return await commitMergeRef.current!(data, email, { rebase: false });
+        }
         if (typeof window !== 'undefined' && window.confirm(
           '다른 기기·탭에서 이 달 정산 데이터를 먼저 저장했습니다.\n' +
           '내 화면이 오래된 상태라 이번 저장을 취소했습니다.\n\n' +
@@ -151,6 +167,10 @@ export function useMonthData(user: User | null) {
       throw e;
     }
   }, [currentMonth, savedMonths, refreshSavedMonths, loadMonth]);
+
+  // 재귀 호출용 최신 참조(useCallback 자기 자신을 안전하게 다시 부르기 위함)
+  const commitMergeRef = useRef<typeof commitMerge | null>(null);
+  commitMergeRef.current = commitMerge;
 
   const saveAll = useCallback(async (email: string) => {
     setIsSaving(true);
@@ -167,7 +187,8 @@ export function useMonthData(user: User | null) {
   const saveField = useCallback(async (field: string, value: unknown, email: string): Promise<boolean> => {
     setIsSaving(true);
     try {
-      return await commitMerge({ [field]: value }, email);
+      // 단일 필드는 충돌 시 자동 재시도 — 폰에서 저장이 조용히 취소되던 문제 해소
+      return await commitMerge({ [field]: value }, email, { rebase: true });
     } finally {
       setIsSaving(false);
     }

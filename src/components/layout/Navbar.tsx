@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   LayoutDashboard, User, Settings, Truck, PenTool, CheckSquare,
   FileSignature, CreditCard, ReceiptText, Contact, ShieldCheck,
@@ -36,6 +36,21 @@ export default function Navbar({
   const [showNoti, setShowNoti] = useState(false);
   const [isGearOpen, setIsGearOpen] = useState(false);
   const { confirm, dialog } = useConfirm();
+  const tabNavRef = useRef<HTMLElement | null>(null);
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+
+  // 폰에서는 탭이 가로로 잘려 보인다 — 선택된 탭을 항상 화면 안으로 끌어와
+  // "지금 어느 메뉴인지" 보이게 하고, 다음 탭으로 넘기기 쉽게 한다.
+  useEffect(() => {
+    const btn = activeTabRef.current;
+    const nav = tabNavRef.current;
+    if (!btn || !nav) return;
+    const b = btn.getBoundingClientRect();
+    const n = nav.getBoundingClientRect();
+    if (b.left < n.left + 8 || b.right > n.right - 8) {
+      nav.scrollTo({ left: btn.offsetLeft - nav.clientWidth / 2 + btn.clientWidth / 2, behavior: 'smooth' });
+    }
+  }, [activeTab]);
 
   // 마감 전에도 다음 달 작업이 가능하도록 — 관리자·회원사 모두 한 달 단위로 이동
   const shiftMonth = (m: string, delta: number) => {
@@ -71,19 +86,19 @@ export default function Navbar({
 
       {/* ── Hero header bar ─────────────────────────────── */}
       <div
-        className="ws-grad relative z-[2000] rounded-2xl sm:rounded-3xl mb-3 overflow-visible"
+        className="ws-grad relative z-[2000] rounded-2xl sm:rounded-3xl mb-2 overflow-visible"
         style={{ boxShadow: '0 10px 30px rgba(14,127,168,.28), 0 2px 10px rgba(15,41,66,.08)' }}
       >
         {/* Top water-shine line */}
         <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent)' }} />
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-5 sm:px-8 py-4 sm:py-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 px-4 sm:px-6 py-2.5 sm:py-3">
 
           {/* Logo + Title */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {/* Logo bubble */}
             <div
-              className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0"
               style={{
                 background: 'rgba(255,255,255,.18)',
                 border: '1.5px solid rgba(255,255,255,.38)',
@@ -91,14 +106,14 @@ export default function Navbar({
                 backdropFilter: 'blur(8px)',
               }}
             >
-              <img src="/logo.png" alt="logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+              <img src="/logo.png" alt="logo" className="w-7 h-7 sm:w-9 sm:h-9 object-contain"
                 onError={e => (e.currentTarget.style.display = 'none')} />
             </div>
             <div>
               <div className="text-sky-200 text-[9px] sm:text-[10px] font-bold tracking-widest uppercase mb-0.5">
                 (주)웰쉐어로지스 정산 System
               </div>
-              <h1 className="text-white text-xl sm:text-3xl font-black tracking-tight flex items-end gap-2"
+              <h1 className="text-white text-lg sm:text-2xl font-black tracking-tight flex items-end gap-2"
                 style={{ textShadow: '0 2px 8px rgba(0,0,0,.2)' }}>
                 나라미 정산포털
                 <span className="text-sky-200/90 text-[10px] sm:text-xs font-bold tracking-wider pb-0.5 sm:pb-1">v{APP_VERSION}</span>
@@ -225,7 +240,7 @@ export default function Navbar({
       </div>
 
       {/* ── Month + Close bar ────────────────────────────── */}
-      <div className="glass relative z-10 rounded-2xl px-4 sm:px-6 py-3 mb-3 flex flex-col sm:flex-row justify-between items-center gap-3">
+      <div className="glass relative z-10 rounded-2xl px-3 sm:px-4 py-2 mb-2 flex flex-col sm:flex-row justify-between items-center gap-2">
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {isAdmin && (
             <button
@@ -291,14 +306,18 @@ export default function Navbar({
         </div>
       </div>
 
-      {/* ── Main tab bar ─────────────────────────────────── */}
-      <div className="glass relative z-0 rounded-2xl p-2 mb-4 sm:mb-6">
-        <nav className="flex flex-nowrap overflow-x-auto gap-1.5" style={{ scrollbarWidth: 'none' }}>
+      {/* ── Main tab bar ───────────────────────────────────
+          sticky: 스크롤을 내려도 탭이 화면 상단에 붙어 있어 메뉴 이동이 한 번에 된다.
+          z-[2500] = 히어로(2000)보다 위 · 알림 드롭다운(3000+)보다 아래. */}
+      <div className="glass ws-sticky z-[2500] rounded-2xl p-1.5 mb-3">
+        <nav ref={tabNavRef} className="ws-tabnav flex flex-nowrap overflow-x-auto gap-1" style={{ scrollbarWidth: 'none' }}>
           {mainTabs.map(t => (
             <button
               key={t.id}
+              data-tab={t.id}
+              ref={t.id === activeTab ? activeTabRef : undefined}
               onClick={() => setActiveTab(t.id)}
-              className={`shrink-0 flex items-center justify-center gap-1.5 py-2.5 px-3 sm:px-4 rounded-xl font-bold text-[12px] sm:text-[13px] transition-all duration-250 whitespace-nowrap ${
+              className={`shrink-0 flex items-center justify-center gap-1.5 py-2 px-2.5 sm:px-3 rounded-xl font-bold text-[12px] sm:text-[13px] transition-all duration-250 whitespace-nowrap ${
                 activeTab === t.id
                   ? 'tab-active text-white'
                   : 'text-sky-700 hover:bg-sky-50 hover:text-sky-900'
