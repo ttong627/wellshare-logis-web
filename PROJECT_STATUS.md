@@ -1,5 +1,5 @@
 # 📋 PROJECT STATUS — wellshare-logis-web
-> 자동 생성: /확인 스킬 · 갱신 2026-08-11 19:45 KST
+> 자동 생성: /확인 스킬 · 갱신 2026-08-11 20:05 KST
 
 ## 식별
 - GitHub: `ttong627/wellshare-logis-web` (계정 세트: **ttong627**)
@@ -30,7 +30,8 @@
 - 이 앱은 **웰쉐어 통합 포털(`wslos.kr`)에 코드가 복제 이식**되어 있다: `wellshare-platform/frontend/src/logis/` (`LogisApp.jsx` → `./logis/App`, 통합계정 브리지 자동로그인, `.wsdark` 다크 테마)
 - **두 앱은 같은 Firestore(`wellshare-logis`) · 같은 APP_ID(`wellshare-logis-v1-production-stable`)를 쓴다** → 한쪽만 고치면 데이터가 어긋나거나 덮어써진다. **정산 로직·저장 코드를 고치면 반드시 양쪽에 반영할 것.**
 - 통합앱 배포: `cd wellshare-platform/frontend && npm run build && firebase deploy --only hosting --project directed-line-434014-h0` (또는 `_배포_wslos.bat`)
-- 이식본은 **구버전 기반**이라 격차가 남아 있다(2026-08-11 실측 diff): Navbar 739줄 · UsersTab 590줄 · App 517줄 · useMonthData 427줄 · LoginForm 346줄 · `IceWeather.tsx` 없음. 테마·포털 브리지 차이는 의도된 것이나 **기능 격차가 섞여 있어 선별 동기화 필요**
+- **기능 격차 실측 결과(2026-08-11): 사실상 없음.** diff는 크지만(Navbar 739줄 · UsersTab 590줄 · App 517줄 · useMonthData 427줄 · LoginForm 346줄 · `IceWeather.tsx` 없음) **대부분 다크/라이트 테마와 포털 브리지 차이**다. 기능 심볼 대조에서 수원시 권선구·낙관적잠금·allowedCompanies·통계자료탭·날짜 월표기·PWA 버전갱신·zip 한글파일명·계정 비번재설정/재가입 승인루트 **전부 이식본에 존재**. 유일한 실제 격차였던 ScheduleTab 낙관적 잠금은 `9d3b0d2`로 해결
+  → 따라서 **일괄 덮어쓰기는 금물**(테마가 깨진다). 앞으로도 "diff가 크다 = 구버전"으로 판단하지 말고 **기능 심볼 단위로 대조**할 것
 - 플랫폼에는 `tsconfig`·`tsc`가 없다(vite가 esbuild로 트랜스파일만) → **타입 검사가 안 되므로** 이식 시 본앱 코드와의 동일성 대조로 검증할 것
 
 **메인 웹앱 탭 17종**: Orders / Schedule / DeliveryCompletion / Billing / PartnerBilling / Payment / Performance / Statistics / Prices / Roster / Docs / Backup / Contacts / Users / Account / Profile
@@ -71,11 +72,12 @@
 - 🟢 동기화·배포: 양쪽 저장소 push 완료 · 라이브 2곳 200 OK · 배포본 = 최신 소스(청크 실측 대조)
 - 🟢 환경: node/npm/gh/gcloud/firebase 전부 정상 · 핵심 4앱 의존성 설치 완료
 - 🟢 (해결 2026-08-11) 통합앱 배송일정 낙관적 잠금 누락 → 이식 완료. 본앱 저장분 덮어쓰기 위험 제거
-- 🟠 **통합앱 구버전 격차**: 위 「통합앱 관계」의 diff 참조. 정산 로직 수정 시 **양쪽 동시 반영 필수**
+- 🟢 (정정 2026-08-11) 통합앱 "구버전 격차"는 **과대평가였다** — 기능 심볼 대조 결과 격차 없음. 단 **정산 로직·저장 코드 수정 시 양쪽 동시 반영은 여전히 필수**(같은 Firestore 공유)
 - 🟡 **계정 함정**: gh 활성계정이 `ttong0627`(양쪽 repo owner는 `ttong627`). 전역 전환 대신 **owner 토큰 주입**으로 fetch·push 수행
 - 🟡 **nworks 토큰 이중갱신 금지**: 로컬에서 토큰 갱신 스크립트 실행 시 VM 액세스 토큰 무효화(2026-07-10 실증). 메일 작업은 **VM에서만**
 - 🟡 양곡 수집기 VM cron(`20 */2`) 가동 여부는 이 PC에서 검증 불가 — 필요 시 VM 로그(`yanggok-collect.log`)·텔레그램 알림으로 확인
-- 🟡 **Firebase API 키 하드코딩**: `src/components/tabs/BackupTab.tsx:10`(통합앱 `logis/firebase.ts`도 fallback으로 보유). `src/firebase.ts`는 env 정상. 웹 API 키는 공개 가능 값이고 `firestore.rules`(217줄)가 실제 방어선이라 즉시 위험은 아니나 규칙 위반 — 정리 대상
-- 🟡 **sw.js 캐시명 불일치**: `public/sw.js:4` = `wellshare-pwa-v2.15.2` ≠ package.json `2.16.0`(주석은 "version과 맞춘다"). network-first라 화면 영향 없음 — 위생 정리 대상
-- 🟡 **ESLint 에러 2건(기존)**: `ScheduleTab.tsx:494`(useEffect 내 setState) · `:720`(no-useless-escape)
+- 🟢 (조사 완료 2026-08-11) **API 키 하드코딩은 수정 대상이 아니다** — `BackupTab.tsx:10`은 **구 프로젝트(`gen-lang-client-...`) 마이그레이션 전용** 설정이지 운영 시크릿이 아니다. 통합앱 `logis/firebase.ts`의 하드코딩은 **의도된 fallback**으로, 플랫폼 `.env.production`에 `VITE_FIREBASE_*`가 없어 **지우면 통합 정산앱이 즉시 죽는다.** 운영 설정(`src/firebase.ts`)은 이미 env 정상이고, Firebase 웹 config는 원래 번들에 노출되는 공개 값이라 방어선은 `firestore.rules`(217줄)다
+  - 남은 판단거리: BackupTab의 **구 DB 마이그레이션 기능이 아직 필요한지**(불필요하면 기능째 제거가 정답 — 형 결정 사항)
+- 🟢 (해결 2026-08-11) sw.js 캐시명 `v2.16.0`으로 동기화(`b50e023`) · `ScheduleTab.tsx` ESLint **0건**
+- 🟡 **프로젝트 전체 ESLint 36 errors / 12파일**(DocsTab 8 · App 4 · InstallPWAButton 4 · useMonthData 4 · StatisticsTab 3 · AppContext 3 …) — 이번 범위 밖, 별도 정리 과제
 - ⚠️ **코드 규칙(MUST)**: Firestore 월 문서 저장은 `updateDoc` 금지 → `setDoc(..., {merge:true})` + 중첩객체 (CLAUDE.md)
