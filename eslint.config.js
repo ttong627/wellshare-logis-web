@@ -42,6 +42,14 @@ export default defineConfig([
     },
   },
   {
+    // 인쇄용 HTML을 문자열로 만들면서 안에 </script>가 들어간다. 이스케이프 없이 그대로 두면
+    // 이 문자열이 인라인 삽입될 때 파서가 스크립트를 조기 종료해 인쇄창이 깨진다.
+    // 따라서 `<\/script>`는 의도된 방어 코드이고, no-useless-escape는 여기선 오탐이다.
+    // (룰을 이 파일에만 끄고, 나머지 파일에서는 그대로 잡히게 둔다)
+    files: ['src/components/tabs/ScheduleTab.tsx'],
+    rules: { 'no-useless-escape': 'off' },
+  },
+  {
     files: ['functions/index.js', 'server/**/*.mjs'],
     extends: [js.configs.recommended],
     languageOptions: {

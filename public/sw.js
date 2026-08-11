@@ -1,7 +1,7 @@
 // 정부양곡정산 PWA 서비스워커 — 설치가능 조건 충족 + 안전한 네트워크 우선 전략.
 // 네트워크 우선이라 배포 후 stale(옛 화면) 문제가 없고, 오프라인일 때만 캐시 폴백.
 // 배포(버전업)마다 캐시 이름을 올려 옛 캐시를 비운다 — package.json version과 맞춘다.
-const CACHE = 'wellshare-pwa-v2.15.2';
+const CACHE = 'wellshare-pwa-v2.16.0';
 
 self.addEventListener('install', () => {
   self.skipWaiting();

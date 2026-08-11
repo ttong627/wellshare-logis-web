@@ -491,6 +491,9 @@ export default function ScheduleTab() {
     }
   }, [docId, yr, mo, selectedRegion]);
 
+  // 월·지역이 바뀌면 다시 읽어야 한다. 데이터 로딩은 effect가 제자리이고,
+  // loadSchedule은 useCallback으로 묶여 있어 불필요한 재실행이 없다.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadSchedule(); }, [loadSchedule]);
 
   // ─── Save (낙관적 잠금) ───────────────────────────────────────────────────
