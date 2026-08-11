@@ -4,7 +4,7 @@ import { FileSpreadsheet, Send, AlertTriangle, ReceiptText } from 'lucide-react'
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatCur } from '../../lib/utils';
 import { getRegionBgColorClass, getRegionTheme } from '../../constants/regions';
-import { BillingItem, EcountSaleRecord } from '../../types';
+import { BillingItem, EcountSaleRecord, ExcelCell, ExcelMerge } from '../../types';
 import ExcelIcon from '../shared/ExcelIcon';
 import StatusBadge from '../shared/StatusBadge';
 import { useConfirm } from '../shared/useConfirm';
@@ -76,8 +76,8 @@ export default function BillingTab() {
   const generateAdvancedBillingExcel = () => {
     if (!window.XLSX) return showToast('엑셀 엔진을 준비 중입니다. 잠시 후 다시 시도해주세요.');
     const wb = window.XLSX.utils.book_new();
-    const wsData: any[][] = [];
-    const merges: any[] = [];
+    const wsData: ExcelCell[][] = [];
+    const merges: ExcelMerge[] = [];
 
     wsData.push([`${currentMonth.replace('-', '년 ')}월 웰쉐어 사회적협동조합 세금계산서 발행내역 (희망나르미 발행분)`, '', '', '', '', '', '', '', '', `${currentMonth}`]);
     merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } });

@@ -60,7 +60,7 @@ export default function LoginForm({ onPendingRegistered }: LoginFormProps) {
             signupEmail: email,
             timestamp: new Date().toISOString(),
           });
-        } catch {}
+        } catch { /* 관리자 알림 적재 실패는 가입 흐름을 막지 않는다 — 승인 대기는 이미 기록됐다 */ }
         onPendingRegistered(email);
       } else {
         // ── 로그인 ──────────────────────────────────────────────────

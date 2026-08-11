@@ -5,6 +5,7 @@ import { formatNumber, formatCur } from '../../lib/utils';
 import ExcelIcon from '../shared/ExcelIcon';
 import { usePeriodStats } from '../../hooks/usePeriodStats';
 import { MonthStats } from '../../lib/stats';
+import { ExcelCell } from '../../types';
 
 // 'YYYY-MM' → 'YY.MM' (월별 표 헤더용, 다년도 대비)
 const monthLabel = (m: string) => { const [y, mo] = m.split('-'); return `${y.slice(2)}.${mo}`; };
@@ -85,7 +86,7 @@ export default function StatisticsTab() {
     const months = data.months;
 
     // ── 시트1: 수량 ──
-    const qtyRows: any[][] = [];
+    const qtyRows: ExcelCell[][] = [];
     qtyRows.push([`수량 통계 (${state.range.start} ~ ${state.range.end})`]);
     qtyRows.push([]);
     if (isPartner) {
@@ -125,7 +126,7 @@ export default function StatisticsTab() {
 
     // ── 시트2: 계산서발급액 (관리자 전용) ──
     if (!isPartner) {
-      const bRows: any[][] = [];
+      const bRows: ExcelCell[][] = [];
       bRows.push([`계산서발급액 통계 (${state.range.start} ~ ${state.range.end})`]);
       bRows.push([]);
       bRows.push(['[지자체별 기간합계]']);
@@ -148,7 +149,7 @@ export default function StatisticsTab() {
     }
 
     // ── 시트3: 결제내역 ──
-    const pRows: any[][] = [];
+    const pRows: ExcelCell[][] = [];
     pRows.push([`결제내역 통계 (${state.range.start} ~ ${state.range.end})`]);
     pRows.push([]);
     if (isPartner) {

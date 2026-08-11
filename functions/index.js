@@ -54,7 +54,7 @@ exports.adminSetPassword = onCall(async (request) => {
   let userRecord;
   try {
     userRecord = await adminAuth.getUserByEmail(targetEmail);
-  } catch (e) {
+  } catch {
     throw new HttpsError('not-found', '해당 이메일로 가입된 계정이 없습니다.');
   }
 

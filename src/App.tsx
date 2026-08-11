@@ -9,6 +9,7 @@ import LoginForm from './components/auth/LoginForm';
 import ErrorBoundary from './components/ErrorBoundary';
 import InstallPWAButton from './components/InstallPWAButton';
 import IceWeather from './components/IceWeather';
+import { XlsxApi } from './types';
 
 // Tab components — 코드 스플리팅(탭별 청크 분리로 초기 번들 축소)
 const ProfileTab = lazy(() => import('./components/tabs/ProfileTab'));
@@ -29,7 +30,7 @@ const DocsTab = lazy(() => import('./components/tabs/DocsTab'));
 const RosterTab = lazy(() => import('./components/tabs/RosterTab'));
 
 declare global {
-  interface Window { XLSX: any; }
+  interface Window { XLSX: XlsxApi; }
 }
 
 function AppContent() {

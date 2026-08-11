@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext';
 import { MEMBERS } from '../../constants/members';
 import { formatNumber, formatCur, safeRender, CLOSED_MSG } from '../../lib/utils';
 import { getFullRegionName, getRegionTheme } from '../../constants/regions';
+import { ExcelCell, ExcelMerge } from '../../types';
 import ExcelIcon from '../shared/ExcelIcon';
 import StatusBadge from '../shared/StatusBadge';
 import { useConfirm } from '../shared/useConfirm';
@@ -89,8 +90,8 @@ export default function PartnerBillingTab() {
     if (!window.XLSX) return showToast('엑셀 엔진을 준비 중입니다. 잠시 후 다시 시도해주세요.');
     if (filteredData.length === 0) return showToast('다운로드할 데이터가 없습니다.');
     const wb = window.XLSX.utils.book_new();
-    const wsData: any[][] = [];
-    const merges: any[] = [];
+    const wsData: ExcelCell[][] = [];
+    const merges: ExcelMerge[] = [];
     let rIdx = 0;
 
     filteredData.forEach((m, mIdx) => {

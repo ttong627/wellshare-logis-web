@@ -5,9 +5,10 @@ import { REGION_ORDER, getRegionTheme } from '../../constants/regions';
 import { PARTNER_REGIONS_INVERSE } from '../../constants/members';
 import { parseNumber, formatNumber, CLOSED_MSG } from '../../lib/utils';
 import ExcelIcon from '../shared/ExcelIcon';
+import { XlsxApi } from '../../types';
 
 declare global {
-  interface Window { XLSX: any; }
+  interface Window { XLSX: XlsxApi; }
 }
 
 interface OrdersTabProps {

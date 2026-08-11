@@ -418,3 +418,30 @@ export interface ScheduleData {
   lastUpdated?: string;
   version?: number;   // 낙관적 잠금: 동시저장 충돌 감지용
 }
+
+// ─── 엑셀(SheetJS) 경계 타입 ────────────────────────────────────────────────
+// XLSX는 CDN 전역으로 로드되는 외부 라이브러리다. 타입 패키지를 붙이는 대신,
+// 이 앱이 실제로 호출하는 API만 최소로 정의해 경계에서만 타입을 고정한다.
+// (전수 조사 2026-08-11: utils.book_new / aoa_to_sheet / table_to_sheet /
+//  book_append_sheet, writeFile, 시트 속성 '!cols'·'!merges' — 그 외 사용처 없음)
+export type ExcelCell = string | number | null;
+export interface ExcelMerge { s: { r: number; c: number }; e: { r: number; c: number } }
+export interface ExcelColWidth { wpx?: number; wch?: number }
+export interface ExcelSheet {
+  '!cols'?: ExcelColWidth[];
+  '!merges'?: ExcelMerge[];
+  [key: string]: unknown;
+}
+export interface ExcelWorkbook {
+  SheetNames: string[];
+  Sheets: Record<string, ExcelSheet>;
+}
+export interface XlsxApi {
+  utils: {
+    book_new(): ExcelWorkbook;
+    aoa_to_sheet(data: ExcelCell[][]): ExcelSheet;
+    table_to_sheet(el: HTMLElement): ExcelSheet;
+    book_append_sheet(wb: ExcelWorkbook, ws: ExcelSheet, name: string): void;
+  };
+  writeFile(wb: ExcelWorkbook, fileName: string): void;
+}

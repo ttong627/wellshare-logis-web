@@ -18,12 +18,16 @@ export default function InstallPWAButton() {
 
   const isStandalone =
     typeof window !== 'undefined' &&
-    (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+    // navigator.standalone은 iOS 사파리 전용 비표준 속성이라 표준 Navigator 타입에 없다.
+    (window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as Navigator & { standalone?: boolean }).standalone === true);
   const isIos = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
 
   useEffect(() => {
     if (isStandalone) { setHidden(true); return; }
-    try { if (sessionStorage.getItem('pwaInstallDismissed') === '1') { setHidden(true); return; } } catch {}
+    // 사파리 프라이빗 모드·쿠키 차단 환경에선 sessionStorage 접근이 예외를 던진다.
+    // 설치 배너 숨김 여부는 부가 기능이라, 읽기에 실패하면 그냥 배너를 보여준다.
+    try { if (sessionStorage.getItem('pwaInstallDismissed') === '1') { setHidden(true); return; } } catch { /* 무시 */ }
     const onPrompt = (e: Event) => { e.preventDefault(); setDeferred(e as BeforeInstallPromptEvent); };
     const onInstalled = () => { setHidden(true); setDeferred(null); };
     window.addEventListener('beforeinstallprompt', onPrompt);
@@ -54,7 +58,8 @@ export default function InstallPWAButton() {
 
   const dismiss = () => {
     setHidden(true);
-    try { sessionStorage.setItem('pwaInstallDismissed', '1'); } catch {}
+    // 저장에 실패해도(프라이빗 모드 등) 이번 화면에서 숨기는 것만으로 충분하다.
+    try { sessionStorage.setItem('pwaInstallDismissed', '1'); } catch { /* 무시 */ }
   };
 
   return (

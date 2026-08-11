@@ -9,7 +9,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { db, storage, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { sanitizeHtml } from '../../lib/sanitize';
-import { DocType, DocTemplate, DocPageFormat, DocHistoryItem } from '../../types';
+import { DocType, DocTemplate, DocPageFormat, DocHistoryItem, DocFormatSettings } from '../../types';
 import { safeRender } from '../../lib/utils';
 
 // ── 글꼴 목록 ─────────────────────────────────────────────────────────────────
@@ -505,7 +505,7 @@ export default function DocsTab() {
             body2: form.body2, body3: form.body3, body4: form.body4,
             items: form.items.filter(i => i.trim()),
             date: form.date, docNo: { year, num },
-            docNumber: dn, settingsSnapshot: {} as any,
+            docNumber: dn, settingsSnapshot: {} as DocFormatSettings,
           },
         };
         tx.set(counterRef, { lastNum: num });
@@ -852,7 +852,7 @@ export default function DocsTab() {
                   <span>담당&emsp;{template.manager || ''}</span>
                   <span>{template.representativeTitle}&emsp;{template.representative}</span>
                 </div>
-                <div>협조자&emsp;{(template as any).assistant || ''}</div>
+                <div>협조자&emsp;{template.assistant || ''}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1mm' }}>
                   <span>시행&emsp;{template.docPrefix}-{form.docNo.year}-{String(form.docNo.num).padStart(3, '0')}({form.date})</span>
                   <span>접수</span>
@@ -1013,7 +1013,7 @@ export default function DocsTab() {
             ].map(({ label, key, placeholder }) => (
               <div key={key} className={key === 'address' || key === 'orgSlogan' ? 'sm:col-span-2' : ''}>
                 <label className="text-[10px] font-bold text-sky-600 mb-1 block">{label}</label>
-                <input type="text" value={(newTmpl as any)[key] || ''} placeholder={placeholder}
+                <input type="text" value={String(newTmpl[key as keyof DocTemplate] ?? '')} placeholder={placeholder}
                   onChange={e => setNewTmpl(p => ({ ...p, [key]: e.target.value }))}
                   className="w-full border border-sky-200 rounded-xl px-3 py-2 text-sm font-medium outline-none bg-sky-50/50 focus:border-sky-400 transition-colors" />
               </div>
@@ -1409,7 +1409,7 @@ export default function DocsTab() {
               ].map(({ label, key }) => (
                 <div key={key} className={key === 'address' || key === 'orgSlogan' ? 'sm:col-span-2' : ''}>
                   <label className="text-[10px] font-bold text-sky-600 mb-1 block">{label}</label>
-                  <input type="text" value={(editingTmpl as any)[key] || ''}
+                  <input type="text" value={String(editingTmpl[key as keyof DocTemplate] ?? '')}
                     onChange={e => setEditingTmpl(p => p ? { ...p, [key]: e.target.value } : p)}
                     className="w-full border border-sky-200 rounded-xl px-3 py-2 text-sm font-medium outline-none bg-sky-50/50 focus:border-sky-400 transition-colors" />
                 </div>

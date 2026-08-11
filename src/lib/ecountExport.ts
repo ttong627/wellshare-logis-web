@@ -65,8 +65,8 @@ export function downloadEcountSaleExcel(
   opt: EcountExportOptions,
   fileName: string,
 ): boolean {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SheetJS는 CDN 전역, 공식 타입 없음
-  const XLSX = (window as unknown as { XLSX?: any }).XLSX;
+  // SheetJS는 CDN 전역이라 로드 전에는 undefined일 수 있다(타입은 types.ts의 XlsxApi).
+  const XLSX = window.XLSX;
   if (!XLSX) return false;
   const rows = buildEcountSaleRows(report, opt);
   const ws = XLSX.utils.aoa_to_sheet(rows);
