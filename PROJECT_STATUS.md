@@ -1,5 +1,5 @@
 # 📋 PROJECT STATUS — wellshare-logis-web
-> 자동 생성: /확인 스킬 · 갱신 2026-07-10 23:00 KST
+> 자동 생성: /확인 스킬 · 갱신 2026-08-11 19:45 KST
 
 ## 식별
 - GitHub: `ttong627/wellshare-logis-web` (계정 세트: **ttong627**)
@@ -7,52 +7,75 @@
 - 로컬 경로: `I:\ttong_project\wellshare-logis-web`
 
 ## 배포 환경
-- 접속 URL: https://wellshare-logis.web.app → **200 OK** (2026-07-10 확인)
-- 호스팅: Firebase Hosting (public: `dist`, SPA rewrites, APK 다운로드 헤더)
-- 빌드: `npm run build` (루트 · Vite)
-- 배포: `firebase deploy --only hosting` (firebase.json 기준)
+- 접속 URL: https://wellshare-logis.web.app → **200 OK** (2026-08-11 19:05 확인)
+- 호스팅: Firebase Hosting (public: `dist`, SPA rewrites, `/app`→download.html, APK 헤더)
+- 빌드: `npm run build` (= `tsc --noEmit && vite build`, 루트)
+- 배포: `firebase deploy --only hosting`
 - 커밋·푸시: main 기준 / 계정 **ttong627**
-- 현재 앱 버전: **v2.15.2** (package.json)
+- 현재 앱 버전: **v2.16.0** (package.json · 버전 bump 커밋 `bf29c66` 2026-07-23)
+- **라이브 = 최신 소스 반영 확인**: 라이브 `assets/index-DDmercaL.css`에 최신 커밋 `d3984b4`의 `ice-veil`·`ice-blizzard` 포함(실측). 로컬 `dist`와 에셋 해시 4종 전부 동일 = 배포본 = 최신 빌드
+- CLI 계정: firebase `ttong627@gmail.com` ✓ · gcloud `ttong627@gmail.com` ✓
 
 ## 앱 구성
 | 앱/패키지 | 경로 | 역할 | 스택 |
 |---|---|---|---|
-| wellshare-logis-web | `/` | 메인 웹앱(관리자·정산·실적·통계자료·**정부양곡 명단 RosterTab**) | Vite + React + TS + Firebase |
+| wellshare-logis-web | `/` | 메인 웹앱 = **정산포털**(주문·배송일정·정산·거래처정산·실적·통계·명단·계정) | Vite + React + TS + Firebase |
 | ecount-gateway | `/ecount-gateway` | ECOUNT ERP 전표 게이트웨이(`/ecount/sale-tms`) | Node + TS |
-| functions | `/functions` | Firebase Functions (FCM 푸시 등) | Node Functions |
-| wellshare-logis-mobile | `/mobile` | 기사앱·모바일(PWA·APK·Expo) | React Native / Expo |
+| functions | `/functions` | Firebase Functions (FCM 푸시 등) | Node 20 Functions |
+| wellshare-logis-mobile | `/mobile` | 기사앱·모바일(PWA·APK·Expo) v1.0.0 | React Native / Expo |
+| yanggok-collector | `/server/yanggok-collector` | 정부양곡 명단 메일 자동수집기 — **VM(tms-main-node) cron `20 */2` 상주** | Node (mjs) · 별도 package.json 없음(의존성 VM에 설치: iconv-lite·jszip·officecrypto-tool) |
 | react-example | `/ttong` | 예제·실험(본 작업 무관) | Vite + React |
-| **yanggok-collector** | `/server/yanggok-collector` | **정부양곡 명단 메일 자동수집기** — VM(tms-main-node, `ttong0627`) cron `20 */2` 상주. 토큰은 yyplus 데몬이 갱신(읽기전용 공유) | Node (mjs) |
+
+## ⚠️ 통합앱 관계 (wslos.kr) — 데이터 공유 주의
+- 이 앱은 **웰쉐어 통합 포털(`wslos.kr`)에 코드가 복제 이식**되어 있다: `wellshare-platform/frontend/src/logis/` (`LogisApp.jsx` → `./logis/App`, 통합계정 브리지 자동로그인, `.wsdark` 다크 테마)
+- **두 앱은 같은 Firestore(`wellshare-logis`) · 같은 APP_ID(`wellshare-logis-v1-production-stable`)를 쓴다** → 한쪽만 고치면 데이터가 어긋나거나 덮어써진다. **정산 로직·저장 코드를 고치면 반드시 양쪽에 반영할 것.**
+- 통합앱 배포: `cd wellshare-platform/frontend && npm run build && firebase deploy --only hosting --project directed-line-434014-h0` (또는 `_배포_wslos.bat`)
+- 이식본은 **구버전 기반**이라 격차가 남아 있다(2026-08-11 실측 diff): Navbar 739줄 · UsersTab 590줄 · App 517줄 · useMonthData 427줄 · LoginForm 346줄 · `IceWeather.tsx` 없음. 테마·포털 브리지 차이는 의도된 것이나 **기능 격차가 섞여 있어 선별 동기화 필요**
+- 플랫폼에는 `tsconfig`·`tsc`가 없다(vite가 esbuild로 트랜스파일만) → **타입 검사가 안 되므로** 이식 시 본앱 코드와의 동일성 대조로 검증할 것
+
+**메인 웹앱 탭 17종**: Orders / Schedule / DeliveryCompletion / Billing / PartnerBilling / Payment / Performance / Statistics / Prices / Roster / Docs / Backup / Contacts / Users / Account / Profile
 
 ## 마지막 작업
-- `fb0f251` 2026-07-10 · feat: 정부양곡 명단 자동수집기 (yanggok-collector)
-- 요약: "명단 다운로드 안됨" 신고 → 원인=7월분 미적재(6월은 1회성 수동추출). ①7월 3메일 5파일 즉시 적재 ②상시 수집기 구현·VM 배치(cron 2h, 첫 적재 6건·멱등 0건·테스트 9/9) ③본사A 토큰 이중갱신 충돌 발견·VM 재갱신 복구
-- 직전 흐름: `4c1bfb5`(7/1) PWA 캐시 자동갱신 v2.15.2 ← 명단탭·allowedCompanies 시리즈
+- `9c8fc2c` 2026-08-11 19:40 · fix(schedule): 배송일정 — 기사 서브탭 가시성 + 기사 연락처 자동채움 복구
+  - **원인①** 8/4 ICEBERG 라이트 테마 전환(`15a4595`) 때 서브탭 바만 다크 시절 `bg-slate-100`(#F1F5F9)이 남아 새 배경(#F4FBFE~#D8ECF7)에 묻힘 → 메인 탭바와 같은 언어(흰 카드 + `tab-active`)로 통일
+  - **원인②** 표가 `overflow-x-auto`라 CSS 사양상 세로도 잘려 `absolute` 드롭다운이 표 밖으로 못 나옴 → 화면 기준 `fixed` + `getBoundingClientRect` 추적. `handleBlur`가 항상 빈 연락처를 넘겨 이름이 정확히 일치해도 채워지는 경로가 없었음 → `autoFill` 신설(동명이인은 제외)
+  - 같은 수정을 통합앱(wslos.kr `frontend/src/logis`)에도 이식 — `wellshare-platform@c32dd02`
+  - 통합앱 배송일정에 **낙관적 잠금 이식**(`wellshare-platform@9d3b0d2`) — 아래 「통합앱 관계」 참조
+- 직전: `bccb1d1` 2026-08-09 문서 커밋 · `d3984b4` 2026-08-05 탭바 고정 + 눈보라 강화
+- 직전 흐름: `15a4595`(8/4) **정산포털 ICEBERG 라이트 테마 전면 재구성** — 기존 다크 프리미엄(`49024d6` 7/29)에서 라이트 빙하 테마로 전환, `src/imported-dark.css` 제거 · `index.css` 480줄 재작성 · 로그인/네비/토스트/탭 전반 적용
+- 그 이전: `58be975`~`6f94f14`(7/29) 정산 월문서 **낙관적 잠금** 시리즈 — 다중탭·기기 동시저장 데이터 유실 방지(#21 완결)
 
 ## 규칙 문서 (SSOT — 작업 전 필독)
 | 문서 | 내용 |
 |---|---|
-| `CLAUDE.md` | ★절대규칙: Firestore 월 문서 저장은 `updateDoc` 금지 → `setDoc(..., {merge:true})` + 중첩객체 / push 전 `gh auth switch --user ttong627` |
-| `server/yanggok-collector/README.md` | ★양곡 명단 자동수집 운영 SSOT: 토큰 읽기전용 원칙(이중갱신 금지)·멱등 키·노출 안전 규칙·VM 배치/cron·백필 명령 |
+| `CLAUDE.md` | ★절대규칙: Firestore 월 문서 저장은 `updateDoc` 금지 → `setDoc(..., {merge:true})` + 중첩객체 / push 전 계정 `ttong627` |
+| `server/yanggok-collector/README.md` | ★양곡 명단 자동수집 운영 SSOT: nworks 토큰 **읽기전용**(이중갱신 금지)·멱등 키(`MAIL_{계정}_{mailId}_{attachmentId}`)·VM cron 배치·백필 명령 |
 | `메일자동화_핸드오프.md` | (구현 완료 2026-07-10) 설계 배경·발신자 실측 시드 — 신규 발신자 추가 시 참조 |
+| `mobile/DESIGN.md` · `mobile/BUILD_GUIDE.md` | 기사앱 디자인 규칙 · APK 빌드 가이드 |
+| `ecount-gateway/README.md` | ECOUNT 전표 연동 규격 |
 | `prompt_plan.md` | 초기 제작 프롬프트 계획(참고용) |
-| (docs/ 폴더 없음) | 도메인 규칙 문서는 아직 없음 — 메일자동화 구현 시 신설 권장 |
+| (docs/ 폴더 없음) | 도메인 규칙 문서 미분리 — 배송/정산 규칙 문서화 권장 |
 
 ## 작업환경
 - node v24.15.0 / npm 11.12.1 / 도구: gh✓ gcloud✓ firebase✓
-- 의존성: 핵심 4앱(web·ecount-gateway·functions·mobile) **설치 OK** / `ttong`(react-example) 미설치(예제라 보류)
-- 시크릿: `.env`·`.env.example`(루트) 존재 — 값 비노출·커밋 금지
+- 의존성: 루트·ecount-gateway·functions·mobile **설치 OK** / `ttong`(예제) 미설치(보류) / `yanggok-collector`는 package.json 없음(VM 전용) → **자동설치 실행 대상 없음**
+- 시크릿(존재 여부만): `.env`, `.env.example`, `agents/.env`, `ttong/.env.example` — 값 비노출·커밋 금지
+- 실행: `npm run dev` (Vite, port 5173 · `.claude/launch.json`)
 
 ## 동기화
-- 상태: **최신** (main = origin/main = `4c1bfb5`, behind 0 / ahead 0)
-- 워킹트리: untracked 2건(`PROJECT_STATUS.md`, `메일자동화_핸드오프.md`) — 상태·핸드오프 파일, 코드 변경 없음
-- 마지막 fetch: 2026-07-10 21:32 KST
+- 상태: **최신** (main = origin/main = `9c8fc2c`, behind 0 / ahead 0) · 통합앱 `wellshare-platform` = `9d3b0d2`
+- 워킹트리: **clean**
+- 마지막 fetch/push: 2026-08-11 19:45 KST (owner 토큰 주입 방식 — 전역 gh 계정 미변경)
 
 ## 리스크
-- 🟢 동기화: 최신(`fb0f251` push 완료) · 라이브 200 OK · v2.15.2
-- 🟢 양곡 명단 자동수집: VM cron 가동(2h 주기, yyplus 20분 오프셋) · rosters 21건 전수 대조 무결 · 텔레그램 알림 연결
-- 🟡 계정 함정: gh 활성계정이 세션마다 `ttong0627`로 복귀 — push 전 `gh auth switch --user ttong627` 필수(이번에도 재발)
-- 🟡 ⚠️**nworks 토큰 이중갱신 금지**: 로컬에서 토큰 갱신 스크립트 실행 시 VM 액세스 토큰이 무효화됨(2026-07-10 실증·복구). 메일 작업은 VM에서만, 로컬은 읽기도 자제
-- 🟡 미분류·신규지역(수원시·중원구·양평군·부천시8월 등)은 관리자 전용으로 쌓임 — 형이 명단탭에서 확인 후 담당 지정 필요
-- 🟡 부천 로컬 credentials 무효(VM은 정상) — 로컬에서 부천함 접근 불가(불필요, VM이 담당)
+- 🟢 동기화·배포: 양쪽 저장소 push 완료 · 라이브 2곳 200 OK · 배포본 = 최신 소스(청크 실측 대조)
+- 🟢 환경: node/npm/gh/gcloud/firebase 전부 정상 · 핵심 4앱 의존성 설치 완료
+- 🟢 (해결 2026-08-11) 통합앱 배송일정 낙관적 잠금 누락 → 이식 완료. 본앱 저장분 덮어쓰기 위험 제거
+- 🟠 **통합앱 구버전 격차**: 위 「통합앱 관계」의 diff 참조. 정산 로직 수정 시 **양쪽 동시 반영 필수**
+- 🟡 **계정 함정**: gh 활성계정이 `ttong0627`(양쪽 repo owner는 `ttong627`). 전역 전환 대신 **owner 토큰 주입**으로 fetch·push 수행
+- 🟡 **nworks 토큰 이중갱신 금지**: 로컬에서 토큰 갱신 스크립트 실행 시 VM 액세스 토큰 무효화(2026-07-10 실증). 메일 작업은 **VM에서만**
+- 🟡 양곡 수집기 VM cron(`20 */2`) 가동 여부는 이 PC에서 검증 불가 — 필요 시 VM 로그(`yanggok-collect.log`)·텔레그램 알림으로 확인
+- 🟡 **Firebase API 키 하드코딩**: `src/components/tabs/BackupTab.tsx:10`(통합앱 `logis/firebase.ts`도 fallback으로 보유). `src/firebase.ts`는 env 정상. 웹 API 키는 공개 가능 값이고 `firestore.rules`(217줄)가 실제 방어선이라 즉시 위험은 아니나 규칙 위반 — 정리 대상
+- 🟡 **sw.js 캐시명 불일치**: `public/sw.js:4` = `wellshare-pwa-v2.15.2` ≠ package.json `2.16.0`(주석은 "version과 맞춘다"). network-first라 화면 영향 없음 — 위생 정리 대상
+- 🟡 **ESLint 에러 2건(기존)**: `ScheduleTab.tsx:494`(useEffect 내 setState) · `:720`(no-useless-escape)
 - ⚠️ **코드 규칙(MUST)**: Firestore 월 문서 저장은 `updateDoc` 금지 → `setDoc(..., {merge:true})` + 중첩객체 (CLAUDE.md)
