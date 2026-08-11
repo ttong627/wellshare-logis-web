@@ -133,11 +133,33 @@ function DriverAutocomplete({ value, rowId, onSelect, drivers, readOnly }: Autoc
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  // 드롭다운 좌표 — 표가 overflow-x-auto라 CSS 사양상 세로도 잘린다(absolute는 z-index와 무관하게 안 보임).
+  // 화면 기준 fixed로 띄우고, 입력칸 위치를 따라가게 한다.
+  const [rect, setRect] = useState<{ left: number; top: number; width: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (value !== prevValue) { setInput(value); setPrevValue(value); }
+
+  const measure = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setRect({ left: r.left, top: r.bottom, width: r.width });
+  }, []);
+
+  // 이름이 등록된 기사와 정확히 일치하고 동명이인이 없으면 연락처를 자동으로 채운다.
+  // (드롭다운에서 고르지 않고 이름만 타이핑하는 실제 사용 흐름을 그대로 지원)
+  const autoFill = useCallback((name: string) => {
+    const key = name.trim().toLowerCase();
+    if (!key) return false;
+    const hits = drivers.filter(d => (d.name || '').trim().toLowerCase() === key);
+    if (hits.length !== 1) return false;          // 동명이인은 드롭다운으로 직접 고르게 둔다
+    const d = hits[0];
+    onSelect({ rowId, name, phone: d.phone || '', emergency: d.emergency || '' });
+    return true;
+  }, [drivers, onSelect, rowId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -152,13 +174,17 @@ function DriverAutocomplete({ value, rowId, onSelect, drivers, readOnly }: Autoc
     timer.current = setTimeout(() => {
       const r = searchDrivers(val, drivers);
       setSuggestions(r);
+      if (r.length > 0) measure();
       setOpen(r.length > 0);
+      autoFill(val);                               // 이름을 다 치는 순간 연락처가 들어온다
     }, 100);
   };
 
   const handleBlur = () => {
     setTimeout(() => {
-      if (!open) onSelect({ rowId, name: input, phone: '', emergency: '' });
+      if (open) return;
+      if (autoFill(input)) return;                 // 정확히 일치하면 자동 채움
+      onSelect({ rowId, name: input, phone: '', emergency: '' });
     }, 150);
   };
 
@@ -188,6 +214,18 @@ function DriverAutocomplete({ value, rowId, onSelect, drivers, readOnly }: Autoc
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
+  // 열려 있는 동안 표를 가로로 스크롤하거나 창 크기가 바뀌어도 입력칸을 따라간다.
+  useEffect(() => {
+    if (!open) return;
+    const h = () => measure();
+    window.addEventListener('scroll', h, true);
+    window.addEventListener('resize', h);
+    return () => {
+      window.removeEventListener('scroll', h, true);
+      window.removeEventListener('resize', h);
+    };
+  }, [open, measure]);
+
   const highlight = (text: string, q: string) => {
     const idx = text.toLowerCase().indexOf(q.toLowerCase());
     if (idx === -1) return <>{text}</>;
@@ -209,16 +247,17 @@ function DriverAutocomplete({ value, rowId, onSelect, drivers, readOnly }: Autoc
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        onFocus={() => { if (suggestions.length > 0) { measure(); setOpen(true); } }}
         placeholder={readOnly ? '' : '기사명 검색...'}
         className={`w-full px-2 py-1.5 border rounded text-xs outline-none transition-all ${
           open ? 'border-blue-400 ring-1 ring-blue-200' : 'border-transparent'
         } ${readOnly ? 'bg-transparent' : 'bg-white/50 hover:bg-white focus:bg-white focus:border-blue-300'}`}
       />
-      {open && suggestions.length > 0 && (
+      {open && suggestions.length > 0 && rect && (
         <div
           ref={dropRef}
-          className="absolute top-full left-0 right-0 z-[9999] bg-white border border-slate-200 rounded-b-lg shadow-2xl mt-px max-h-56 overflow-y-auto"
+          style={{ position: 'fixed', left: rect.left, top: rect.top, width: Math.max(rect.width, 240) }}
+          className="z-[9999] bg-white border border-slate-200 rounded-b-lg shadow-2xl mt-px max-h-56 overflow-y-auto"
         >
           <div className="px-3 py-1 bg-slate-50 border-b text-[10px] font-bold text-slate-500 flex justify-between">
             <span>{suggestions.length}명 검색됨</span>
@@ -875,23 +914,25 @@ export default function ScheduleTab() {
           </div>
         </div>
 
-        {/* Sub-tabs */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+        {/* Sub-tabs — 메인 탭바와 같은 디자인 언어(흰 카드 + tab-active).
+            ⚠️ bg-slate-100(#F1F5F9)은 ICEBERG 라이트 배경(#F4FBFE~#D8ECF7)과 명도차가 없어
+               바 전체가 배경에 묻힌다(= "기사 관리 메뉴가 없다"로 보였던 원인). 흰 카드로 띄운다. */}
+        <div className="bg-white border border-sky-100 rounded-2xl p-1.5 shadow-sm flex gap-1">
           <button
             onClick={() => setActiveSubTab('schedule')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-bold text-sm transition-all ${
-              activeSubTab === 'schedule' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-sm transition-all duration-250 ${
+              activeSubTab === 'schedule' ? 'tab-active text-white' : 'text-sky-700 hover:bg-sky-50 hover:text-sky-900'
             }`}
           >
-            <Calendar size={15} /> 배송일정
+            <Calendar size={15} className={activeSubTab === 'schedule' ? 'text-white' : 'text-sky-500'} /> 배송일정
           </button>
           <button
             onClick={() => setActiveSubTab('drivers')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-bold text-sm transition-all ${
-              activeSubTab === 'drivers' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-sm transition-all duration-250 ${
+              activeSubTab === 'drivers' ? 'tab-active text-white' : 'text-sky-700 hover:bg-sky-50 hover:text-sky-900'
             }`}
           >
-            <Users size={15} /> 기사 관리 ({drivers.length})
+            <Users size={15} className={activeSubTab === 'drivers' ? 'text-white' : 'text-sky-500'} /> 기사 관리 ({drivers.length})
           </button>
         </div>
 
