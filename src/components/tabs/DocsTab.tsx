@@ -1770,8 +1770,12 @@ export default function DocsTab() {
               </button>
             </div>
             <div className="overflow-auto bg-white rounded-xl shadow-inner border border-sky-100" style={{ maxHeight: '72vh' }}>
+              {/* ⚠️ <PreviewDocument />로 쓰면 안 된다. PreviewDocument는 DocsTab 안에서
+                  매 렌더 새로 만들어지는 함수라, JSX 요소로 쓰면 React가 매번 "다른 컴포넌트"로
+                  보고 미리보기 전체를 언마운트→재마운트한다(스크롤 위치가 튄다).
+                  함수 호출로 결과만 끼워 넣으면 같은 화면을 그대로 그리면서 재마운트가 없다. */}
               <div style={{ transform: 'scale(0.62)', transformOrigin: 'top left', width: '162%' }}>
-                <PreviewDocument />
+                {PreviewDocument()}
               </div>
             </div>
           </div>

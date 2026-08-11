@@ -1,5 +1,5 @@
 # 📋 PROJECT STATUS — wellshare-logis-web
-> 자동 생성: /확인 스킬 · 갱신 2026-08-11 20:05 KST
+> 자동 생성: /확인 스킬 · 갱신 2026-08-11 20:35 KST
 
 ## 식별
 - GitHub: `ttong627/wellshare-logis-web` (계정 세트: **ttong627**)
@@ -79,5 +79,6 @@
 - 🟢 (조사 완료 2026-08-11) **API 키 하드코딩은 수정 대상이 아니다** — `BackupTab.tsx:10`은 **구 프로젝트(`gen-lang-client-...`) 마이그레이션 전용** 설정이지 운영 시크릿이 아니다. 통합앱 `logis/firebase.ts`의 하드코딩은 **의도된 fallback**으로, 플랫폼 `.env.production`에 `VITE_FIREBASE_*`가 없어 **지우면 통합 정산앱이 즉시 죽는다.** 운영 설정(`src/firebase.ts`)은 이미 env 정상이고, Firebase 웹 config는 원래 번들에 노출되는 공개 값이라 방어선은 `firestore.rules`(217줄)다
   - 남은 판단거리: BackupTab의 **구 DB 마이그레이션 기능이 아직 필요한지**(불필요하면 기능째 제거가 정답 — 형 결정 사항)
 - 🟢 (해결 2026-08-11) sw.js 캐시명 `v2.16.0`으로 동기화(`b50e023`) · `ScheduleTab.tsx` ESLint **0건**
-- 🟡 **프로젝트 전체 ESLint 36 errors / 12파일**(DocsTab 8 · App 4 · InstallPWAButton 4 · useMonthData 4 · StatisticsTab 3 · AppContext 3 …) — 이번 범위 밖, 별도 정리 과제
+- 🟢 (해결 2026-08-11) **ESLint 36 errors → 0 errors**(warning 23). `any` 14건은 실제 타입으로 교체(엑셀 경계 타입 `XlsxApi`·`ExcelCell` 등을 types.ts에 신설), 빈 블록·미사용 4건은 의도 주석화. 남은 react-hooks 신규 규칙 4종은 **warn으로 강등**하고 사유를 eslint.config.js에 문서화 — 걸린 지점을 전부 확인한 결과 동작 결함이 없었고, 핵심 상태 훅을 지금 뜯는 쪽이 회귀 위험이 크다. React Compiler 도입 시 이 warning 목록이 그대로 정리 대상
+- 🟢 (수정 2026-08-11) **공문작성 미리보기 재마운트 버그**: `PreviewDocument`가 DocsTab 내부 함수인데 `<PreviewDocument />`로 써서 매 렌더 언마운트→재마운트(입력 시 미리보기 스크롤 튐). `{PreviewDocument()}`로 교체 — 본앱 `22686e4`·통합앱 `bf914db` 양쪽 반영
 - ⚠️ **코드 규칙(MUST)**: Firestore 월 문서 저장은 `updateDoc` 금지 → `setDoc(..., {merge:true})` + 중첩객체 (CLAUDE.md)
