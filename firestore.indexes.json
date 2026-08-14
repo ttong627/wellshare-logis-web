@@ -1,0 +1,15 @@
+{
+  "indexes": [
+    {
+      "//": "명단(rosters) — 회원사는 자기 회사가 지정된 문서만 질의한다(array-contains) + 월 내림차순.",
+      "//why": "보안규칙이 allowedCompanies 를 보므로 전체 목록 질의는 거부된다. 이 인덱스가 없으면 회원사 명단 화면이 빈다.",
+      "collectionGroup": "rosters",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "allowedCompanies", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "month", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

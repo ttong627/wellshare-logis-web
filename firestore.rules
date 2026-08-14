@@ -50,12 +50,38 @@ service cloud.firestore {
       return isAdminEmail() || isDynamicAdmin(appId);
     }
 
+    // 로그인 사용자의 소속 회원사명. 관리자는 'ADMIN'.
+    //   partnerAccounts[email] = 회사명 | 'ADMIN' (앱 useAuth 와 동일 출처)
+    function myCompany(appId) {
+      return (isSignedIn()
+              && exists(/databases/$(database)/documents/artifacts/$(appId)/public/data/settings/master_settings))
+        ? get(/databases/$(database)/documents/artifacts/$(appId)/public/data/settings/master_settings)
+            .data.get('partnerAccounts', {}).get(request.auth.token.email, '')
+        : '';
+    }
+
     // ── wellshare-logis-web 메인 앱 데이터 ───────────────────────────────
     // artifacts/{appId}/public/data/** 경로
-    match /artifacts/{appId}/public/data/{document=**} {
-      // 인증된 사용자 전체 읽기 허용
-      allow read: if isSignedIn();
+    //   ⚠️Firestore 는 **매칭되는 규칙 중 하나라도 허용하면 통과(OR)** 다. 아래 rosters 전용
+    //     규칙을 아무리 좁혀도 이 광역 규칙이 먼저 허용해 버리면 소용이 없다 →
+    //     여기서 `rosters` 를 **명시적으로 제외**한다. (Storage 규칙이 rosters 를 제외한 것과 같은 이유)
+    match /artifacts/{appId}/public/data/{coll}/{document=**} {
+      // 인증된 사용자 전체 읽기 허용 (명단은 제외 — 회원사별 격리)
+      allow read: if isSignedIn() && coll != 'rosters';
       // 쓰기는 관리자 이메일만 (서버사이드 검증)
+      allow write: if isAdminEmail();
+    }
+
+    // 명단(rosters) — 수급자 개인정보(PII). **회원사는 자기 회사가 지정된 것만.**
+    //   ★`allowedCompanies` 는 전 문서에 채워져 있다(scripts/backfill-roster-companies.py).
+    //     빈 배열 `[]` = 관리자 전용. 예전의 "필드 없으면 지역으로 판단" 폴백은 없다.
+    //   ★앱은 회원사일 때 `where('allowedCompanies','array-contains', 내회사)` 로 질의해야 한다.
+    //     전체 목록 질의는 이 규칙 아래에서 **통째로 거부**된다(Firestore 는 부분 결과를 안 준다).
+    match /artifacts/{appId}/public/data/rosters/{rosterId} {
+      allow read: if isAdminUser(appId)
+        || (isSignedIn()
+            && existing().get('adminOnly', false) != true
+            && existing().get('allowedCompanies', []).hasAny([myCompany(appId)]));
       allow write: if isAdminEmail();
     }
 

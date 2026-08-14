@@ -21,10 +21,32 @@ service firebase.storage {
       );
     }
 
-    // 회원사 공유 명단(PII) — 다운로드=로그인 게이트, 업로드/삭제=관리자만.
-    match /rosters/{allPaths=**} {
-      allow read: if isSignedIn();
+    // 회원사 공유 명단(PII) — **자기 담당 지역만** 다운로드. 업로드/삭제=관리자만.
+    //   경로가 `rosters/{지역}/…` 이라 지역으로 판정한다(파일에는 회사 정보가 없다).
+    //   회사↔지역 매핑은 Firestore `master_settings.partnerRegions` 가 SSOT —
+    //   Storage 규칙은 firestore.get() 으로 그걸 읽는다. 클라이언트 상수는 못 읽는다.
+    //   ⚠️2026-08-13 실측: 이 규칙이 `isSignedIn()` 이던 동안, `adminOnly:true` 로 표시된
+    //     수원시 명단 2건의 **파일이 공개 경로에 있어 회원사도 받을 수 있었다**(화면에서만 숨겨져 있었다).
+    //     수원시는 담당 회사가 없으므로 아래 규칙에서 자동으로 관리자 전용이 된다.
+    match /rosters/{region}/{allPaths=**} {
+      allow read: if isAdminEmail() || regionAllowed(region);
       allow write: if isAdminEmail();
+    }
+    // 지역 폴더가 없는 루트 직하 파일(구 데이터 대비) — 관리자만.
+    match /rosters/{onlyFile} {
+      allow read, write: if isAdminEmail();
+    }
+
+    function myCompany() {
+      return isSignedIn()
+        ? firestore.get(/databases/(default)/documents/artifacts/wellshare-logis-v1-production-stable/public/data/settings/master_settings)
+            .data.get('partnerAccounts', {}).get(request.auth.token.email, '')
+        : '';
+    }
+    function regionAllowed(region) {
+      return isSignedIn()
+        && firestore.get(/databases/(default)/documents/artifacts/wellshare-logis-v1-production-stable/public/data/settings/master_settings)
+             .data.get('partnerRegions', {}).get(myCompany(), []).hasAny([region]);
     }
 
     // 관리자 전용 명단 — 본사 관리자만 열람/다운로드/쓰기(회원사 완전 차단).
