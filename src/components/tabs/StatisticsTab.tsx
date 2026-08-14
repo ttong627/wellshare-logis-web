@@ -24,7 +24,7 @@ type SectionKey = 'qty' | 'billing' | 'payment';
 
 export default function StatisticsTab() {
   const { isAdmin, partnerCompany, currentMonth, showToast } = useApp();
-  const { state, run } = usePeriodStats();
+  const { state, run } = usePeriodStats(isAdmin, partnerCompany);
 
   const isPartner = !isAdmin && !!partnerCompany;
 

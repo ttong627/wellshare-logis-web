@@ -78,7 +78,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
-  const monthData = useMonthData(auth.user);
+  const monthData = useMonthData(auth.user, auth.isAdmin, auth.partnerCompany);
 
   const [localDeliveryInputs, setLocalDeliveryInputs] = useState<DeliveryDates>({});
   const [notifications, setNotifications] = useState<Notification[]>([]);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from 'firebase/auth';
-import { doc, getDoc, getDocs, collection, query, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, collection, query, runTransaction } from 'firebase/firestore';
 import { db, APP_ID } from '../firebase';
 import {
   ZonePrices, RegionsData, Orders, PartnerInputs,
@@ -19,7 +19,28 @@ const getPreviousMonth = (month: string) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 };
 
-export function useMonthData(user: User | null) {
+// ── billing 회사별 격리(2026-08) ──
+//   회사별 필드(아래 4종)는 `billing_records/{월}/{필드}/{회사}` 서브컬렉션에 산다.
+//   회원사는 자기 회사 서브독만 read/write → 규칙으로 실격리(설계 project_wellshare_billing_isolation).
+//   공통 필드(zonePrices·regions·orders·isClosed·version)는 부모 문서(회원사 read 무방·비민감).
+//   ecountSales(민감·관리자 전용)는 billing_admin/{월}.
+//   ⚠️이행기간: 서브독이 없으면(2026-01~03 등 미마이그레이션) 부모 필드로 폴백해 읽는다.
+//     write 는 서브독에만 한다 — 부모 원본은 규칙 조인 뒤 별도 단계에서 제거한다.
+const BILLING = ['artifacts', APP_ID, 'public', 'data', 'billing_records'] as const;
+const BILLING_ADMIN = ['artifacts', APP_ID, 'public', 'data', 'billing_admin'] as const;
+const COMPANY_FIELDS = ['partnerInputs', 'deliveryDates', 'publishDates', 'publishRequests'] as const;
+
+// 서브독의 메타 필드(_company·_month·updatedAt·updatedBy)를 벗겨 지역맵만 남긴다.
+const stripMeta = (d: Record<string, unknown>): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(d)) {
+    if (k === '_company' || k === '_month' || k === 'updatedAt' || k === 'updatedBy') continue;
+    out[k] = v;
+  }
+  return out;
+};
+
+export function useMonthData(user: User | null, isAdmin: boolean, partnerCompany: string | null) {
   const [currentMonth, setCurrentMonth] = useState<string>(getCurrentMonth);
 
   const [zonePrices, setZonePrices] = useState<ZonePrices>(INITIAL_ZONES);
@@ -34,57 +55,82 @@ export function useMonthData(user: User | null) {
   const [savedMonths, setSavedMonths] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const hasResolvedDefaultMonth = useRef(false);
-  const loadedVersionRef = useRef(0);   // 낙관적 잠금: 로드 시점 문서 버전(동시저장 충돌 감지 기준)
+  const loadedVersionRef = useRef(0);   // 낙관적 잠금: 부모 문서 버전(공통 필드 저장 충돌 감지 기준)
 
-  // 저장된 월 목록 — 문서 ID(월)만 필요한데 onSnapshot으로 전체 컬렉션을 구독하면 어느 월이든
-  // 저장할 때마다(orders/partnerInputs 등 큰 필드 포함) 모든 월 문서를 통째로 다시 내려받는
-  // 낭비가 있었다(2026-07-11 점검 발견). 마운트 시 1회 조회로 바꾸고, 저장 직후(refreshSavedMonths)
-  // 갱신해 새 월이 생겨도 목록이 갱신되도록 한다.
   const refreshSavedMonths = useCallback(async () => {
     if (!user) return;
-    const q = query(collection(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records'));
+    const q = query(collection(db, ...BILLING));
     const snap = await getDocs(q);
     setSavedMonths(snap.docs.map(d => d.id).sort().reverse());
   }, [user]);
 
   useEffect(() => { refreshSavedMonths(); }, [refreshSavedMonths]);
 
+  // 회사별 필드 로드 — 관리자는 전체 서브컬렉션, 회원사는 자기 서브독만. 서브독 없으면 부모 폴백.
+  const loadCompanyField = useCallback(async (
+    month: string,
+    field: string,
+    parentField: Record<string, Record<string, unknown>>,
+  ): Promise<Record<string, Record<string, unknown>>> => {
+    const out: Record<string, Record<string, unknown>> = {};
+    if (isAdmin) {
+      const snap = await getDocs(collection(db, ...BILLING, month, field));
+      if (!snap.empty) {
+        snap.docs.forEach(d => { out[d.id] = stripMeta(d.data()) as Record<string, unknown>; });
+        return out;
+      }
+      return parentField || {};   // 폴백: 미마이그레이션 월
+    }
+    if (partnerCompany) {
+      const s = await getDoc(doc(db, ...BILLING, month, field, partnerCompany));
+      if (s.exists()) {
+        out[partnerCompany] = stripMeta(s.data()) as Record<string, unknown>;
+      } else if (parentField && parentField[partnerCompany]) {
+        out[partnerCompany] = parentField[partnerCompany];   // 폴백
+      }
+    }
+    return out;
+  }, [isAdmin, partnerCompany]);
+
   const loadMonth = useCallback(async (month: string) => {
     if (!user || !month) return;
     try {
-      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', month);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data();
+      const parentRef = doc(db, ...BILLING, month);
+      const snap = await getDoc(parentRef);
+      const p = snap.exists() ? snap.data() : {};
 
-        setZonePrices(data.zonePrices || INITIAL_ZONES);
-        setRegions(data.regions || INITIAL_REGIONS_DATA);
-        // 단일 회원사 지역의 포수입력(orders)은 비워두면 지역포수(partnerInputs) 합으로 자동 대체된다(getEffectiveOrder).
-        // 과거의 역방향 자동채움(orders→partnerInputs)은 회원사가 입력한 지역포수를 본사값으로 덮어써 제거함.
-        setOrders(data.orders || {});
-        setPartnerInputs(data.partnerInputs || {});
-        setPublishDates(data.publishDates || {});
-        setPublishRequests(data.publishRequests || {});
-        setDeliveryDates(data.deliveryDates || {});
-        setEcountSales(data.ecountSales || {});
-        setIsClosed(data.isClosed || false);
-        loadedVersionRef.current = (data.version as number) ?? 0;
+      // 공통(부모)
+      setZonePrices(p.zonePrices || INITIAL_ZONES);
+      setRegions(p.regions || INITIAL_REGIONS_DATA);
+      setOrders(p.orders || {});
+      setIsClosed(p.isClosed || false);
+      loadedVersionRef.current = (p.version as number) ?? 0;
+
+      // 회사별(서브컬렉션, 폴백 부모)
+      const [pi, dd, pd, pr] = await Promise.all([
+        loadCompanyField(month, 'partnerInputs', p.partnerInputs || {}),
+        loadCompanyField(month, 'deliveryDates', p.deliveryDates || {}),
+        loadCompanyField(month, 'publishDates', p.publishDates || {}),
+        loadCompanyField(month, 'publishRequests', p.publishRequests || {}),
+      ]);
+      setPartnerInputs(pi as PartnerInputs);
+      setDeliveryDates(dd as DeliveryDates);
+      setPublishDates(pd as PublishDates);
+      setPublishRequests(pr as PublishRequests);
+
+      // ecountSales — 관리자만(billing_admin), 회원사엔 노출 안 함
+      if (isAdmin) {
+        const adminSnap = await getDoc(doc(db, ...BILLING_ADMIN, month));
+        setEcountSales(
+          (adminSnap.exists() ? adminSnap.data().ecountSales : undefined) || p.ecountSales || {},
+        );
       } else {
-        setZonePrices(INITIAL_ZONES);
-        setRegions(INITIAL_REGIONS_DATA);
-        setOrders({});
-        setPartnerInputs({});
-        setPublishDates({});
-        setPublishRequests({});
-        setDeliveryDates({});
         setEcountSales({});
-        setIsClosed(false);
-        loadedVersionRef.current = 0;
       }
     } catch (e) {
       console.error('월 데이터 로드 오류:', e);
     }
-  }, [user]);
+  }, [user, isAdmin, loadCompanyField]);
 
   useEffect(() => {
     if (user) loadMonth(currentMonth);
@@ -97,39 +143,27 @@ export function useMonthData(user: User | null) {
     const resolveDefaultMonth = async () => {
       const thisMonth = getCurrentMonth();
       const previousMonth = getPreviousMonth(thisMonth);
-
       if (currentMonth !== thisMonth) return;
-
       try {
-        const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', previousMonth);
+        const ref = doc(db, ...BILLING, previousMonth);
         const snap = await getDoc(ref);
         const previousMonthClosed = snap.exists() ? snap.data().isClosed === true : false;
-
-        if (!previousMonthClosed) {
-          setCurrentMonth(previousMonth);
-        }
+        if (!previousMonthClosed) setCurrentMonth(previousMonth);
       } catch (e) {
         console.error('기본 월 확인 오류:', e);
       }
     };
-
     resolveDefaultMonth();
   }, [currentMonth, user]);
 
-  // 낙관적 잠금 병합 저장 — runTransaction 안에서 로드시점 버전과 DB 버전을 비교해
-  // 다른 탭·기기가 먼저 저장했으면(버전 불일치) 저장을 취소하고 최신 데이터를 재로드한다.
-  // ⚠️ 월 문서는 updateDoc 금지(CLAUDE.md) → 트랜잭션 안에서도 tx.set(..., {merge:true})로 병합.
-  // rebase=true : 충돌 시 서버 최신 버전에 맞춰 1회 자동 재시도한다.
-  //   단일 필드 저장(saveField)에만 허용 — 병합 저장이라 내가 건드린 필드 외에는
-  //   서버 값이 그대로 유지되므로 남의 작업을 덮어쓰지 않는다.
-  //   ⚠️ 전체 저장(saveAll)은 모든 필드를 덮어쓰므로 자동 재시도하지 않는다(기존대로 확인 후 재로드).
-  //   폰↔PC를 함께 켜두면 폰 화면의 버전이 쉽게 낡아 저장이 조용히 취소되던 문제를 이 재시도로 없앤다.
+  // 공통 필드(부모) 병합 저장 — 낙관적 잠금. 회사별 필드는 여기 넣지 않는다(saveCompany 사용).
+  //   ⚠️ 월 부모 문서는 updateDoc 금지(CLAUDE.md) → 트랜잭션 안에서도 tx.set(..., {merge:true}).
   const commitMerge = useCallback(async (
     data: Record<string, unknown>,
     email: string,
     opts: { rebase?: boolean } = {},
   ): Promise<boolean> => {
-    const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
+    const ref = doc(db, ...BILLING, currentMonth);
     let newVersion = loadedVersionRef.current;
     try {
       await runTransaction(db, async (tx) => {
@@ -139,19 +173,18 @@ export function useMonthData(user: User | null) {
           const err = new Error('CONFLICT') as Error & { code?: string; dbVersion?: number };
           err.code = 'CONFLICT';
           err.dbVersion = dbVersion;
-          throw err;   // 동시저장 충돌 — 이전 저장 덮어쓰기 방지
+          throw err;
         }
         newVersion = dbVersion + 1;
         tx.set(ref, { ...data, version: newVersion, updatedAt: new Date().toISOString(), updatedBy: email }, { merge: true });
       });
       loadedVersionRef.current = newVersion;
       if (!savedMonths.includes(currentMonth)) refreshSavedMonths();
-      return true;   // 저장 성공
+      return true;
     } catch (e) {
       const err = e as { code?: string; dbVersion?: number };
       if (err?.code === 'CONFLICT') {
         if (opts.rebase) {
-          // 서버 최신 버전으로 기준을 맞춘 뒤 내 필드만 다시 병합 커밋한다(1회만).
           loadedVersionRef.current = err.dbVersion ?? loadedVersionRef.current;
           return await commitMergeRef.current!(data, email, { rebase: false });
         }
@@ -162,37 +195,65 @@ export function useMonthData(user: User | null) {
         )) {
           await loadMonth(currentMonth);
         }
-        return false;   // 동시저장 충돌 — 저장 취소됨(호출부는 후속작업 스킵)
+        return false;
       }
       throw e;
     }
   }, [currentMonth, savedMonths, refreshSavedMonths, loadMonth]);
 
-  // 재귀 호출용 최신 참조(useCallback 자기 자신을 안전하게 다시 부르기 위함)
   const commitMergeRef = useRef<typeof commitMerge | null>(null);
   commitMergeRef.current = commitMerge;
+
+  // 회사별 서브독 저장 — value={회사:{지역:데이터}}. 회사별 문서에 merge.
+  //   회사별이라 동시편집 충돌이 낮아 낙관적 잠금 없이 merge(지역 단위 병합). 규칙이 회사=문서ID를 격리한다.
+  const saveCompany = useCallback(async (
+    field: string,
+    value: Record<string, Record<string, unknown>>,
+    email: string,
+  ): Promise<boolean> => {
+    const entries = Object.entries(value || {});
+    if (!entries.length) return true;
+    await Promise.all(entries.map(([company, regionData]) =>
+      setDoc(
+        doc(db, ...BILLING, currentMonth, field, company),
+        { ...regionData, _company: company, _month: currentMonth, updatedAt: new Date().toISOString(), updatedBy: email },
+        { merge: true },
+      ),
+    ));
+    if (!savedMonths.includes(currentMonth)) refreshSavedMonths();
+    return true;
+  }, [currentMonth, savedMonths, refreshSavedMonths]);
 
   const saveAll = useCallback(async (email: string) => {
     setIsSaving(true);
     try {
-      await commitMerge({
-        zonePrices, regions, orders, partnerInputs,
-        publishDates, publishRequests, deliveryDates, isClosed,
-      }, email);
+      // 공통(부모)
+      await commitMerge({ zonePrices, regions, orders, isClosed }, email);
+      // 회사별(서브독)
+      await Promise.all([
+        saveCompany('partnerInputs', partnerInputs, email),
+        saveCompany('deliveryDates', deliveryDates, email),
+        saveCompany('publishDates', publishDates, email),
+        saveCompany('publishRequests', publishRequests, email),
+      ]);
     } finally {
       setIsSaving(false);
     }
-  }, [commitMerge, zonePrices, regions, orders, partnerInputs, publishDates, publishRequests, deliveryDates, isClosed]);
+  }, [commitMerge, saveCompany, zonePrices, regions, orders, isClosed,
+      partnerInputs, deliveryDates, publishDates, publishRequests]);
 
+  // 단일 필드 저장 — 회사별 필드면 서브독으로, 공통 필드면 부모로 라우팅한다.
   const saveField = useCallback(async (field: string, value: unknown, email: string): Promise<boolean> => {
     setIsSaving(true);
     try {
-      // 단일 필드는 충돌 시 자동 재시도 — 폰에서 저장이 조용히 취소되던 문제 해소
+      if ((COMPANY_FIELDS as readonly string[]).includes(field)) {
+        return await saveCompany(field, value as Record<string, Record<string, unknown>>, email);
+      }
       return await commitMerge({ [field]: value }, email, { rebase: true });
     } finally {
       setIsSaving(false);
     }
-  }, [commitMerge]);
+  }, [commitMerge, saveCompany]);
 
   return {
     currentMonth, setCurrentMonth,

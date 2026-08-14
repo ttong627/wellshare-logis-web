@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { ReceiptText, Info } from 'lucide-react';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc, deleteField } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 import { MEMBERS } from '../../constants/members';
@@ -50,7 +50,8 @@ export default function PartnerBillingTab() {
         [company]: { ...(publishDates[company] || {}), [region]: dateVal },
       };
       setPublishDates(newPublishDates);
-      const saved = await saveField('publishDates', newPublishDates, user?.email || '');
+      // ★자기 회사 슬라이스만 저장(회사별 서브독). 전체 map 을 보내면 남의 서브독까지 쓰려다 규칙에 막힌다.
+      const saved = await saveField('publishDates', { [company]: newPublishDates[company] }, user?.email || '');
       if (saved) {
         const msgText = `[🧾발행완료] ${company} ${region} 세금계산서(${dateVal}) 발행이 완료되었습니다. 대금 결제 부탁드립니다.`;
         await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'notifications'), {
@@ -80,8 +81,10 @@ export default function PartnerBillingTab() {
         delete newPublishDates[company][region];
       }
       setPublishDates(newPublishDates);
-      const saved = await saveField('publishDates', newPublishDates, user?.email || '');
-      if (saved) showToast(`[${region}] 세금계산서 발행이 일자수정 모드로 전환되었습니다.`);
+      // ★merge 는 사라진 키를 못 지운다 → 회사별 서브독에서 그 지역만 deleteField 로 명시 삭제(billing 격리).
+      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth, 'publishDates', company);
+      await updateDoc(ref, { [region]: deleteField(), updatedAt: new Date().toISOString() });
+      showToast(`[${region}] 세금계산서 발행이 일자수정 모드로 전환되었습니다.`);
     } catch (e) { showToast('취소 오류: ' + (e as Error).message); }
     finally { setIsSaving(false); }
   };

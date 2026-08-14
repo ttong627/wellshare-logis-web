@@ -53,7 +53,9 @@ export default function DeliveryCompletionTab() {
       };
       setDeliveryDates(newDeliveryDates);
 
-      const ok = await saveField('deliveryDates', newDeliveryDates, user?.email || '');
+      // ★자기 회사 슬라이스만 저장한다(회사별 서브독). 전체 map 을 보내면 남의 회사 서브독까지
+      //   쓰려다 규칙에 막혀 실패한다(billing 격리).
+      const ok = await saveField('deliveryDates', { [company]: newDeliveryDates[company] }, user?.email || '');
       if (ok) {
         setLocalDeliveryInputs(prev => {
           const newLocal = { ...prev };
@@ -90,10 +92,11 @@ export default function DeliveryCompletionTab() {
       }
       setDeliveryDates(newDeliveryDates);
 
-      // merge:true는 사라진 키를 삭제하지 못한다 → 해당 경로를 deleteField로 명시적 삭제해야 취소가 반영됨
-      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth);
+      // merge:true는 사라진 키를 삭제하지 못한다 → 해당 경로를 deleteField로 명시적 삭제해야 취소가 반영됨.
+      //   ★회사별 서브독(billing_records/{월}/deliveryDates/{회사})에서 그 지역만 지운다(billing 격리).
+      const ref = doc(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', currentMonth, 'deliveryDates', company);
       await updateDoc(ref, {
-        [`deliveryDates.${company}.${region}`]: deleteField(),
+        [region]: deleteField(),
         updatedAt: new Date().toISOString(),
       });
 
