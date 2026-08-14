@@ -65,11 +65,36 @@ service cloud.firestore {
     //   ⚠️Firestore 는 **매칭되는 규칙 중 하나라도 허용하면 통과(OR)** 다. 아래 rosters 전용
     //     규칙을 아무리 좁혀도 이 광역 규칙이 먼저 허용해 버리면 소용이 없다 →
     //     여기서 `rosters` 를 **명시적으로 제외**한다. (Storage 규칙이 rosters 를 제외한 것과 같은 이유)
+    //   ⛔전용 규칙을 두는 컬렉션은 **여기서 반드시 빼야 한다.** 한 번 빠뜨려서
+    //     `access_logs` 의 append-only(`update, delete: if false`)가 무력화됐다 —
+    //     이 광역 규칙의 `allow write: if isAdminEmail()` 이 먼저 허용해 관리자가 기록을
+    //     지울 수 있었고, `allow read: if isSignedIn()` 때문에 회원사가 남의 열람기록도 읽었다.
+    //     (2026-08-14 시뮬레이터가 잡음 — 규칙만 읽어서는 안 보이는 종류의 결함이다)
     match /artifacts/{appId}/public/data/{coll}/{document=**} {
-      // 인증된 사용자 전체 읽기 허용 (명단은 제외 — 회원사별 격리)
-      allow read: if isSignedIn() && coll != 'rosters';
+      // 인증된 사용자 전체 읽기 허용 (전용 규칙이 있는 컬렉션은 제외)
+      allow read: if isSignedIn() && !(coll in ['rosters', 'access_logs']);
       // 쓰기는 관리자 이메일만 (서버사이드 검증)
-      allow write: if isAdminEmail();
+      allow write: if isAdminEmail() && !(coll in ['rosters', 'access_logs']);
+    }
+
+    // 열람기록(access_logs) — 누가 명단을 받아갔는지. **추가만 되고 고치거나 지울 수 없다.**
+    //   ★기록이 조용히 사라질 수 있으면 감사 자료로서 값이 없다 → update·delete 는 아예 막는다.
+    //     (관리자도 못 지운다. 지워야 할 일이 생기면 서버 admin SDK 로 한다 — 흔적이 남는 경로다)
+    //   ★읽기는 관리자만. 열람기록 자체가 "누가 어느 지자체를 담당하나" 같은 정보를 담는다.
+    //   ★본인 것만 쓸 수 있게 uid·email 을 대조한다 — 남의 이름으로 기록을 심어
+    //     감사 자료를 오염시키는 것을 막는다.
+    match /artifacts/{appId}/public/data/access_logs/{logId} {
+      allow read: if isAdminUser(appId);
+      //   ⚠️`at` 은 문자열(ISO)로 저장한다(경보 함수가 문자열 비교로 창을 자른다). 다만
+      //     규칙에서 `is string` 만 걸면 **시뮬레이터가 ISO 문자열을 timestamp 로 바꿔** 넣어
+      //     거부된다(2026-08-14 실측). 어느 쪽이 와도 통과시키되 존재는 강제한다 —
+      //     타입 강제는 보안이 아니라 정합성 목적이고, 여기서 막히면 기록이 통째로 안 남는다.
+      allow create: if isSignedIn()
+        && incoming().uid == request.auth.uid
+        && incoming().email == request.auth.token.email
+        && (incoming().at is string || incoming().at is timestamp)
+        && incoming().kind is string;
+      allow update, delete: if false;
     }
 
     // 명단(rosters) — 수급자 개인정보(PII). **회원사는 자기 회사가 지정된 것만.**

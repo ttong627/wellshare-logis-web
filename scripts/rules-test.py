@@ -68,6 +68,29 @@ ROSTER_ADMIN = {'region': '수원시', 'month': '2026-08', 'adminOnly': True,
                 'allowedCompanies': []}
 
 R = f'{DATA}/rosters/doc1'
+LOG = f'{DATA}/access_logs/log1'
+
+
+def log_case(name, email, method, expect, incoming=None, existing=None):
+    """열람기록(append-only) 시험. create 는 request.resource, update/delete 는 resource 를 본다."""
+    req = {'path': LOG, 'method': method}
+    if email:
+        req['auth'] = {'uid': f'uid_{email}', 'token': {'email': email}}
+    if incoming is not None:
+        req['resource'] = {'data': incoming}
+    tc = {'expectation': expect, 'request': req, 'functionMocks': MOCKS}
+    if existing is not None:
+        tc['resource'] = {'data': existing}
+    return (name, tc)
+
+
+def log_doc(email):
+    return {'at': '2026-08-14T00:00:00.000Z', 'kind': 'roster', 'action': 'download',
+            'uid': f'uid_{email}', 'email': email, 'company': CO_A,
+            'rosterId': 'doc1', 'region': '동대문구', 'month': '2026-08',
+            'fileName': 'x.xlsx', 'adminOnly': False}
+
+
 CASES = [
     # ── 열려 있어야 하는 것 ──
     case('관리자가 명단 읽기',              ADMIN_EMAIL, R, 'get', 'ALLOW', ROSTER_A),
@@ -85,6 +108,14 @@ CASES = [
     case('★비인증 명단 읽기',               None,        R, 'get', 'DENY',  ROSTER_A),
     case('★회원사가 명단 수정',              EMAIL_A,     R, 'update', 'DENY', ROSTER_A),
     case('★회원사가 명단 삭제',              EMAIL_A,     R, 'delete', 'DENY', ROSTER_A),
+    # ── 열람기록(access_logs) — 추가만 되고 고치거나 지울 수 없어야 한다 ──
+    log_case('열람기록: 본인 이름으로 남기기',      EMAIL_A, 'create', 'ALLOW', log_doc(EMAIL_A)),
+    log_case('★열람기록: 남의 이름으로 심기',      EMAIL_A, 'create', 'DENY',  log_doc(EMAIL_B)),
+    log_case('★열람기록: 비인증 생성',            None,    'create', 'DENY',  log_doc(EMAIL_A)),
+    log_case('★열람기록: 수정(관리자도 불가)',      ADMIN_EMAIL, 'update', 'DENY', log_doc(EMAIL_A), log_doc(EMAIL_A)),
+    log_case('★열람기록: 삭제(관리자도 불가)',      ADMIN_EMAIL, 'delete', 'DENY', None, log_doc(EMAIL_A)),
+    log_case('★열람기록: 회원사가 읽기',           EMAIL_A, 'get', 'DENY',  None, log_doc(EMAIL_B)),
+    log_case('열람기록: 관리자가 읽기',            ADMIN_EMAIL, 'get', 'ALLOW', None, log_doc(EMAIL_A)),
 ]
 
 ruleset = os.environ.get('RULESET', '').strip()

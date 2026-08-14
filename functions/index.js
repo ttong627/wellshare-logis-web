@@ -138,3 +138,76 @@ exports.sendPushOnNotification = onDocumentCreated(
     await Promise.all(invalidRefs.map((ref) => ref.delete().catch(() => {})));
   }
 );
+
+// ══════════════════════════════════════════════════════════════════
+//  명단(PII) 열람 감시 알림  (개인정보보호 대응 · 2026-08-14)
+//
+//  ★기록만 남기면 아무도 안 본다 — 기록이 들어오는 **즉시** 규칙을 돌리고 사람에게 보낸다.
+//  ★개정 개인정보보호법(2026-09-11)의 72시간 통지는 '인지'가 전제다. 이 함수가 그 '인지'를 만든다.
+//
+//  설정(없으면 서버 로그에만 남는다 — 그래도 죽지 않는다):
+//    TELEGRAM_BOT_TOKEN · TELEGRAM_CHAT_ID
+//  ★v2 는 `secrets:` 로 **선언한 것만** process.env 에 주입한다. 선언을 빼면 값을 넣어도
+//    영영 안 들어와 계속 `(미발송)` 이 찍힌다 — 배포는 성공하니 착각하기 딱 좋은 자리다.
+//    (2026-08-13 nexus leakAlert 에서 실제로 데었다)
+//  판정 규칙·임계값은 `./rosterWatch.js`(회귀 scripts/roster-watch.test.mjs) 참조.
+// ══════════════════════════════════════════════════════════════════
+const { defineSecret } = require('firebase-functions/params');
+const { detectAnomalies, formatAlert, DEFAULTS } = require('./rosterWatch');
+
+const TELEGRAM_BOT_TOKEN = defineSecret('TELEGRAM_BOT_TOKEN');
+const TELEGRAM_CHAT_ID = defineSecret('TELEGRAM_CHAT_ID');
+
+const sendTelegram = async (text) => {
+  const tok = process.env.TELEGRAM_BOT_TOKEN || '';
+  const chat = process.env.TELEGRAM_CHAT_ID || '';
+  if (!tok || !chat) return false;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${tok}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chat, text }),
+    });
+    return res.ok;
+  } catch (e) {
+    // ★발송 실패가 감시를 멈추면 안 된다. 조용히 넘기되 로그엔 남긴다.
+    console.warn('[rosterAlert] 텔레그램 발송 실패:', e && e.message);
+    return false;
+  }
+};
+
+exports.rosterAlert = onDocumentCreated(
+  {
+    document: `artifacts/${APP_ID}/public/data/access_logs/{logId}`,
+    memory: '256MiB',
+    secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID],
+  },
+  async (event) => {
+    const cur = event.data && event.data.data();
+    if (!cur || cur.kind !== 'roster') return;
+    try {
+      // 같은 행위자의 최근 기록만 모은다. uid 가 없으면(이례적) 이메일로 본다 —
+      // ★"누구인지 모른다"고 감시를 건너뛰면 그 구간이 통째로 사각이 된다.
+      const sinceIso = new Date(Date.now() - DEFAULTS.windowMin * 60 * 1000).toISOString();
+      const col = getFirestore().collection(`artifacts/${APP_ID}/public/data/access_logs`);
+      const key = cur.uid ? ['uid', cur.uid] : ['email', cur.email || ''];
+      const snap = await col
+        .where('at', '>=', sinceIso)
+        .where(key[0], '==', key[1])
+        .limit(500)
+        .get();
+      const rows = snap.docs.map((d) => d.data());
+
+      const findings = detectAnomalies(rows, {});
+      if (!findings.length) return;
+
+      const text = formatAlert({ email: cur.email, uid: cur.uid, company: cur.company }, findings)
+        + `\n최근 지역: ${[...new Set(rows.map((r) => r.region).filter(Boolean))].join('·') || '?'}`;
+      const sent = await sendTelegram(text);
+      // 채널이 없어도 최소한 서버 로그엔 남는다.
+      console.warn(`[rosterAlert]${sent ? '' : '(미발송)'} ${text.replace(/\n/g, ' | ')}`);
+    } catch (e) {
+      console.error('[rosterAlert] 판정 실패:', e);
+    }
+  },
+);
