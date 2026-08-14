@@ -76,10 +76,10 @@ service cloud.firestore {
     match /artifacts/{appId}/public/data/{coll}/{document=**} {
       // 인증된 사용자 전체 읽기 허용 (전용 규칙이 있는 컬렉션은 전부 제외)
       allow read: if isSignedIn()
-        && !(coll in ['rosters', 'access_logs', 'pushTokens', 'notifications']);
+        && !(coll in ['rosters', 'access_logs', 'pushTokens', 'notifications', 'billing_records', 'billing_admin']);
       // 쓰기는 관리자 이메일만 (서버사이드 검증)
       allow write: if isAdminEmail()
-        && !(coll in ['rosters', 'access_logs', 'pushTokens', 'notifications']);
+        && !(coll in ['rosters', 'access_logs', 'pushTokens', 'notifications', 'billing_records', 'billing_admin']);
     }
 
     // 열람기록(access_logs) — 누가 명단을 받아갔는지. **추가만 되고 고치거나 지울 수 없다.**
@@ -115,16 +115,33 @@ service cloud.firestore {
       allow write: if isAdminEmail();
     }
 
-    // billing_records: 관리자는 전체. 파트너는 자기 입력 필드만(orders/prices/마감/ecountSales 보호)
-    // + 마감된 달(isClosed==true)은 파트너 쓰기 차단(관리자만 수정 가능)
+    // billing_records 부모: **공통 필드만** 남는다(zonePrices·regions·orders·isClosed·version).
+    //   회사별 정산(partnerInputs 등)은 아래 서브컬렉션으로 격리. 공통은 비민감이라 인증자 read 허용.
+    //   ★2026-08 billing 회사별 격리: 회원사끼리 서로 정산을 못 보게 문서를 회사=서브독ID 로 쪼갰다.
     match /artifacts/{appId}/public/data/billing_records/{monthId} {
       allow read: if isSignedIn();
-      allow create, delete: if isAdminUser(appId);
-      allow update: if isAdminUser(appId)
-        || (isSignedIn()
-              && existing().get('isClosed', false) != true
-              && request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['partnerInputs', 'deliveryDates', 'publishDates', 'updatedAt', 'updatedBy', 'version']));
+      allow write: if isAdminUser(appId);   // 공통 필드는 관리자만
+    }
+
+    // 회사별 서브컬렉션 — 회사=문서ID 로 **실격리**(read·write 모두 회사 단위).
+    //   publishRequests(관리자→회원사 발행요청): 자기 회사 read·관리자만 write(스푸핑 차단).
+    match /artifacts/{appId}/public/data/billing_records/{monthId}/publishRequests/{company} {
+      allow read: if isAdminUser(appId) || myCompany(appId) == company;
+      allow write: if isAdminUser(appId);
+    }
+    //   나머지(partnerInputs·deliveryDates·publishDates): 자기 회사 read/write. 마감월은 회원사 쓰기 차단.
+    match /artifacts/{appId}/public/data/billing_records/{monthId}/{field}/{company} {
+      allow read: if isAdminUser(appId) || myCompany(appId) == company;
+      allow write: if field != 'publishRequests'
+        && (isAdminUser(appId)
+            || (myCompany(appId) == company
+                && get(/databases/$(database)/documents/artifacts/$(appId)/public/data/billing_records/$(monthId))
+                     .data.get('isClosed', false) != true));
+    }
+
+    // ecountSales(회사별 ECOUNT 발행내역·민감) — 관리자 전용(회원사 노출 차단, 08-14 이전).
+    match /artifacts/{appId}/public/data/billing_admin/{monthId} {
+      allow read, write: if isAdminUser(appId);
     }
 
     // master_settings: 계정 승인·권한 관리(partnerAccounts/pendingUsers)는 동적 관리자(ROLE ADMIN)도 가능.
