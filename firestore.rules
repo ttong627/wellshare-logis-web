@@ -70,11 +70,16 @@ service cloud.firestore {
     //     이 광역 규칙의 `allow write: if isAdminEmail()` 이 먼저 허용해 관리자가 기록을
     //     지울 수 있었고, `allow read: if isSignedIn()` 때문에 회원사가 남의 열람기록도 읽었다.
     //     (2026-08-14 시뮬레이터가 잡음 — 규칙만 읽어서는 안 보이는 종류의 결함이다)
+    //   ⚠️2026-08-14 2차: `pushTokens`(본인 uid 만)·`notifications`(ADMIN 대상은 관리자만) 전용
+    //     규칙도 같은 이유로 무력화돼 있었다 — 회원사 계정이 남의 FCM 토큰·관리자 알림을 광역 read
+    //     로 볼 수 있었다. 전면 점검 시뮬레이터가 잡았다. **전용 규칙 컬렉션은 전부 이 목록에 넣는다.**
     match /artifacts/{appId}/public/data/{coll}/{document=**} {
-      // 인증된 사용자 전체 읽기 허용 (전용 규칙이 있는 컬렉션은 제외)
-      allow read: if isSignedIn() && !(coll in ['rosters', 'access_logs']);
+      // 인증된 사용자 전체 읽기 허용 (전용 규칙이 있는 컬렉션은 전부 제외)
+      allow read: if isSignedIn()
+        && !(coll in ['rosters', 'access_logs', 'pushTokens', 'notifications']);
       // 쓰기는 관리자 이메일만 (서버사이드 검증)
-      allow write: if isAdminEmail() && !(coll in ['rosters', 'access_logs']);
+      allow write: if isAdminEmail()
+        && !(coll in ['rosters', 'access_logs', 'pushTokens', 'notifications']);
     }
 
     // 열람기록(access_logs) — 누가 명단을 받아갔는지. **추가만 되고 고치거나 지울 수 없다.**
