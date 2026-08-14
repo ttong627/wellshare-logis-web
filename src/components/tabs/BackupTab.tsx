@@ -4,6 +4,10 @@ import { getDocs, collection, doc, writeBatch } from 'firebase/firestore';
 import { db, APP_ID } from '../../firebase';
 import { useApp } from '../../context/AppContext';
 
+// billing 회사별 격리(2026-08): 회사별 정산은 서브컬렉션에 있다. 백업/복원이 이걸 빠뜨리면
+//   부모(공통)만 백업돼 회사별 정산이 유실된다 → 서브컬렉션·billing_admin 도 함께 다룬다.
+const COMPANY_FIELDS = ['partnerInputs', 'deliveryDates', 'publishDates', 'publishRequests'];
+
 export default function BackupTab() {
   const { showToast, isSaving, setIsSaving } = useApp();
   const restoreInputRef = useRef<HTMLInputElement>(null);
@@ -13,9 +17,29 @@ export default function BackupTab() {
     try {
       const billingSnap = await getDocs(collection(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records'));
       const settingsSnap = await getDocs(collection(db, 'artifacts', APP_ID, 'public', 'data', 'settings'));
-      const backupData: Record<string, Record<string, unknown>> = { billing_records: {}, settings: {} };
+      const adminSnap = await getDocs(collection(db, 'artifacts', APP_ID, 'public', 'data', 'billing_admin'));
+      const backupData: Record<string, Record<string, unknown>> = {
+        billing_records: {}, billing_records_sub: {}, billing_admin: {}, settings: {},
+      };
       billingSnap.forEach(d => { backupData.billing_records[d.id] = d.data(); });
       settingsSnap.forEach(d => { backupData.settings[d.id] = d.data(); });
+      adminSnap.forEach(d => { backupData.billing_admin[d.id] = d.data(); });
+
+      // 회사별 서브컬렉션(월×필드×회사)도 백업한다.
+      for (const monthDoc of billingSnap.docs) {
+        const month = monthDoc.id;
+        const monthSub: Record<string, Record<string, unknown>> = {};
+        for (const field of COMPANY_FIELDS) {
+          const sub = await getDocs(collection(db, 'artifacts', APP_ID, 'public', 'data', 'billing_records', month, field));
+          if (!sub.empty) {
+            const byCompany: Record<string, unknown> = {};
+            sub.forEach(d => { byCompany[d.id] = d.data(); });
+            monthSub[field] = byCompany;
+          }
+        }
+        if (Object.keys(monthSub).length) backupData.billing_records_sub[month] = monthSub;
+      }
+
       const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
       const a = document.createElement('a');
       a.setAttribute('href', dataStr);
@@ -39,15 +63,32 @@ export default function BackupTab() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      const writes: Array<[string, string, Record<string, unknown>]> = [];
+      // path = 문서까지의 세그먼트 배열(서브컬렉션 지원). ['billing_records','2026-07'] 또는
+      //   ['billing_records','2026-07','partnerInputs','참자연'] 또는 ['settings','master_settings'].
+      const writes: Array<[string[], Record<string, unknown>]> = [];
       if (data.billing_records) {
         for (const [id, val] of Object.entries(data.billing_records)) {
-          writes.push(['billing_records', id, val as Record<string, unknown>]);
+          writes.push([['billing_records', id], val as Record<string, unknown>]);
+        }
+      }
+      // 회사별 서브컬렉션 복원(신규 백업 형식). 구 백업엔 없으면 건너뛴다(하위호환).
+      if (data.billing_records_sub) {
+        for (const [month, fields] of Object.entries(data.billing_records_sub as Record<string, Record<string, Record<string, unknown>>>)) {
+          for (const [field, companies] of Object.entries(fields)) {
+            for (const [company, val] of Object.entries(companies)) {
+              writes.push([['billing_records', month, field, company], val as Record<string, unknown>]);
+            }
+          }
+        }
+      }
+      if (data.billing_admin) {
+        for (const [id, val] of Object.entries(data.billing_admin)) {
+          writes.push([['billing_admin', id], val as Record<string, unknown>]);
         }
       }
       if (data.settings) {
         for (const [id, val] of Object.entries(data.settings)) {
-          writes.push(['settings', id, val as Record<string, unknown>]);
+          writes.push([['settings', id], val as Record<string, unknown>]);
         }
       }
       total = writes.length;
@@ -57,8 +98,8 @@ export default function BackupTab() {
       for (let i = 0; i < writes.length; i += BATCH_CHUNK) {
         const chunk = writes.slice(i, i + BATCH_CHUNK);
         const batch = writeBatch(db);
-        for (const [col, id, val] of chunk) {
-          batch.set(doc(db, 'artifacts', APP_ID, 'public', 'data', col, id), val);
+        for (const [pathSegs, val] of chunk) {
+          batch.set(doc(db, 'artifacts', APP_ID, 'public', 'data', ...pathSegs), val);
         }
         await batch.commit();
         committed += chunk.length;
