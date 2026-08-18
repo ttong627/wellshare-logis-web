@@ -1,4 +1,5 @@
 # 📋 PROJECT STATUS — wellshare-logis-web
+> 🔧**2026-08-18 메일 수집 복구(형 지시)** — 양곡 수집 크론이 **7/28 `#STOP-regression`으로 정지**돼 있었다(로그 마지막 7/28 04:20·그날까지 실패 0 — 동시저장 유실 조사 때 끈 뒤 미복구). 수술: ①수집기에 `allowedCompanies` 자동 부여(8/14 rosters 격리 대응 — `loadRegionCompanies`가 master_settings.partnerRegions SSOT 역매핑·adminOnly/미매핑=관리자 전용) ②VM scp 반영 ③**밀린 15건 실적재**(8월: 동대문구2=회사3곳 지정·수원2·중원1·부천1=경로당 adminOnly) ④크론 `20 */2` 재가동. 커밋 `bee009b`. ⚠️**남은 규명: 모바일 나라미 APK가 8/14 billing 격리 이전의 부모문서 경로로 쓰고 있어**(mobile/DataContext.tsx·6/18 이후 미업데이트) 회원사=저장거부·관리자=웹에 안 보임 — 앱 서브컬렉션 전환+APK 재빌드+minVersion 게이트 필요.
 > 자동 생성: /확인 스킬 · 갱신 2026-08-11 21:00 KST
 
 ## 식별
