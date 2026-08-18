@@ -1,13 +1,13 @@
 # 📋 PROJECT STATUS — wellshare-logis-web
-> 자동 생성: /확인 스킬 · 갱신 2026-08-18 21:12 KST
+> 자동 생성: /확인 스킬 · 갱신 2026-08-19 00:45 KST
 
 ## 🔧 2026-08-18 모바일 저장 실패 수술 (형 지시: "폰·탭·패드 웹 저장 안 됨 철저 수정")
 **근본 원인 = "8/14 격리 규칙·부모필드 제거 이후에도 구 저장경로(부모 문서 직접 쓰기)를 실행하는 클라이언트"** — 3갈래:
 1. **본앱 구세션**: 8/14 배포 때 sw.js 캐시명이 v2.16.0 그대로 → SW 갱신 미발동 → 폰·태블릿의 살아있는 구세션이 구코드 실행 → 회원사 저장 거부. → **v2.16.1 bump로 해결·배포 완료**(`7941a31`, 병행 세션). ecountSales 쓰기도 billing_admin으로 라우팅(발행 직후 증발 수술 + 부모 재유입 보안구멍 봉합, 부모 9건→billing_admin 회수·동대문구 복구 완료).
 2. **wslos.kr 통합앱 미이식**: 플랫폼 logis가 8/14 격리 시리즈 전체 미이식 — DeliveryCompletion·PartnerBilling·Payment·Performance 4탭이 부모 직접 setDoc(회원사=거부, 관리자=본앱에 안 보이는 곳에 저장), RosterTab 전체질의(규칙에 통째 거부→명단 빈 화면), 열람기록 부재. → **이번 세션에서 이식 완료·배포 완료**(`eaeb7c0`+`9b67e02`): useMonthData·usePeriodStats·AppContext·BackupTab·accessLog 본앱과 바이트 동일화, 4탭 saveField 라우팅(자기 회사 슬라이스)+서브독 deleteField, RosterTab array-contains 질의+logRosterAccess, StatisticsTab 시그니처. 테마(ws-grad→인라인)·ExcelCell(any)은 플랫폼 고유분으로 보존. 라이브 실측: `LogisApp-DIJssJ4o.js`에 billing_admin 포함 ✓
-3. **🔴 남은 것 — 나라미 모바일 APK**: `mobile/DataContext.tsx`가 6/18 이후 미업데이트로 부모문서 경로에 쓴다(회원사=저장거부·관리자=웹에 안 보임). **서브컬렉션 전환 + APK 재빌드 + minVersion 게이트 필요**(별도 작업).
+3. **나라미 모바일 APK**: `mobile/DataContext.tsx`가 6/18 이후 미업데이트로 부모문서 경로에 쓰던 문제. → **해결·배포 완료(8/19 00:40, `7d4c488` v1.0.14)**: 읽기=부모(공통)+회사별 4필드 실시간 구독(관리자=서브컬렉션 전체·회원사=자기 서브독만·미마이그레이션 월 부모 폴백), 쓰기=서브독 setDoc(merge)+웹 동일 메타(`_company`·`_month`), 취소=서브독 deleteField(not-found 통과), saveOrder 점표기 키→중첩 객체 교정. 모바일 tsc 0에러 · APK versionCode 15 · **구배포본과 서명 지문 SHA-256 동일 실측**(기존 앱 위 업그레이드 설치 가능) · 호스팅 배포 후 라이브 APK 80,654,810바이트 일치 실측 · **`settings/app_version` minVersion=1.0.14 상향** → 전 기기(전부 1.0.13·게이트 내장) 실시간 차단→인앱 자가 업데이트. APK 파일은 8/14부터 git 미추적(.gitignore)·호스팅 전용 배포.
 
-주의: wslos에는 SW가 없어 **열려 있던 폰 탭은 새로고침 1회** 해야 신코드가 뜬다(본앱은 v2.16.1 SW가 자동 새로고침).
+주의: wslos에는 SW가 없어 **열려 있던 폰 탭은 새로고침 1회** 해야 신코드가 뜬다(본앱은 v2.16.1 SW가 자동 새로고침, APK는 게이트가 강제 업데이트).
 
 ## 식별
 - GitHub: `ttong627/wellshare-logis-web` (계정 세트: **ttong627**)
@@ -28,7 +28,7 @@
 | wellshare-logis-web | `/` | 메인 웹앱 = **정산포털**(주문·배송일정·정산·거래처정산·실적·통계·명단·계정) | Vite + React + TS + Firebase |
 | ecount-gateway | `/ecount-gateway` | ECOUNT ERP 전표 게이트웨이(`/ecount/sale-tms`) | Node + TS |
 | functions | `/functions` | Firebase Functions (FCM 푸시 · rosterWatch 명단 이상감시) | Node 20 Functions |
-| wellshare-logis-mobile | `/mobile` | 기사앱·모바일(PWA·APK·Expo) — 🔴**구 저장경로, 재작업 필요(위 ③)** | React Native / Expo |
+| wellshare-logis-mobile | `/mobile` | 기사앱·모바일(PWA·APK·Expo) v1.0.14 — 격리 이식 완료(8/19) | React Native / Expo |
 | yanggok-collector | `/server/yanggok-collector` | 정부양곡 명단 메일 자동수집기 — VM cron `20 */2` **재가동(8/18)** · allowedCompanies 자동 부여(`bee009b`) | Node (mjs) |
 | react-example | `/ttong` | 예제·실험(본 작업 무관) | Vite + React |
 
@@ -41,7 +41,8 @@
 
 **메인 웹앱 탭 17종**: Orders / Schedule / DeliveryCompletion / Billing / PartnerBilling / Payment / Performance / Statistics / Prices / Roster / Docs / Backup / Contacts / Users / Account / Profile
 
-## 마지막 작업 (2026-08-18)
+## 마지막 작업 (2026-08-18~19)
+- 본앱 `7d4c488`(본 세션): **나라미 APK billing 격리 이식(v1.0.14) + 게이트 상향 — 3원인 완결**
 - 본앱 `7941a31`(병행 세션): ecountSales 저장을 billing_admin으로 + v2.16.1 + 데이터 회수(부모 9건 이식·동대문구 복구·부모 잔재 제거) — **배포 완료**
 - 본앱 `bee009b`·`99542b0`(병행 세션): 양곡 수집기 allowedCompanies 자동 부여·크론 재가동·밀린 15건 적재
 - 플랫폼 `eaeb7c0`·`9b67e02`(본 세션): **8/14 격리 시리즈 wslos 이식 + 본앱 동일화 — 배포 완료**
@@ -66,11 +67,11 @@
 ## 동기화
 - 본앱: main = origin/main = `7941a31`+docs · 워킹트리 clean
 - 플랫폼: main = origin/main = `9b67e02` · clean · **미push 9건도 이번에 push 완료**(89ea86a..9b67e02)
-- 마지막 fetch/push/배포: 2026-08-18 21:1x KST (owner 토큰 주입)
+- 마지막 fetch/push/배포: 2026-08-19 00:45 KST (owner 토큰 주입) · 본앱 `7d4c488`(모바일 수술)까지 push·호스팅 배포 완료
 - ⚠️**병행 세션 주의(8/18 실증)**: 다른 PC/세션이 같은 파일을 고쳐 push하는 일이 실제로 있었다(ecountSales 중복 수정 → 원격판 채택). **push 전 fetch로 diverge 확인** 습관화.
 
 ## 리스크
-- 🔴 **나라미 APK 구 저장경로**(mobile/DataContext.tsx) — 서브컬렉션 전환+APK 재빌드+minVersion 게이트 필요. 그때까지 APK 사용자의 정산 관련 저장은 실패하거나 웹에 안 보임 (다음 작업 1순위)
+- 🟢 (해결 2026-08-19) **나라미 APK 격리 이식 완료** — v1.0.14 배포·게이트 상향으로 전 기기 강제 자가 업데이트. 3원인 전부 종결
 - 🟡 **wslos 열린 구탭**: SW 없음 → 배포 후에도 새로고침 전까지 구코드 — 회원사에 "안 되면 새로고침" 안내
 - 🟡 **발행요청 취소 merge 잔존 의심(양쪽 공통)**: PaymentTab `handleClearPublishRequest`가 whole-map saveField(merge) — merge는 삭제된 키를 못 지워 취소가 서브독에 안 남을 수 있음(화면은 지워져 보이나 재로드 시 부활 가능). 실측 후 서브독 deleteField로 교정 검토
 - 🟡 계정 함정: gh 활성 `ttong0627` ↔ owner `ttong627` — 토큰 주입 방식 유지
