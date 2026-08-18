@@ -16,7 +16,7 @@ import { loadToken, fetchAllMails, fetchMailBody } from './worksmail.mjs';
 import { planMail, extractCategory } from './classify-yanggok.mjs';
 import {
   getGoogleToken, listAttachments, downloadAttachment, uploadToStorage,
-  loadExistingKeys, createRosterDoc, safeName, extContentType, cleanMailBodyForDisplay,
+  loadExistingKeys, createRosterDoc, loadRegionCompanies, safeName, extContentType, cleanMailBodyForDisplay,
 } from './persist-rosters.mjs';
 import { sendTelegram } from './notify-telegram.mjs';
 import { extractPassword } from './password-extract.mjs';
@@ -100,7 +100,8 @@ async function main() {
   const fsToken = await getGoogleToken('https://www.googleapis.com/auth/datastore');
   const gcsToken = COMMIT ? await getGoogleToken('https://www.googleapis.com/auth/devstorage.read_write') : null;
   const { ids: existingIds, legacy: legacyKeys, regionPasswords } = await loadExistingKeys(fsToken);
-  log(`  기존 rosters ${existingIds.size}건 · 지자체 저장암호 ${regionPasswords.size}곳`);
+  const regionCompanies = await loadRegionCompanies(fsToken);   // 격리 규칙 열람 축(2026-08-14)
+  log(`  기존 rosters ${existingIds.size}건 · 지자체 저장암호 ${regionPasswords.size}곳 · 회사매핑 ${regionCompanies.size}지역`);
 
   const failures = [];
   let okAccounts = 0;
@@ -198,6 +199,7 @@ async function main() {
             category: extractCategory(m.subject, a.filename),
             fileName: displayName, contentType, size: buf.length, storagePath,
             note, adminOnly: plan.adminOnly,
+            allowedCompanies: plan.adminOnly ? [] : (regionCompanies.get(plan.region) || []),
             uploadedAt: new Date().toISOString(), uploadedBy: '양곡 자동수집',
             sourceMailId: m.mailId, sourceAccount: acc.name,
             sourceMailSubject: m.subject, sourceMailBody: cleanMailBodyForDisplay(rawBody),

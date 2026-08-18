@@ -197,6 +197,30 @@ export function cleanMailBodyForDisplay(html, maxLen = 3000) {
   return text.length > maxLen ? `${text.slice(0, maxLen)}…(생략)` : text;
 }
 
+// 회사↔지역 매핑(master_settings.partnerRegions · SSOT) → Map(지역 → [회사...]).
+//   2026-08-14 rosters 격리 규칙: allowedCompanies 없으면(=[]) 회원사에게 안 보인다.
+//   파생 규칙은 백필(scripts/backfill-roster-companies.py)과 동일 — 매핑에 없는 지역은 [](관리자 전용 · 형 확인).
+export async function loadRegionCompanies(fsToken) {
+  const map = new Map();
+  try {
+    const r = await fetch(`${FS_BASE}/artifacts/${APP_ID}/public/data/settings/master_settings`, {
+      headers: { Authorization: `Bearer ${fsToken}` }, signal: AbortSignal.timeout(20000),
+    });
+    if (!r.ok) throw new Error(`master_settings HTTP ${r.status}`);
+    const f = ((await r.json()).fields || {}).partnerRegions?.mapValue?.fields || {};
+    for (const [company, v] of Object.entries(f)) {
+      for (const rv of (v.arrayValue?.values || [])) {
+        const region = rv.stringValue || '';
+        if (region) map.set(region, [...(map.get(region) || []), company]);
+      }
+    }
+  } catch (e) {
+    // 매핑을 못 읽으면 빈 Map — 신규 문서가 관리자 전용으로 적재된다(안전한 쪽 실패).
+    console.warn(`partnerRegions 로드 실패(신규분 관리자 전용 적재): ${e.message}`);
+  }
+  return map;
+}
+
 // 결정적 ID로 문서 생성(멱등) — 이미 있으면 409 → false 반환
 export async function createRosterDoc(fsToken, docId, d) {
   const fields = {
@@ -209,6 +233,8 @@ export async function createRosterDoc(fsToken, docId, d) {
     storagePath: { stringValue: d.storagePath },
     note: { stringValue: d.note || '' },
     adminOnly: { booleanValue: !!d.adminOnly },
+    // 격리 규칙의 열람 축 — adminOnly 면 [](회원사 비노출), 그 외 지역 담당 회사들.
+    allowedCompanies: { arrayValue: { values: (d.allowedCompanies || []).map((s) => ({ stringValue: String(s) })) } },
     uploadedAt: { stringValue: d.uploadedAt },
     uploadedBy: { stringValue: d.uploadedBy },
     sourceMailId: { stringValue: String(d.sourceMailId || '') },
