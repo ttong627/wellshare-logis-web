@@ -249,11 +249,23 @@ export function useMonthData(user: User | null, isAdmin: boolean, partnerCompany
       if ((COMPANY_FIELDS as readonly string[]).includes(field)) {
         return await saveCompany(field, value as Record<string, Record<string, unknown>>, email);
       }
+      // ecountSales(민감·관리자 전용)는 billing_admin — **읽는 문(loadMonth)과 같은 문**에 쓴다.
+      //   8/14 격리 때 읽기만 billing_admin 으로 옮기고 쓰기가 부모에 남아, 발행 직후 저장분을
+      //   billing_admin 기존본이 새로고침마다 덮었다(실측 2026-08-18: 부모 9건 ↔ billing_admin 8건).
+      if (field === 'ecountSales') {
+        await setDoc(
+          doc(db, ...BILLING_ADMIN, currentMonth),
+          { ecountSales: value, updatedAt: new Date().toISOString(), updatedBy: email },
+          { merge: true },
+        );
+        if (!savedMonths.includes(currentMonth)) refreshSavedMonths();
+        return true;
+      }
       return await commitMerge({ [field]: value }, email, { rebase: true });
     } finally {
       setIsSaving(false);
     }
-  }, [commitMerge, saveCompany]);
+  }, [commitMerge, saveCompany, currentMonth, savedMonths, refreshSavedMonths]);
 
   return {
     currentMonth, setCurrentMonth,
