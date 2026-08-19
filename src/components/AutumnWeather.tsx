@@ -58,19 +58,26 @@ export default function AutumnWeather() {
         const p = document.createElement('span');
         p.className = `fall-p fall-${kind} ${pick(LEAVES)}`;
 
-        // 낙엽은 눈송이보다 큼직하게 — 잎으로 보여야 한다
-        const size = rand(8, kind === 'drop' ? 18 : 14) * (power === 'storm' ? 1.2 : 1);
-        // 세면 셀수록 빠르게 지나간다
-        const speed = power === 'storm' ? 0.62 : power === 'strong' ? 0.8 : 1;
-        const dur = (kind === 'drop' ? rand(6.5, 12) : kind === 'whirl' ? rand(3, 5.6) : rand(2.2, 4.5)) * speed;
+        // 크기 3계층 원근감 — 고만고만하면 티끌처럼 보인다(형 피드백 2026-08-19).
+        //   가까운 큰 잎(주인공·소수) / 중간 잎 / 멀리 작은 잎으로 차이를 크게 벌린다.
+        const tier = Math.random();
+        const near = tier < 0.2;                       // 20% — 큰 잎
+        const far = tier >= 0.65;                      // 35% — 먼 잎
+        const size = near ? rand(32, 48) : far ? rand(10, 15) : rand(18, 28);
+        // 세면 셀수록 빠르게 지나간다. 큰 잎은 느긋하게, 작은 잎은 가볍게.
+        const speed = (power === 'storm' ? 0.7 : power === 'strong' ? 0.85 : 1)
+          * (near ? 1.25 : far ? 0.85 : 1);
+        const dur = (kind === 'drop' ? rand(7, 13) : kind === 'whirl' ? rand(3.2, 5.8) : rand(2.6, 5)) * speed;
         const delay = rand(0, kind === 'whirl' ? 2.2 : 3.4);
 
         p.style.setProperty('--size', `${size.toFixed(1)}px`);
         p.style.setProperty('--dur', `${dur.toFixed(2)}s`);
         p.style.setProperty('--delay', `${delay.toFixed(2)}s`);
-        p.style.setProperty('--spin', `${Math.round(rand(160, 720)) * (Math.random() < 0.5 ? -1 : 1)}deg`);
+        // 큰 잎은 묵직하게 덜 돌고, 작은 잎은 팔랑팔랑 많이 돈다
+        p.style.setProperty('--spin', `${Math.round(near ? rand(100, 320) : far ? rand(280, 720) : rand(180, 520)) * (Math.random() < 0.5 ? -1 : 1)}deg`);
         p.style.setProperty('--a0', `${rand(0, 360).toFixed(0)}deg`);
-        p.style.setProperty('--peak', rand(0.6, 1).toFixed(2));
+        // 먼 잎은 옅게(거리 안개) — 큰 잎이 또렷한 주인공이 된다
+        p.style.setProperty('--peak', (near ? rand(0.85, 1) : far ? rand(0.45, 0.65) : rand(0.65, 0.9)).toFixed(2));
 
         if (kind === 'whirl') {
           // 회오리: 중심에서 시작해 반경을 키우며 감아 돈다

@@ -372,7 +372,7 @@ body::after {
 /* 보름달 — 제목과 계정 사이 밤하늘에. 은상아빛 또렷한 원판 + 크레이터(달 토끼).
    번쩍이지 않는다(잔잔) — 얇은 달무리만 두 겹. */
 .nav-moon {
-  position: absolute; top: 50%; right: 24%;
+  position: absolute; top: 50%; right: 31%;   /* 계정 카드 뒤에 걸리지 않는 빈 하늘 */
   width: 58px; height: 58px; margin-top: -29px;
   border-radius: 50%;
   background:
@@ -417,12 +417,13 @@ body::after {
   86%  { opacity: .75; }
   100% { transform: translate3d(10px, 128px, 0) rotate(320deg); opacity: 0; }
 }
-.nav-leaf:nth-of-type(1) { left: 16%; --d: 9s;  --dl: 0s; }
-.nav-leaf:nth-of-type(2) { left: 30%; --d: 12s; --dl: 3.5s; }
-.nav-leaf:nth-of-type(3) { left: 45%; --d: 10s; --dl: 6s; }
-.nav-leaf:nth-of-type(4) { left: 60%; --d: 13s; --dl: 1.8s; }
-.nav-leaf:nth-of-type(5) { left: 76%; --d: 11s; --dl: 8s; }
-.nav-leaf:nth-of-type(6) { left: 89%; --d: 12s; --dl: 4.6s; }
+/* 크기도 제각각 — 큰 잎·중간 잎·먼 잔잎(원근감) */
+.nav-leaf:nth-of-type(1) { left: 16%; --d: 9s;  --dl: 0s;   width: 20px; height: 20px; }
+.nav-leaf:nth-of-type(2) { left: 30%; --d: 12s; --dl: 3.5s; width: 11px; height: 11px; opacity: .8; }
+.nav-leaf:nth-of-type(3) { left: 45%; --d: 10s; --dl: 6s;   width: 15px; height: 15px; }
+.nav-leaf:nth-of-type(4) { left: 60%; --d: 13s; --dl: 1.8s; width: 24px; height: 24px; }
+.nav-leaf:nth-of-type(5) { left: 76%; --d: 11s; --dl: 8s;   width: 10px; height: 10px; opacity: .75; }
+.nav-leaf:nth-of-type(6) { left: 89%; --d: 12s; --dl: 4.6s; width: 16px; height: 16px; }
 /* 아랫단 금빛 이슬선 — 풍요의 마감선 */
 .nav-scene::after {
   content: '';
