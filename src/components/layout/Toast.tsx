@@ -9,7 +9,7 @@ export default function Toast({ message }: ToastProps) {
     <div
       className="ws-grad fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-7 py-4 rounded-2xl animate-in fade-in slide-in-from-bottom-4 duration-300"
       style={{
-        boxShadow: '0 10px 30px rgba(14,127,168,.34), 0 2px 8px rgba(15,41,66,.10), inset 0 1px 0 rgba(255,255,255,.28)',
+        boxShadow: '0 10px 30px rgba(110,48,9,.32), 0 2px 8px rgba(58,29,11,.10), inset 0 1px 0 rgba(255,255,255,.28)',
         border: '1px solid rgba(255,255,255,.28)',
       }}
     >

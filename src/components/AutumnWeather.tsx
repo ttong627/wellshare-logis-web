@@ -40,23 +40,15 @@ export default function AutumnWeather() {
     const gust = () => {
       if (stopped || document.hidden) return;
 
-      const kind: Kind = pick(['drop', 'drop', 'drop', 'gust', 'gust', 'whirl']);
-      // 세기 — 가끔 화면을 통째로 휩쓰는 낙엽비가 온다
-      const power = pick(['gentle', 'strong', 'strong', 'storm'] as const);
-      const mul = power === 'storm' ? 2.6 : power === 'strong' ? 1.6 : 1;
+      // 잔잔 원칙(형 피드백 2026-08-19): 낙하 위주, 잎 수는 적게, 바람결 베일은 없앴다.
+      const kind: Kind = pick(['drop', 'drop', 'drop', 'drop', 'gust', 'whirl']);
+      const power = pick(['gentle', 'gentle', 'strong', 'storm'] as const);
+      const mul = power === 'storm' ? 1.8 : power === 'strong' ? 1.3 : 1;
       const fromLeft = Math.random() < 0.5;
       const base = kind === 'whirl'
-        ? rand(isPhone ? 14 : 26, isPhone ? 22 : 44)
-        : rand(isPhone ? 12 : 26, isPhone ? 20 : 48);
+        ? rand(isPhone ? 8 : 14, isPhone ? 14 : 24)
+        : rand(isPhone ? 7 : 12, isPhone ? 12 : 22);
       const count = Math.round(base * mul);
-
-      // 낙엽비·강풍이면 금빛 바람결이 화면을 스쳐 지나간다(풍요로운 연출)
-      if (power !== 'gentle') {
-        const veil = document.createElement('div');
-        veil.className = `fall-veil ${fromLeft ? 'from-left' : 'from-right'}${power === 'storm' ? ' storm' : ''}`;
-        veil.addEventListener('animationend', () => veil.remove(), { once: true });
-        layer.appendChild(veil);
-      }
 
       // 회오리는 화면 위 한 지점을 중심으로 감아 올라간다
       const originX = rand(10, 90);

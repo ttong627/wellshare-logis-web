@@ -90,12 +90,47 @@ export default function Navbar({
       {/* ── Hero header bar ─────────────────────────────── */}
       <div
         className="ws-grad relative z-[2000] rounded-2xl sm:rounded-3xl mb-2 overflow-visible"
-        style={{ boxShadow: '0 10px 30px rgba(14,127,168,.28), 0 2px 10px rgba(15,41,66,.08)' }}
+        style={{ boxShadow: '0 10px 30px rgba(110,48,9,.30), 0 2px 10px rgba(58,29,11,.10)' }}
       >
-        {/* Top water-shine line */}
-        <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent)' }} />
+        {/* 한가위 밤 파노라마 — 장식 레이어(클릭 통과·모서리 자체 클리핑, 본문은 z-[1] 위) */}
+        <div className="nav-scene" aria-hidden="true">
+          <div className="nav-night" />
+          <div className="nav-moon" />
+          <div className="nav-cloud nav-cloud-a" />
+          <div className="nav-cloud nav-cloud-b" />
+          <svg className="nav-ridge" viewBox="0 0 1200 96" preserveAspectRatio="none">
+            {/* 먼 산 — 달빛에 젖은 능선 */}
+            <path d="M0,96 L0,74 Q160,52 330,70 T680,66 T1000,76 T1200,62 L1200,96 Z" fill="rgba(38,18,6,.34)" />
+            {/* 가까운 능선 */}
+            <path d="M0,96 L0,84 Q220,66 460,80 T900,78 T1200,84 L1200,96 Z" fill="rgba(26,12,4,.48)" />
+            {/* 억새 — 좌우 무리, 이삭이 달빛을 받는다 */}
+            <g stroke="rgba(58,29,11,.75)" strokeWidth="1.6" fill="none" strokeLinecap="round">
+              <path d="M46,96 Q44,74 40,62" /><path d="M58,96 Q58,70 62,58" /><path d="M72,96 Q70,76 66,66" />
+              <path d="M1116,96 Q1114,72 1108,60" /><path d="M1130,96 Q1132,70 1136,56" /><path d="M1146,96 Q1144,76 1140,64" />
+            </g>
+            <g fill="rgba(233,196,138,.9)">
+              <ellipse cx="40" cy="59" rx="3.4" ry="7" transform="rotate(-14 40 59)" />
+              <ellipse cx="62" cy="55" rx="3.2" ry="7" transform="rotate(10 62 55)" />
+              <ellipse cx="66" cy="63" rx="3" ry="6" transform="rotate(-8 66 63)" />
+              <ellipse cx="1108" cy="57" rx="3.4" ry="7" transform="rotate(-12 1108 57)" />
+              <ellipse cx="1136" cy="53" rx="3.2" ry="7" transform="rotate(12 1136 53)" />
+              <ellipse cx="1140" cy="61" rx="3" ry="6" transform="rotate(-6 1140 61)" />
+            </g>
+            {/* 기러기 세 마리 */}
+            <g stroke="rgba(30,16,8,.7)" strokeWidth="1.4" fill="none" strokeLinecap="round">
+              <path d="M760,26 q5,-5 10,0 q5,-5 10,0" />
+              <path d="M786,18 q4,-4 8,0 q4,-4 8,0" />
+              <path d="M806,30 q4,-4 8,0 q4,-4 8,0" />
+            </g>
+          </svg>
+          <span className="nav-leaf fall-maple" /><span className="nav-leaf fall-ginkgo" /><span className="nav-leaf fall-oak" />
+          <span className="nav-leaf fall-maple" /><span className="nav-leaf fall-ginkgo" /><span className="nav-leaf fall-maple" />
+        </div>
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 px-4 sm:px-6 py-2.5 sm:py-3">
+        {/* Top moonlight-shine line */}
+        <div className="relative z-[1]" style={{ height: 2, background: 'linear-gradient(90deg, transparent, rgba(255,240,200,.65), transparent)' }} />
+
+        <div className="relative z-[1] flex flex-col lg:flex-row lg:items-center justify-between gap-2 px-4 sm:px-6 py-2.5 sm:py-3">
 
           {/* Logo + Title */}
           <div className="flex items-center gap-3">

@@ -925,7 +925,7 @@ export default function DocsTab() {
       {/* ── Hero bar ── */}
       <div className="sky-hero p-6 sm:p-8 text-white relative overflow-hidden"
         style={{
-          boxShadow: '0 8px 40px rgba(14,127,168,.4)',
+          boxShadow: '0 8px 40px rgba(110,48,9,.38)',
         }}>
         {/* shine line */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent)' }} />
