@@ -16,8 +16,8 @@ type Kind = 'drop' | 'gust' | 'whirl';
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
 const pick = <T,>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// 잎 종류 — 단풍이 주인공, 은행·갈잎이 섞인다
-const LEAVES = ['fall-maple', 'fall-maple', 'fall-ginkgo', 'fall-ginkgo', 'fall-oak'] as const;
+// 잎 종류 — 단풍이 왕(형 지시), 은행·갈잎이 곁을 채운다
+const LEAVES = ['fall-maple', 'fall-maple', 'fall-maple', 'fall-ginkgo', 'fall-ginkgo', 'fall-oak'] as const;
 
 export default function AutumnWeather() {
   const layerRef = useRef<HTMLDivElement | null>(null);
@@ -86,11 +86,14 @@ export default function AutumnWeather() {
           p.style.setProperty('--r', `${(rand(110, 420) * (power === 'storm' ? 1.3 : 1)).toFixed(0)}px`);
           p.style.setProperty('--lift', `${rand(-160, -40).toFixed(0)}px`);
         } else if (kind === 'drop') {
-          // 낙하: 화면 위에서 놓여나 좌우로 몸을 뒤집으며 떨어진다
+          // 낙하: 몸통은 내려오고 잎은 시계추 진자 운동 — 큰 잎은 폭넓게 천천히,
+          //   작은 잎은 좁고 빠르게 팔랑인다(두 주기가 어긋나야 자연스럽다).
           p.style.top = '-8vh';
           p.style.left = `${rand(0, 100).toFixed(1)}%`;
-          p.style.setProperty('--dx', `${rand(-18, 18).toFixed(0)}vw`);
-          p.style.setProperty('--sway', `${rand(10, 34).toFixed(0)}px`);
+          p.style.setProperty('--dx', `${rand(-12, 12).toFixed(0)}vw`);
+          p.style.setProperty('--sway', `${(near ? rand(24, 44) : far ? rand(8, 16) : rand(14, 28)).toFixed(0)}px`);
+          p.style.setProperty('--swayDur', `${(near ? rand(2.1, 3.2) : far ? rand(1.2, 1.9) : rand(1.6, 2.5)).toFixed(2)}s`);
+          p.style.setProperty('--rock', `${Math.round(near ? rand(18, 34) : far ? rand(30, 56) : rand(24, 44))}deg`);
         } else {
           // 돌풍: 화면 밖에서 들어와 반대편으로 빠진다
           const y = rand(-5, 100);

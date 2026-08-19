@@ -152,35 +152,49 @@ body::after {
 .fall-p {
   position: absolute;
   width: var(--size, 18px); height: var(--size, 18px);
-  background-repeat: no-repeat; background-size: contain; background-position: center;
-  filter: drop-shadow(0 1px 2px rgba(58,29,11,.28));
   opacity: 0;
   will-change: transform, opacity;
 }
-/* 잎 종류 — 단풍(붉은 잎)·은행(금빛 부채)·갈잎(긴 갈색 잎) */
-.fall-maple {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.6 C18 5.6 20.6 11.6 17.6 17.6 C15.6 21 9.4 22 7.2 18.8 C4 14.4 6 6.8 12 1.6 Z' fill='%23C2401F' stroke='%23902711' stroke-width='1'/%3E%3Cpath d='M12 3.6 C11 9.6 9.8 14.8 8.4 18.6' stroke='%237A1F0C' stroke-width='1' fill='none'/%3E%3Cpath d='M10.4 8.6 L13.8 7.2 M9.8 12.2 L14.4 10.4 M9.2 15.4 L13.6 13.6' stroke='%237A1F0C' stroke-width='.7' fill='none'/%3E%3Cpath d='M8.2 19.2 L6.4 22.8' stroke='%23703A16' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+/* 잎 그림은 ::after 레이어에 — 몸통은 떨어지고(중력), 잎은 그 위에서
+   시계추처럼 흔들린다(공기저항). 두 주기가 어긋나야 진짜 낙엽처럼 보인다. */
+.fall-p::after, .nav-leaf::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-repeat: no-repeat; background-size: contain; background-position: center;
+  filter: drop-shadow(0 1px 2px rgba(58,29,11,.28));
 }
-.fall-ginkgo {
+/* 잎 종류 — 단풍(다섯 갈래 왕잎)·은행(금빛 부채)·갈잎(긴 갈색 잎) */
+/* 단풍잎 — 가을 낙엽의 왕(형 지시 2026-08-19): 손바닥 모양 5갈래 + 깊은 골 + 잎맥 + 잎자루 */
+.fall-maple::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1 L13.4 5.6 L18.6 3.2 L16.8 8.2 L22.6 9.2 L18.4 12.6 L21 16.4 L15.6 15.4 L14.2 19.6 L12 17.2 L9.8 19.6 L8.4 15.4 L3 16.4 L5.6 12.6 L1.4 9.2 L7.2 8.2 L5.4 3.2 L10.6 5.6 Z' fill='%23C2401F' stroke='%238E2712' stroke-width='.9' stroke-linejoin='round'/%3E%3Cpath d='M12 3.4 L12 16.4 M12 12.6 L18.8 5.2 M12 12.6 L5.2 5.2 M12 13.6 L20 10.2 M12 13.6 L4 10.2' stroke='%23891F0B' stroke-width='.65' fill='none'/%3E%3Cpath d='M12 17.2 L12 23' stroke='%23703A16' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.fall-ginkgo::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 14.6 C6.4 14.6 3.4 9.8 4.2 4.6 C7 8 10 8.6 12 8.6 C14 8.6 17 8 19.8 4.6 C20.6 9.8 17.6 14.6 12 14.6 Z' fill='%23E5A916' stroke='%23B47F0A' stroke-width='1'/%3E%3Cpath d='M12 8.8 L12 14.4' stroke='%23A06E08' stroke-width='.8'/%3E%3Cpath d='M12 14.6 C12 17 12 19.4 11.2 22' stroke='%23947014' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
 }
-.fall-oak {
+.fall-oak::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 C16.4 5.6 17.8 11.2 15.6 16.4 C14.4 19.2 10.4 20 8.8 17.6 C6 13.6 7.6 6.4 12 2 Z' fill='%23A87434' stroke='%23744E1D' stroke-width='1'/%3E%3Cpath d='M12 3.8 C11 9 10.2 13.6 9.6 17.4' stroke='%23624018' stroke-width='.9' fill='none'/%3E%3Cpath d='M10.8 7.6 L13.6 6.6 M10.2 11 L14.4 9.6 M9.8 14 L13.6 12.6' stroke='%23624018' stroke-width='.6' fill='none'/%3E%3Cpath d='M9.4 18 L8 21.6' stroke='%23573814' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 /* (바람결 베일 효과는 형 지시로 제거 — "가운데 기둥이 왔다갔다 하는 건 하지 말 것" 2026-08-19) */
 
-/* 낙하 — 나뭇가지에서 놓여난 잎이 좌우로 몸을 뒤집으며 떨어진다 */
+/* 낙하 — 몸통은 완만히 가속해 내려오고(중력), 잎은 ::after에서 진자 운동(공기저항).
+   두 애니메이션의 주기가 서로 어긋나며 자연스러운 팔랑임이 난다(형 피드백 2026-08-19). */
 .fall-drop {
-  animation: autumnDrop var(--dur, 9s) cubic-bezier(.36,.1,.3,.9) var(--delay, 0s) 1 both;
+  animation: autumnDescend var(--dur, 10s) cubic-bezier(.33,.16,.6,.92) var(--delay, 0s) 1 both;
 }
-@keyframes autumnDrop {
-  0%   { transform: translate3d(0,0,0) rotate(var(--a0, 0deg));                 opacity: 0; }
-  8%   { opacity: var(--peak, .9); }
-  30%  { transform: translate3d(calc(var(--dx) * .3 + var(--sway, 16px)), 32vh, 0) rotate(calc(var(--a0, 0deg) + var(--spin) * .3)); }
-  55%  { transform: translate3d(calc(var(--dx) * .55 - var(--sway, 16px)), 58vh, 0) rotate(calc(var(--a0, 0deg) + var(--spin) * .55)); }
-  80%  { transform: translate3d(calc(var(--dx) * .8 + var(--sway, 16px)), 86vh, 0) rotate(calc(var(--a0, 0deg) + var(--spin) * .8)); opacity: var(--peak, .9); }
-  100% { transform: translate3d(var(--dx), 116vh, 0) rotate(calc(var(--a0, 0deg) + var(--spin)));  opacity: 0; }
+.fall-drop::after {
+  animation: leafSway var(--swayDur, 2.2s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+@keyframes autumnDescend {
+  0%   { transform: translate3d(0, -4vh, 0) rotate(var(--a0, 0deg)); opacity: 0; }
+  7%   { opacity: var(--peak, .9); }
+  90%  { opacity: var(--peak, .9); }
+  100% { transform: translate3d(var(--dx, 0vw), 114vh, 0) rotate(var(--a0, 0deg)); opacity: 0; }
+}
+/* 시계추 — 좌우로 미끄러지며 기우뚱기우뚱. alternate 로 왕복한다 */
+@keyframes leafSway {
+  0%   { transform: translateX(calc(var(--sway, 14px) * -1)) rotate(calc(var(--rock, 30deg) * -1)); }
+  100% { transform: translateX(var(--sway, 14px)) rotate(var(--rock, 30deg)); }
 }
 
 /* 돌풍 — 가랑잎이 바람에 실려 화면을 가로지른다 */
@@ -219,7 +233,7 @@ body::after {
 
 /* 모바일에서는 그림자 필터를 생략(성능) */
 @media (max-width: 640px) {
-  .fall-p { filter: none; }
+  .fall-p::after, .nav-leaf::after { filter: none; }
 }
 
 /* ══ 스크롤바 — 단풍 ═══════════════════════════════════════════════ */
