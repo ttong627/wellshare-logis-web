@@ -21,7 +21,11 @@
 - 호스팅: Firebase Hosting (public: `dist`, SPA rewrites, `/app`→download.html, APK 헤더)
 - 빌드: `npm run build` (= `tsc --noEmit && vite build`, 루트) / 배포: `firebase deploy --only hosting`
 - 커밋·푸시: main 기준 / 계정 **ttong627** (owner 토큰 주입 — 전역 gh 계정 전환 금지)
-- 현재 앱 버전: **v2.17.0** (sw 캐시명 동기) · **테마: 한가위 HARVEST MOON**(가을·추석 — 2026-08-19 전면 교체, ICEBERG 대체. 팔레트·기상효과는 index.css가 SSOT, 기상 컴포넌트 AutumnWeather.tsx)
+- 현재 앱 버전: **v2.17.8** (sw 캐시명 동기) · **테마: 한가위 HARVEST MOON 확정**(가을·추석 — 2026-08-19 전면 교체+8차 다듬기, ICEBERG 대체)
+  - 최종 장면: **달 뜨는 저녁의 단풍 공원** — 밝은 어스름 황혼 바탕 + 반투명(50%) 수채 공원 씬(능선·단풍/은행나무·달빛 산책로·가로등·기러기) + 또렷한 상아빛 보름달 + 은은한 반딧불. 카드=등불 대비
+  - 낙엽: 당단풍(왕·진홍 그라디언트)/은행(순노랑 부채)/넓은단풍(주황금)/갈잎 4종 SVG, 크기 3계층 원근(10~48px), 몸통 하강+::after 진자(leafSway) 이중 타이밍, 잎별 색조 변주. 12~26초 간격 소량(잔잔)
+  - 형 피드백 이력(재발 방지 주석 박제): 태양 오해→은상아 원판+무맥동 / 베일 기둥 금지 / 단풍 골 깊으면 폭죽 / 은행 윗변 오목하면 초승달 / 고만고만하면 티끌 / 흙색은 한국 가을이 아니다
+  - 상단바 = 한가위 밤 파노라마(잔별·크레이터 보름달·밤구름·능선·억새·기러기·잔낙엽). 테마 SSOT=index.css(그라디언트 --grad-1/2/3), 기상=AutumnWeather.tsx. **wslos(다크 테마)는 이식 금지 유지**
 - CLI 계정: firebase `ttong627@gmail.com` ✓ · gcloud `ttong627@gmail.com` ✓
 
 ## 앱 구성
@@ -44,6 +48,7 @@
 **메인 웹앱 탭 17종**: Orders / Schedule / DeliveryCompletion / Billing / PartnerBilling / Payment / Performance / Statistics / Prices / Roster / Docs / Backup / Contacts / Users / Account / Profile
 
 ## 마지막 작업 (2026-08-18~19)
+- 본앱 `cecf53c`~`870016b`(본 세션): **한가위 가을 테마 전면 교체+8차 다듬기(v2.17.0→v2.17.8)** — 위 배포환경 테마 항목 참조. 전 기기 SW 자동 갱신
 - 본앱 `cecf53c`(본 세션): **한가위 가을 테마 전면 교체(v2.17.0)** — 군밤·감·단풍 그라디언트, 보름달+반딧불, 낙엽 기상(AutumnWeather), sky/blue 유틸 계절 재매핑(25컴포넌트 무수정), 배포·라이브 실측 완료. ⚠️wslos는 다크 테마 독립 — 테마 이식 금지 원칙 유지
 - 본앱 `0bea341`·플랫폼 `a7774a0`(본 세션): **첫 화면 no-cache 헤더 교정 + v2.16.2/1.4.2 — 폰 구탭 강제 갱신 발동**
 - 본앱 `1c4b0c3`(본 세션): **새 달 규칙 exists 가드 + rules-test 회귀 14케이스(35/35)** — 규칙 배포 완료
