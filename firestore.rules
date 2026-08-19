@@ -130,13 +130,17 @@ service cloud.firestore {
       allow write: if isAdminUser(appId);
     }
     //   나머지(partnerInputs·deliveryDates·publishDates): 자기 회사 read/write. 마감월은 회원사 쓰기 차단.
+    //   ★부모 월 문서가 아직 없으면(새 달 — 관리자가 공통 필드를 저장하기 전) `exists` 가드로 통과시킨다.
+    //     가드 없이 get() 하면 **문서 없음 = 평가 에러 = 전부 거부**라, 매달 초 회원사 저장이
+    //     통째로 막힌다(2026-08-19 실증: 7월 마감 직후 8월 부모 생성 전 폰 저장 전멸).
     match /artifacts/{appId}/public/data/billing_records/{monthId}/{field}/{company} {
       allow read: if isAdminUser(appId) || myCompany(appId) == company;
       allow write: if field != 'publishRequests'
         && (isAdminUser(appId)
             || (myCompany(appId) == company
-                && get(/databases/$(database)/documents/artifacts/$(appId)/public/data/billing_records/$(monthId))
-                     .data.get('isClosed', false) != true));
+                && (!exists(/databases/$(database)/documents/artifacts/$(appId)/public/data/billing_records/$(monthId))
+                    || get(/databases/$(database)/documents/artifacts/$(appId)/public/data/billing_records/$(monthId))
+                         .data.get('isClosed', false) != true)));
     }
 
     // ecountSales(회사별 ECOUNT 발행내역·민감) — 관리자 전용(회원사 노출 차단, 08-14 이전).

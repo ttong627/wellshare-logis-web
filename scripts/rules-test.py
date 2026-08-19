@@ -43,10 +43,23 @@ def api(url, body):
 
 
 # master_settings 를 읽는 get()/exists() 흉내 — 규칙의 myCompany·isDynamicAdmin 이 쓴다.
+# billing_records 월 부모 3종 — 서브독 쓰기 규칙의 isClosed 조회가 쓴다:
+#   OPEN(열린 달)=존재·미마감 / CLOSED(마감 달)=존재·마감 / NEW(새 달)=**문서 없음**.
+#   ★NEW 가 핵심 회귀: 부모가 없을 때 get() 이 에러 → 회원사 쓰기가 통째로 거부되던
+#     버그(2026-08-19 실증 — 7월 마감 직후 8월 부모가 생기기 전 전 회원사 저장 불가).
+MONTH_OPEN, MONTH_CLOSED, MONTH_NEW = '2026-07', '2026-06', '2026-08'
+BR = f'{DATA}/billing_records'
 MOCKS = [
     {'function': 'exists', 'args': [{'exactValue': SETTINGS}], 'result': {'value': True}},
     {'function': 'get', 'args': [{'exactValue': SETTINGS}],
      'result': {'value': {'data': {'partnerAccounts': PARTNER_ACCOUNTS}}}},
+    {'function': 'exists', 'args': [{'exactValue': f'{BR}/{MONTH_OPEN}'}], 'result': {'value': True}},
+    {'function': 'get', 'args': [{'exactValue': f'{BR}/{MONTH_OPEN}'}],
+     'result': {'value': {'data': {'isClosed': False}}}},
+    {'function': 'exists', 'args': [{'exactValue': f'{BR}/{MONTH_CLOSED}'}], 'result': {'value': True}},
+    {'function': 'get', 'args': [{'exactValue': f'{BR}/{MONTH_CLOSED}'}],
+     'result': {'value': {'data': {'isClosed': True}}}},
+    {'function': 'exists', 'args': [{'exactValue': f'{BR}/{MONTH_NEW}'}], 'result': {'value': False}},
 ]
 
 
@@ -91,7 +104,56 @@ def log_doc(email):
             'fileName': 'x.xlsx', 'adminOnly': False}
 
 
+def wcase(name, email, doc_path, method, expect, incoming=None, existing=None):
+    """쓰기 시험 — create/update 는 request.resource(incoming), update/delete 는 resource(existing)도 본다."""
+    req = {'path': doc_path, 'method': method}
+    if email:
+        req['auth'] = {'uid': f'uid_{email}', 'token': {'email': email}}
+    if incoming is not None:
+        req['resource'] = {'data': incoming}
+    tc = {'expectation': expect, 'request': req, 'functionMocks': MOCKS}
+    if existing is not None:
+        tc['resource'] = {'data': existing}
+    return (name, tc)
+
+
+SUB = {'동대문구': {'date': '2026-08-19'}, '_company': CO_A, '_month': MONTH_NEW,
+       'updatedAt': '2026-08-19T00:00:00.000Z', 'updatedBy': EMAIL_A}
+# ⚠️timestamp 를 ISO 형식으로 쓰면 **시뮬레이터가 timestamp 타입으로 강제 변환**해
+#   `is string` 이 헛되이 실패한다(2026-08-14 access_logs.at 실측과 동일 현상 — 운영은 문자열 그대로).
+NOTI = {'message': '[📦배송완료] 테스트', 'target': 'ADMIN', 'timestamp': 'test-ts(시뮬레이터 ISO 변환 회피)'}
+
 CASES = [
+    # ── 정산 저장 3버튼(포수·배송완료·계산서발급) 경로 — 열려 있어야 하는 것 ──
+    wcase('★새 달(부모 없음): 회원사A 자기 배송완료 서브독 쓰기', EMAIL_A,
+          f'{BR}/{MONTH_NEW}/deliveryDates/{CO_A}', 'create', 'ALLOW', SUB),
+    wcase('새 달(부모 없음): 회원사A 자기 실적 서브독 쓰기', EMAIL_A,
+          f'{BR}/{MONTH_NEW}/partnerInputs/{CO_A}', 'create', 'ALLOW', SUB),
+    wcase('새 달(부모 없음): 회원사A 자기 발행완료 서브독 쓰기', EMAIL_A,
+          f'{BR}/{MONTH_NEW}/publishDates/{CO_A}', 'create', 'ALLOW', SUB),
+    wcase('열린 달: 회원사A 자기 배송완료 서브독 쓰기', EMAIL_A,
+          f'{BR}/{MONTH_OPEN}/deliveryDates/{CO_A}', 'create', 'ALLOW', SUB),
+    wcase('새 달: 관리자 서브독 쓰기', ADMIN_EMAIL,
+          f'{BR}/{MONTH_NEW}/deliveryDates/{CO_A}', 'create', 'ALLOW', SUB),
+    wcase('새 달: 관리자 부모 쓰기(포수 저장 경로)', ADMIN_EMAIL,
+          f'{BR}/{MONTH_NEW}', 'create', 'ALLOW', {'orders': {'동대문구': {'basicQty': 10}}}),
+    wcase('회원사A 배송완료 알림 생성(target=ADMIN)', EMAIL_A,
+          f'{DATA}/notifications/n1', 'create', 'ALLOW', NOTI),
+    case('회원사A 자기 서브독 읽기', EMAIL_A,
+         f'{BR}/{MONTH_OPEN}/deliveryDates/{CO_A}', 'get', 'ALLOW', SUB),
+    # ── 정산 저장 — 막혀야 하는 것 ──
+    wcase('★마감 달: 회원사A 서브독 쓰기', EMAIL_A,
+          f'{BR}/{MONTH_CLOSED}/deliveryDates/{CO_A}', 'create', 'DENY', SUB),
+    wcase('★새 달: 회원사A가 남의 회사 서브독 쓰기', EMAIL_A,
+          f'{BR}/{MONTH_NEW}/deliveryDates/{CO_B}', 'create', 'DENY', SUB),
+    wcase('★회원사A publishRequests 서브독 쓰기(관리자 전용)', EMAIL_A,
+          f'{BR}/{MONTH_NEW}/publishRequests/{CO_A}', 'create', 'DENY', SUB),
+    wcase('★회원사A 부모 문서 쓰기(공통 필드는 관리자만)', EMAIL_A,
+          f'{BR}/{MONTH_NEW}', 'create', 'DENY', {'orders': {}}),
+    case('★회원사A가 남의 서브독 읽기', EMAIL_A,
+         f'{BR}/{MONTH_OPEN}/deliveryDates/{CO_B}', 'get', 'DENY', SUB),
+    wcase('★회원사A가 회사 지정 알림 스푸핑(target=회사)', EMAIL_A,
+          f'{DATA}/notifications/n2', 'create', 'DENY', {**NOTI, 'target': CO_B}),
     # ── 열려 있어야 하는 것 ──
     case('관리자가 명단 읽기',              ADMIN_EMAIL, R, 'get', 'ALLOW', ROSTER_A),
     case('관리자가 관리자전용 명단 읽기',     ADMIN_EMAIL, R, 'get', 'ALLOW', ROSTER_ADMIN),
