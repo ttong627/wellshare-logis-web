@@ -16,8 +16,8 @@ type Kind = 'drop' | 'gust' | 'whirl';
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
 const pick = <T,>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// 잎 종류 — 단풍이 왕(형 지시), 은행·갈잎이 곁을 채운다
-const LEAVES = ['fall-maple', 'fall-maple', 'fall-maple', 'fall-ginkgo', 'fall-ginkgo', 'fall-oak'] as const;
+// 잎 종류 — 당단풍(왕)·은행이 주역, 넓은 주황금 단풍·갈잎이 곁을 채운다(형 레퍼런스 2026-08-19)
+const LEAVES = ['fall-maple', 'fall-maple', 'fall-ginkgo', 'fall-ginkgo', 'fall-amber', 'fall-oak'] as const;
 
 export default function AutumnWeather() {
   const layerRef = useRef<HTMLDivElement | null>(null);
@@ -42,12 +42,13 @@ export default function AutumnWeather() {
 
       // 잔잔 원칙(형 피드백 2026-08-19): 낙하 위주, 잎 수는 적게, 바람결 베일은 없앴다.
       const kind: Kind = pick(['drop', 'drop', 'drop', 'drop', 'gust', 'whirl']);
-      const power = pick(['gentle', 'gentle', 'strong', 'storm'] as const);
-      const mul = power === 'storm' ? 1.8 : power === 'strong' ? 1.3 : 1;
+      const power = pick(['gentle', 'gentle', 'gentle', 'strong', 'storm'] as const);
+      const mul = power === 'storm' ? 1.6 : power === 'strong' ? 1.25 : 1;
       const fromLeft = Math.random() < 0.5;
+      // '과하게 날린다'(형 피드백) → 한 번에 지는 잎을 대폭 줄인다. 소수의 잎이 우아하게.
       const base = kind === 'whirl'
-        ? rand(isPhone ? 8 : 14, isPhone ? 14 : 24)
-        : rand(isPhone ? 7 : 12, isPhone ? 12 : 22);
+        ? rand(isPhone ? 5 : 8, isPhone ? 9 : 14)
+        : rand(isPhone ? 4 : 6, isPhone ? 8 : 12);
       const count = Math.round(base * mul);
 
       // 회오리는 화면 위 한 지점을 중심으로 감아 올라간다
@@ -113,11 +114,11 @@ export default function AutumnWeather() {
 
     /** 다음 바람 예약 — 간격도 랜덤(가을바람은 눈보라보다 잦다) */
     const schedule = (first = false) => {
-      const wait = first ? rand(900, 2600) : rand(6000, 16000);
+      const wait = first ? rand(1500, 3500) : rand(12000, 26000);
       timer = window.setTimeout(() => {
         gust();
-        // 강풍은 종종 연달아 몰아친다
-        if (Math.random() < 0.45) window.setTimeout(gust, rand(700, 2200));
+        // 아주 가끔만 연달아 분다(잔잔)
+        if (Math.random() < 0.18) window.setTimeout(gust, rand(1200, 2600));
         schedule();
       }, wait);
     };
