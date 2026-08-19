@@ -21,7 +21,7 @@
 - 호스팅: Firebase Hosting (public: `dist`, SPA rewrites, `/app`→download.html, APK 헤더)
 - 빌드: `npm run build` (= `tsc --noEmit && vite build`, 루트) / 배포: `firebase deploy --only hosting`
 - 커밋·푸시: main 기준 / 계정 **ttong627** (owner 토큰 주입 — 전역 gh 계정 전환 금지)
-- 현재 앱 버전: **v2.16.1** (sw 캐시명 동기)
+- 현재 앱 버전: **v2.17.0** (sw 캐시명 동기) · **테마: 한가위 HARVEST MOON**(가을·추석 — 2026-08-19 전면 교체, ICEBERG 대체. 팔레트·기상효과는 index.css가 SSOT, 기상 컴포넌트 AutumnWeather.tsx)
 - CLI 계정: firebase `ttong627@gmail.com` ✓ · gcloud `ttong627@gmail.com` ✓
 
 ## 앱 구성
@@ -44,6 +44,7 @@
 **메인 웹앱 탭 17종**: Orders / Schedule / DeliveryCompletion / Billing / PartnerBilling / Payment / Performance / Statistics / Prices / Roster / Docs / Backup / Contacts / Users / Account / Profile
 
 ## 마지막 작업 (2026-08-18~19)
+- 본앱 `cecf53c`(본 세션): **한가위 가을 테마 전면 교체(v2.17.0)** — 군밤·감·단풍 그라디언트, 보름달+반딧불, 낙엽 기상(AutumnWeather), sky/blue 유틸 계절 재매핑(25컴포넌트 무수정), 배포·라이브 실측 완료. ⚠️wslos는 다크 테마 독립 — 테마 이식 금지 원칙 유지
 - 본앱 `0bea341`·플랫폼 `a7774a0`(본 세션): **첫 화면 no-cache 헤더 교정 + v2.16.2/1.4.2 — 폰 구탭 강제 갱신 발동**
 - 본앱 `1c4b0c3`(본 세션): **새 달 규칙 exists 가드 + rules-test 회귀 14케이스(35/35)** — 규칙 배포 완료
 - 본앱 `7d4c488`(본 세션): **나라미 APK billing 격리 이식(v1.0.14) + 게이트 상향 — 3원인 완결**
