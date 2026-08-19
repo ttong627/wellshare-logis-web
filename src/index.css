@@ -82,10 +82,11 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 가을 하늘 — 위는 맑은 한지빛, 아래로 갈수록 노을 든 들녘 */
+/* 어둑어둑해지는 저녁 하늘 — 남보라 황혼에서 노을 잔광, 단풍 공원의 땅으로.
+   카드는 밝게 떠 등불처럼 보인다(형 지시 2026-08-19: 달 뜨는 저녁의 고즈넉한 공원). */
 body {
   background:
-    linear-gradient(180deg, #FFFDF6 0%, #FAF1DF 45%, #F3E6CD 100%) fixed,
+    linear-gradient(180deg, #2E2549 0%, #503A54 30%, #7C4A34 52%, #56361E 72%, #33200F 100%) fixed,
     var(--page-bg);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
@@ -98,7 +99,7 @@ body::before {
   content: '';
   position: fixed; inset: 0;
   z-index: 0; pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900' preserveAspectRatio='xMidYMid slice'%3E%3Cdefs%3E%3Cfilter id='w' x='-40%' y='-40%' width='180%' height='180%'%3E%3CfeGaussianBlur stdDeviation='34'/%3E%3C/filter%3E%3Cfilter id='t' x='-40%' y='-40%' width='180%' height='180%'%3E%3CfeGaussianBlur stdDeviation='13'/%3E%3C/filter%3E%3Cfilter id='s' x='-40%' y='-40%' width='180%' height='180%'%3E%3CfeGaussianBlur stdDeviation='4'/%3E%3C/filter%3E%3C/defs%3E%3Cellipse cx='300' cy='150' rx='420' ry='220' fill='rgba(244,196,120,.34)' filter='url(%23w)'/%3E%3Cellipse cx='900' cy='90' rx='400' ry='190' fill='rgba(248,224,170,.30)' filter='url(%23w)'/%3E%3Cellipse cx='1380' cy='130' rx='330' ry='200' fill='rgba(170,140,180,.22)' filter='url(%23w)'/%3E%3Cellipse cx='680' cy='330' rx='500' ry='210' fill='rgba(240,170,90,.16)' filter='url(%23w)'/%3E%3Cpath d='M0 600 Q200 520 420 570 T860 560 T1300 585 T1600 545 L1600 900 L0 900 Z' fill='rgba(160,110,95,.20)' filter='url(%23t)'/%3E%3Cpath d='M0 660 Q260 600 520 640 T1040 640 T1600 655 L1600 900 L0 900 Z' fill='rgba(130,85,60,.22)' filter='url(%23t)'/%3E%3Crect x='236' y='560' width='10' height='120' fill='rgba(110,70,40,.30)' filter='url(%23s)'/%3E%3Crect x='356' y='540' width='9' height='130' fill='rgba(110,70,40,.28)' filter='url(%23s)'/%3E%3Cellipse cx='240' cy='500' rx='120' ry='90' fill='rgba(200,70,35,.34)' filter='url(%23t)'/%3E%3Cellipse cx='340' cy='460' rx='110' ry='85' fill='rgba(235,150,45,.34)' filter='url(%23t)'/%3E%3Cellipse cx='300' cy='545' rx='95' ry='70' fill='rgba(180,45,25,.28)' filter='url(%23t)'/%3E%3Crect x='1348' y='580' width='10' height='115' fill='rgba(110,70,40,.30)' filter='url(%23s)'/%3E%3Cellipse cx='1352' cy='520' rx='115' ry='88' fill='rgba(240,195,55,.36)' filter='url(%23t)'/%3E%3Cellipse cx='1265' cy='565' rx='85' ry='62' fill='rgba(230,160,50,.28)' filter='url(%23t)'/%3E%3Cellipse cx='800' cy='880' rx='900' ry='190' fill='rgba(238,196,88,.26)' filter='url(%23w)'/%3E%3Cellipse cx='1330' cy='115' rx='150' ry='24' fill='rgba(255,246,226,.34)' filter='url(%23t)'/%3E%3Cellipse cx='1420' cy='165' rx='110' ry='18' fill='rgba(255,246,226,.26)' filter='url(%23t)'/%3E%3Cg stroke='rgba(96,62,40,.42)' stroke-width='3' fill='none' stroke-linecap='round' filter='url(%23s)'%3E%3Cpath d='M700 210 q14 -14 28 0 q14 -14 28 0'/%3E%3Cpath d='M770 180 q11 -11 22 0 q11 -11 22 0'/%3E%3Cpath d='M820 225 q10 -10 20 0 q10 -10 20 0'/%3E%3C/g%3E%3Cg filter='url(%23s)'%3E%3Ccircle cx='520' cy='430' r='7' fill='rgba(200,70,35,.25)'/%3E%3Ccircle cx='1120' cy='380' r='6' fill='rgba(240,195,55,.28)'/%3E%3Ccircle cx='980' cy='520' r='5' fill='rgba(230,140,40,.25)'/%3E%3Ccircle cx='430' cy='640' r='6' fill='rgba(180,45,25,.22)'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900' preserveAspectRatio='xMidYMid slice'%3E%3Cdefs%3E%3Cfilter id='w' x='-40%' y='-40%' width='180%' height='180%'%3E%3CfeGaussianBlur stdDeviation='34'/%3E%3C/filter%3E%3Cfilter id='t' x='-40%' y='-40%' width='180%' height='180%'%3E%3CfeGaussianBlur stdDeviation='13'/%3E%3C/filter%3E%3Cfilter id='s' x='-40%' y='-40%' width='180%' height='180%'%3E%3CfeGaussianBlur stdDeviation='4'/%3E%3C/filter%3E%3C/defs%3E%3Cellipse cx='500' cy='120' rx='600' ry='240' fill='rgba(90,70,140,.30)' filter='url(%23w)'/%3E%3Cellipse cx='1250' cy='100' rx='420' ry='210' fill='rgba(120,90,160,.25)' filter='url(%23w)'/%3E%3Cellipse cx='800' cy='430' rx='900' ry='180' fill='rgba(240,150,70,.18)' filter='url(%23w)'/%3E%3Cpath d='M1300 60 L1450 60 L1120 700 L860 700 Z' fill='rgba(255,236,190,.07)' filter='url(%23w)'/%3E%3Cpath d='M0 520 Q260 460 520 500 T1040 495 T1600 505 L1600 900 L0 900 Z' fill='rgba(30,18,30,.45)' filter='url(%23t)'/%3E%3Cpath d='M0 610 Q300 560 620 590 T1220 595 T1600 585 L1600 900 L0 900 Z' fill='rgba(24,12,16,.55)' filter='url(%23t)'/%3E%3Cellipse cx='350' cy='840' rx='500' ry='120' fill='rgba(150,50,28,.40)' filter='url(%23t)'/%3E%3Cellipse cx='1000' cy='870' rx='560' ry='130' fill='rgba(200,110,35,.32)' filter='url(%23t)'/%3E%3Cellipse cx='1450' cy='840' rx='380' ry='110' fill='rgba(120,35,20,.38)' filter='url(%23t)'/%3E%3Cpath d='M760 900 C820 800 900 740 1020 700 L1060 720 C950 770 880 830 850 900 Z' fill='rgba(255,225,170,.12)' filter='url(%23t)'/%3E%3Crect x='298' y='560' width='14' height='150' fill='rgba(20,10,8,.6)' filter='url(%23s)'/%3E%3Cellipse cx='300' cy='500' rx='130' ry='95' fill='rgba(110,30,18,.55)' filter='url(%23t)'/%3E%3Cellipse cx='370' cy='465' rx='100' ry='75' fill='rgba(160,60,25,.45)' filter='url(%23t)'/%3E%3Cellipse cx='390' cy='445' rx='60' ry='40' fill='rgba(255,215,140,.10)' filter='url(%23t)'/%3E%3Crect x='1238' y='585' width='12' height='125' fill='rgba(20,10,8,.6)' filter='url(%23s)'/%3E%3Cellipse cx='1245' cy='525' rx='115' ry='85' fill='rgba(140,45,22,.5)' filter='url(%23t)'/%3E%3Cellipse cx='1290' cy='500' rx='65' ry='45' fill='rgba(255,220,150,.14)' filter='url(%23t)'/%3E%3Crect x='618' y='640' width='6' height='110' fill='rgba(15,8,6,.65)' filter='url(%23s)'/%3E%3Ccircle cx='621' cy='632' r='10' fill='rgba(255,200,100,.65)' filter='url(%23s)'/%3E%3Ccircle cx='621' cy='632' r='46' fill='rgba(255,190,90,.18)' filter='url(%23t)'/%3E%3Cellipse cx='621' cy='770' rx='90' ry='26' fill='rgba(255,200,110,.10)' filter='url(%23t)'/%3E%3Cg stroke='rgba(235,220,195,.4)' stroke-width='3' fill='none' stroke-linecap='round' filter='url(%23s)'%3E%3Cpath d='M700 190 q14 -14 28 0 q14 -14 28 0'/%3E%3Cpath d='M770 160 q11 -11 22 0 q11 -11 22 0'/%3E%3Cpath d='M820 205 q10 -10 20 0 q10 -10 20 0'/%3E%3C/g%3E%3Cg filter='url(%23s)'%3E%3Ccircle cx='520' cy='430' r='7' fill='rgba(220,90,45,.30)'/%3E%3Ccircle cx='1120' cy='380' r='6' fill='rgba(245,200,70,.32)'/%3E%3Ccircle cx='960' cy='540' r='5' fill='rgba(235,150,50,.28)'/%3E%3C/g%3E%3C/svg%3E");
   background-size: cover; background-position: center;
   animation: sceneBreath 60s ease-in-out infinite;
 }
@@ -115,19 +116,20 @@ body::after {
   position: fixed; inset: 0;
   z-index: 0; pointer-events: none;
   background-image:
-    /* 초저녁 하늘 기운 — 달 언저리만 푸르스름하게 저문다 */
-    radial-gradient(circle 460px at 86% 4%, rgba(64, 52, 94, .17), rgba(64, 52, 94, .06) 55%, transparent 76%),
-    /* 달무리 — 얇게 한 겹만 */
-    radial-gradient(circle at 85% 11%, transparent 46px, rgba(255, 248, 226, .30) 51px, transparent 66px),
-    /* 보름달 원판 — 은상아빛, 가장자리 또렷 */
+    /* 넓은 달빛 무리 — 갓 떠오른 달이 어스름을 밀어내기 시작한다 */
+    radial-gradient(circle at 85% 11%, transparent 46px, rgba(255, 244, 210, .38) 54px, transparent 80px),
+    radial-gradient(circle 200px at 85% 11%, rgba(255, 236, 190, .16), transparent 75%),
+    /* 보름달 원판 — 밝은 상아빛, 가장자리 또렷 */
     radial-gradient(circle at 85% 11%,
-      #FFFDF4 0 30px, #F8F1DC 42px, #EFE6C8 45px,
-      rgba(239, 230, 200, .9) 46px, transparent 47.5px),
-    /* 가을밤 반딧불 — 수를 줄여 은은하게 */
-    radial-gradient(circle 1.5px at 12% 30%, rgba(255, 214, 120, .7), transparent 60%),
-    radial-gradient(circle 1.5px at 64% 46%, rgba(255, 206, 110, .6), transparent 60%),
-    radial-gradient(circle 1.5px at 38% 80%, rgba(255, 214, 120, .6), transparent 60%);
+      #FFFDF0 0 30px, #F8EFD2 43px, #EDE2BE 46px,
+      rgba(237, 226, 190, .9) 47px, transparent 48.5px),
+    /* 가을밤 반딧불 — 어스름 속에서 또렷하게 빛난다 */
+    radial-gradient(circle 1.5px at 12% 30%, rgba(255, 214, 120, .85), transparent 60%),
+    radial-gradient(circle 1.5px at 64% 46%, rgba(255, 206, 110, .75), transparent 60%),
+    radial-gradient(circle 1.5px at 30% 62%, rgba(255, 214, 120, .7), transparent 60%),
+    radial-gradient(circle 1.5px at 38% 80%, rgba(255, 214, 120, .7), transparent 60%);
 }
+
 @keyframes fireflyTwinkle { 0%,100% { opacity: .6 } 50% { opacity: 1 } }
 
 /* 앱 콘텐츠는 항상 배경 위 */
@@ -241,7 +243,7 @@ body::after {
 
 /* ══ 스크롤바 — 단풍 ═══════════════════════════════════════════════ */
 ::-webkit-scrollbar             { width: 8px; height: 8px; }
-::-webkit-scrollbar-track       { background: rgba(168,82,16,.08); border-radius: 10px; }
+::-webkit-scrollbar-track       { background: rgba(255,220,160,.12); border-radius: 10px; }
 ::-webkit-scrollbar-thumb       { background: linear-gradient(180deg, #D9A21B, #9C4A08); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #A85210, #5A2A0C); background-clip: padding-box; }
 
