@@ -44,6 +44,7 @@
 **메인 웹앱 탭 17종**: Orders / Schedule / DeliveryCompletion / Billing / PartnerBilling / Payment / Performance / Statistics / Prices / Roster / Docs / Backup / Contacts / Users / Account / Profile
 
 ## 마지막 작업 (2026-08-18~19)
+- 본앱 `0bea341`·플랫폼 `a7774a0`(본 세션): **첫 화면 no-cache 헤더 교정 + v2.16.2/1.4.2 — 폰 구탭 강제 갱신 발동**
 - 본앱 `1c4b0c3`(본 세션): **새 달 규칙 exists 가드 + rules-test 회귀 14케이스(35/35)** — 규칙 배포 완료
 - 본앱 `7d4c488`(본 세션): **나라미 APK billing 격리 이식(v1.0.14) + 게이트 상향 — 3원인 완결**
 - 본앱 `7941a31`(병행 세션): ecountSales 저장을 billing_admin으로 + v2.16.1 + 데이터 회수(부모 9건 이식·동대문구 복구·부모 잔재 제거) — **배포 완료**
@@ -75,7 +76,7 @@
 
 ## 리스크
 - 🟢 (해결 2026-08-19) **나라미 APK 격리 이식 완료** — v1.0.14 배포·게이트 상향으로 전 기기 강제 자가 업데이트. 3원인 전부 종결
-- 🟡 **wslos 열린 구탭**: SW 없음 → 배포 후에도 새로고침 전까지 구코드 — 회원사에 "안 되면 새로고침" 안내
+- 🟡 (완화 2026-08-19) **폰 구탭 고착**: 원인="첫 화면 / 요청이 1시간 캐시 + 가드 이전 좀비 탭". 조치: 전역 no-cache 헤더(양쪽 실측 확인)·본앱 v2.16.2 SW 갱신·플랫폼 1.4.2 배포로 UpdateGate(8/11 이후 탭)·SW(v2.15.2 이후 탭) 보유 탭 전부 자동 새로고침 발동. **잔여: 가드 이전 좀비 탭만 "탭 닫고 새로 열기" 1회 안내 필요**
 - 🟡 **발행요청 취소 merge 잔존 의심(양쪽 공통)**: PaymentTab `handleClearPublishRequest`가 whole-map saveField(merge) — merge는 삭제된 키를 못 지워 취소가 서브독에 안 남을 수 있음(화면은 지워져 보이나 재로드 시 부활 가능). 실측 후 서브독 deleteField로 교정 검토
 - 🟡 계정 함정: gh 활성 `ttong0627` ↔ owner `ttong627` — 토큰 주입 방식 유지
 - 🟡 nworks 토큰 이중갱신 금지(메일 작업은 VM에서만) · 양곡 cron 가동은 VM 로그로 확인
