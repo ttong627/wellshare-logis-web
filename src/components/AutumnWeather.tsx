@@ -57,6 +57,8 @@ export default function AutumnWeather() {
       for (let i = 0; i < count; i++) {
         const p = document.createElement('span');
         p.className = `fall-p fall-${kind} ${pick(LEAVES)}`;
+        // 색 변주 — 같은 나무의 잎도 색이 제각각이듯, 잎마다 색조·채도를 살짝 흔든다(화려함)
+        p.style.filter = `hue-rotate(${rand(-12, 12).toFixed(0)}deg) saturate(${rand(1, 1.3).toFixed(2)}) brightness(${rand(0.96, 1.08).toFixed(2)})`;
 
         // 크기 3계층 원근감 — 고만고만하면 티끌처럼 보인다(형 피드백 2026-08-19).
         //   가까운 큰 잎(주인공·소수) / 중간 잎 / 멀리 작은 잎으로 차이를 크게 벌린다.
