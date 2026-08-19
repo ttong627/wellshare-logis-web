@@ -34,8 +34,8 @@ export default function ContactsTab() {
         {Object.entries(groupedContacts).map(([agency, contacts]) => (
           <div key={agency} className="glass rounded-2xl overflow-hidden">
             <div className="px-5 py-3 border-b border-sky-100 flex items-center gap-2"
-              style={{ background: 'linear-gradient(135deg,rgba(24,168,216,.07),rgba(92,203,238,.03))' }}>
-              <div className="w-1.5 h-4 rounded-full" style={{ background: 'linear-gradient(180deg,#18A8D8,#5CCBEE)' }} />
+              style={{ background: 'linear-gradient(135deg,rgba(232,163,23,.10),rgba(212,122,26,.04))' }}>
+              <div className="w-1.5 h-4 rounded-full" style={{ background: 'linear-gradient(180deg,#E8A317,#A85210)' }} />
               <h3 className="font-black text-sky-700 text-sm">{safeRender(agency)}</h3>
             </div>
             <div className="divide-y divide-sky-50">
@@ -61,8 +61,8 @@ export default function ContactsTab() {
 
       <div className="glass rounded-2xl overflow-hidden">
         <div className="px-5 py-3 border-b border-sky-100 flex items-center gap-2"
-          style={{ background: 'linear-gradient(135deg,rgba(24,168,216,.07),rgba(92,203,238,.03))' }}>
-          <div className="w-1.5 h-4 rounded-full" style={{ background: 'linear-gradient(180deg,#18A8D8,#5CCBEE)' }} />
+          style={{ background: 'linear-gradient(135deg,rgba(232,163,23,.10),rgba(212,122,26,.04))' }}>
+          <div className="w-1.5 h-4 rounded-full" style={{ background: 'linear-gradient(180deg,#E8A317,#A85210)' }} />
           <h3 className="font-black text-sky-700 text-sm">지자체 담당자 연락망</h3>
         </div>
         <div className="divide-y divide-sky-50">

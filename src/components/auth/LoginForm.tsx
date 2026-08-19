@@ -89,13 +89,13 @@ export default function LoginForm({ onPendingRegistered }: LoginFormProps) {
     <div className="min-h-screen flex items-center justify-center p-4 font-sans relative">
       <div className="glass w-full max-w-md rounded-3xl p-7 sm:p-10 anim-in relative z-10">
 
-        {/* 로고 — 얼음판 위에 놓인 배지 */}
+        {/* 로고 — 보름달빛 아래 놓인 배지 */}
         <div className="flex justify-center mb-6">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center ice-float"
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center moon-float"
             style={{
-              background: 'linear-gradient(180deg,#FFFFFF,#EAF6FC)',
-              border: '1px solid rgba(24,168,216,.22)',
-              boxShadow: '0 10px 26px rgba(10,95,130,.18), inset 0 1px 0 #fff',
+              background: 'linear-gradient(180deg,#FFFDF8,#FBEFD9)',
+              border: '1px solid rgba(168,82,16,.24)',
+              boxShadow: '0 10px 26px rgba(110,48,9,.18), inset 0 1px 0 #fff',
             }}>
             <img src="/logo.png" alt="웰쉐어로지스 로고" className="w-14 h-14 sm:w-16 sm:h-16 object-contain"
               onError={(e) => (e.currentTarget.style.display = 'none')} />

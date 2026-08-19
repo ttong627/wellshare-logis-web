@@ -44,7 +44,7 @@ export default function PricesTab() {
             const p = zonePrices[zone] || { billing: 0 };
             return (
               <div key={zone} className="fin-card relative overflow-hidden p-3 sm:p-4 flex flex-col justify-center">
-                <div className="absolute top-0 left-0 right-0 h-1" style={{ background: 'linear-gradient(90deg,#5CCBEE,#0E7FA8)' }} />
+                <div className="absolute top-0 left-0 right-0 h-1" style={{ background: 'linear-gradient(90deg,#E8A317,#8A3D0A)' }} />
                 <div className="font-bold text-center text-sky-600 mb-2 text-[10px] sm:text-xs uppercase tracking-widest">{safeRender(zone)}</div>
                 <div className="relative flex items-baseline justify-center gap-1">
                   <input

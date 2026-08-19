@@ -1,64 +1,72 @@
 @import "tailwindcss";
 
 /* ══════════════════════════════════════════════════════════════════════
-   WELLSHARE 나라미 정산포털 — "ICEBERG" 라이트 테마
+   WELLSHARE 나라미 정산포털 — "한가위 HARVEST MOON" 가을 테마
    ────────────────────────────────────────────────────────────────────
-   컨셉 : 무더위를 식히는 빙산. 맑은 빙하수 위에 떠 있는 얼음 유리판.
-          깊은 바다(딥 시안) → 빙벽(아이스 시안) → 눈(화이트) 3단 명도.
-   원칙 :
+   컨셉 : 추석 보름달이 뜬 가을 들녘. 노을빛 하늘 아래 낙엽이 흩날리고,
+          군밤(딥 브라운) → 구운 감(브론즈) → 단풍(앰버) 3단 명도의 풍요.
+   원칙 : (ICEBERG 테마의 원칙을 그대로 계승)
    ① 집중 : 움직임은 '배경·헤더'에만. 숫자·표가 있는 데이터 영역은
       정적으로 두어 눈이 금액에 머물게 한다(정산 프로그램의 본분).
    ② 가독성 : 본문은 어떤 표면 위에서도 대비 4.5:1 이상. 옅은 Tailwind
       색 유틸은 [가독성 승격] 레이어에서 실측값으로 끌어올린다.
-   ③ 3D : 얼음판의 두께감(상단 하이라이트 + 하단 굴절 그림자)과
-      hover 시 미세한 기울기로 입체를 표현. 과한 회전은 쓰지 않는다.
-   ④ CI 준수 : 시안 #18A8D8 · 보라 #8C288C · 핑크 #D8307B
+   ③ 3D : 원목판의 두께감(상단 하이라이트 + 하단 그림자)과 hover 시
+      미세한 기울기로 입체를 표현. 과한 회전은 쓰지 않는다.
+   ④ CI : 시안 #18A8D8 · 보라 #8C288C · 핑크 #D8307B — 로고·포인트에만.
+      테마 축은 한가위 팔레트가 잡는다(계절 테마 우선, 형 지시 2026-08-19).
+   ⑤ 명명 : .btn-sky·.sky-hero 등 'sky' 명명은 ICEBERG 시절 유산이다.
+      25개 파일이 참조하므로 이름은 두고 정의만 갈아입힌다(외과적 교체).
    ══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── 빙산 팔레트 ── */
-  --ice-abyss:  #084C68;   /* 심해 */
-  --ice-deep:   #0A5F82;   /* 수면 아래 빙벽 */
-  --ice-ocean:  #0E7FA8;   /* CI 딥 시안 */
-  --ice-cyan:   #18A8D8;   /* CI 시안(액센트 전용) */
-  --ice-glacier:#7FD6EF;   /* 빙하 */
-  --ice-frost:  #D6F0FA;   /* 서리 */
-  --ice-snow:   #F2FAFE;   /* 눈 */
-  --ice-mint:   #E6F8F4;   /* 빙하 그늘 */
+  /* ── 한가위 팔레트 ── */
+  --ember-night: #3A1D0B;  /* 밤 장작불 그림자 */
+  --chestnut:    #5A2A0C;  /* 군밤 (흰 글씨 11.8:1) */
+  --persimmon:   #8A3D0A;  /* 구운 감 (흰 글씨 7.6:1) */
+  --maple-amber: #A85210;  /* 단풍 앰버 (흰 글씨 5.4:1) */
+  --gold:        #E8A317;  /* 은행잎 금빛 (액센트 전용) */
+  --maple-red:   #C2401F;  /* 단풍 빨강 (액센트 전용) */
+  --moon:        #FFF6D8;  /* 보름달 */
+  --hanji:       #FFFBF2;  /* 한지 */
+  --field:       #F5E2C4;  /* 노을 든 들녘 */
 
-  /* ── CI ── */
+  /* ── CI (로고·포인트 전용) ── */
   --ci-cyan:   #18A8D8;
   --ci-purple: #8C288C;
   --ci-pink:   #D8307B;
 
   /* ── 표면 ── */
-  --page-bg:  #EAF4FA;
-  --card-bg:  rgba(255, 255, 255, .95);
-  --card-bd:  rgba(24, 168, 216, .18);
+  --page-bg:  #FBF1DE;
+  --card-bg:  rgba(255, 253, 248, .96);
+  --card-bd:  rgba(168, 82, 16, .20);
 
   /* ── 잉크(실측 대비) ── */
-  --ink-900: #0B2E44;   /* 제목    14.6:1 */
-  --ink-700: #1E4B63;   /* 본문     8.6:1 */
-  --ink-500: #4E6C82;   /* 보조     5.5:1 */
+  --ink-900: #3A2410;   /* 제목    13.9:1 */
+  --ink-700: #553415;   /* 본문     9.8:1 */
+  --ink-500: #7D5A34;   /* 보조     5.9:1 */
 
-  /* ── 얼음 그림자(깊이 3단) ── */
-  --sh-ice-1: 0 1px 0 rgba(255,255,255,.9) inset, 0 2px 10px rgba(10, 95, 130, .10);
-  --sh-ice-2: 0 1px 0 rgba(255,255,255,.9) inset, 0 8px 24px rgba(10, 95, 130, .16), 0 2px 6px rgba(11, 46, 68, .06);
-  --sh-ice-3: 0 1px 0 rgba(255,255,255,.95) inset, 0 18px 44px rgba(10, 95, 130, .22), 0 6px 14px rgba(11, 46, 68, .10);
+  /* ── 가을 그림자(깊이 3단 · 따뜻한 갈색) ── */
+  --sh-fall-1: 0 1px 0 rgba(255,255,255,.9) inset, 0 2px 10px rgba(122, 62, 16, .10);
+  --sh-fall-2: 0 1px 0 rgba(255,255,255,.9) inset, 0 8px 24px rgba(122, 62, 16, .16), 0 2px 6px rgba(58, 29, 11, .06);
+  --sh-fall-3: 0 1px 0 rgba(255,255,255,.95) inset, 0 18px 44px rgba(122, 62, 16, .22), 0 6px 14px rgba(58, 29, 11, .10);
 
   /* ── 브랜드 그라디언트(흰 글씨 전용 면) — 테마 교체 지점 ──
-     세 스톱 모두 흰 글씨 대비 4.5:1 이상(실측 9.36 / 5.65 / 4.67)이라
+     세 스톱 모두 흰 글씨 대비 4.5:1 이상(실측 11.8 / 7.6 / 5.4)이라
      그라디언트 어느 지점에 글씨가 걸려도 읽힌다. */
-  --grad-1: #084C68;
-  --grad-2: #0B6F94;
-  --grad-3: #0F7DA5;
+  --grad-1: #5A2A0C;
+  --grad-2: #8A3D0A;
+  --grad-3: #A85210;
 
-  /* ── 하위 호환(기존 컴포넌트 참조) ── */
-  --sky-deep: #0E7FA8; --sky-mid: #18A8D8; --sky-light: #7FD6EF;
-  --sky-pale: #D6F0FA; --sky-crystal: #F2FAFE;
+  /* ── 하위 호환(기존 컴포넌트 참조 — 이름은 하늘, 값은 가을) ── */
+  --sky-deep: #8A3D0A; --sky-mid: #A85210; --sky-light: #E8A317;
+  --sky-pale: #F7E8CD; --sky-crystal: #FFFBF2;
+  --ice-abyss: #3A1D0B; --ice-deep: #5A2A0C; --ice-ocean: #8A3D0A;
+  --ice-cyan: #A85210; --ice-glacier: #E8A317; --ice-frost: #F7E8CD;
+  --ice-snow: #FFFBF2; --ice-mint: #F5EAD8;
   --glass-bg: var(--card-bg);
   --glass-border: var(--card-bd);
-  --shadow-sky: var(--sh-ice-2);
+  --shadow-sky: var(--sh-fall-2);
+  --sh-ice-1: var(--sh-fall-1); --sh-ice-2: var(--sh-fall-2); --sh-ice-3: var(--sh-fall-3);
 }
 
 /* ══ 기반 ══════════════════════════════════════════════════════════ */
@@ -74,149 +82,160 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 빙하수 — 위는 맑은 하늘, 아래로 갈수록 깊은 물빛 */
+/* 가을 하늘 — 위는 맑은 한지빛, 아래로 갈수록 노을 든 들녘 */
 body {
   background:
-    linear-gradient(180deg, #F4FBFE 0%, #E4F3FA 42%, #D8ECF7 100%) fixed,
+    linear-gradient(180deg, #FFFBF2 0%, #FBEFD9 42%, #F5E2C4 100%) fixed,
     var(--page-bg);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
 
-/* 떠다니는 빙산 — 배경 깊이감(움직임은 여기서만) */
+/* 노을 오브 — 배경 깊이감(움직임은 여기서만) */
 body::before {
   content: '';
   position: fixed; inset: -14% -8%;
   z-index: 0; pointer-events: none;
   background:
-    /* 빛나는 빙벽 */
-    radial-gradient(circle 420px at 14% 20%, rgba(127, 214, 239, .40), transparent 66%),
-    /* 깊은 물 그림자 */
-    radial-gradient(circle 480px at 86% 74%, rgba(14, 127, 168, .20), transparent 64%),
-    /* 오로라 한 줄기(CI 보라) */
-    radial-gradient(circle 340px at 66% 8%,  rgba(140, 40, 140, .10), transparent 66%);
+    /* 노을빛 금 무리 */
+    radial-gradient(circle 420px at 14% 20%, rgba(232, 163, 23, .30), transparent 66%),
+    /* 홍시빛 그림자 */
+    radial-gradient(circle 480px at 86% 74%, rgba(194, 84, 26, .16), transparent 64%),
+    /* 저녁놀 보라 한 줄기(CI 보라) */
+    radial-gradient(circle 340px at 66% 8%,  rgba(140, 40, 140, .08), transparent 66%);
   filter: blur(48px);
-  animation: iceDrift 30s ease-in-out infinite;
+  animation: emberDrift 30s ease-in-out infinite;
 }
-@keyframes iceDrift {
+@keyframes emberDrift {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
   50%      { transform: translate3d(30px, -24px, 0) scale(1.06); }
 }
 
-/* 서리 반짝임 — opacity만 바꿔 저비용 */
+/* 보름달 + 반딧불 — 블러 없이 또렷하게(달은 이 레이어의 주인공) */
 body::after {
   content: '';
   position: fixed; inset: 0;
   z-index: 0; pointer-events: none;
   background-image:
-    radial-gradient(circle 2px at 12% 22%, rgba(255,255,255,.95), transparent 60%),
-    radial-gradient(circle 1.5px at 34% 62%, rgba(255,255,255,.85), transparent 60%),
-    radial-gradient(circle 2px at 68% 34%, rgba(255,255,255,.9), transparent 60%),
-    radial-gradient(circle 1.5px at 84% 70%, rgba(255,255,255,.8), transparent 60%),
-    radial-gradient(circle 1.5px at 52% 86%, rgba(255,255,255,.85), transparent 60%);
-  animation: frostTwinkle 6s ease-in-out infinite;
+    /* 보름달 — 달몸 · 달무리 2겹 */
+    radial-gradient(circle at 85% 11%,
+      #FFF6D8 0, #FFF6D8 46px, rgba(255,238,190,.9) 49px,
+      rgba(255,220,140,.28) 72px, transparent 108px),
+    /* 달 표면 그늘(분화구 느낌) */
+    radial-gradient(circle 9px at 83.6% 9.4%, rgba(214,178,110,.4), transparent 70%),
+    radial-gradient(circle 6px at 86.4% 12.6%, rgba(214,178,110,.32), transparent 70%),
+    /* 가을밤 반딧불 */
+    radial-gradient(circle 2px at 12% 26%, rgba(255,214,120,.95), transparent 60%),
+    radial-gradient(circle 1.5px at 34% 64%, rgba(255,200,100,.85), transparent 60%),
+    radial-gradient(circle 2px at 66% 38%, rgba(255,214,120,.9), transparent 60%),
+    radial-gradient(circle 1.5px at 88% 66%, rgba(255,200,100,.8), transparent 60%),
+    radial-gradient(circle 1.5px at 50% 84%, rgba(255,214,120,.85), transparent 60%);
+  animation: fireflyTwinkle 6s ease-in-out infinite;
 }
-@keyframes frostTwinkle { 0%,100% { opacity: .35 } 50% { opacity: .9 } }
+@keyframes fireflyTwinkle { 0%,100% { opacity: .6 } 50% { opacity: 1 } }
 
 /* 앱 콘텐츠는 항상 배경 위 */
 #root { position: relative; z-index: 1; }
 
-/* ══ 배경 기상 효과 — 눈보라 · 돌개바람 · 흩날림 ═══════════════════
-   IceWeather 컴포넌트가 랜덤 값(--dx/--dy/--r/--spin…)을 심어 넣는다.
+/* ══ 배경 기상 효과 — 낙엽 낙하 · 가랑잎 돌풍 · 낙엽 회오리 ═══════
+   AutumnWeather 컴포넌트가 랜덤 값(--dx/--dy/--r/--spin…)을 심어 넣는다.
    클릭을 가로채지 않으며(pointer-events:none), transform/opacity만 움직인다. */
-.ice-weather {
+.fall-weather {
   position: fixed; inset: 0;
-  z-index: 2;                 /* 배경 오브(0) 위, 앱 콘텐츠(#root=1)보다 위지만 클릭 불가 */
+  z-index: 2;                 /* 배경(0) 위, 앱 콘텐츠(#root=1)보다 위지만 클릭 불가 */
   pointer-events: none;
   overflow: hidden;
   contain: strict;            /* 바깥 레이아웃에 영향 주지 않음 */
 }
-/* 입자 — 밝은 빙하 배경에서도 보이도록 '흰 코어 + 시안 링' 구조로 만든다.
-   (흰색만 쓰면 라이트 테마에서 배경에 묻혀 아무것도 안 보인다) */
-.ice-p {
+/* 낙엽 한 장 — 잎몸(두 톤 그라디언트) + 잎맥(::after) */
+.fall-p {
   position: absolute;
-  width: var(--size, 4px); height: var(--size, 4px);
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 32%, #FFFFFF 0%, #EAF7FD 38%, rgba(24,168,216,.85) 100%);
-  border: 1px solid rgba(11,111,148,.55);
-  box-shadow: 0 0 8px rgba(24,168,216,.55), 0 1px 3px rgba(11,46,68,.25);
+  width: var(--size, 12px); height: calc(var(--size, 12px) * .82);
+  border-radius: 4% 72% 6% 72%;
+  background: linear-gradient(135deg, var(--leaf-a, #D65A2A) 0%, var(--leaf-b, #9E2E12) 100%);
+  box-shadow: 0 1px 3px rgba(58,29,11,.28), inset 0 1px 0 rgba(255,255,255,.22);
   opacity: 0;
   will-change: transform, opacity;
 }
-/* 눈보라 입자는 바람에 늘어난 형태(가로로 흐르는 궤적) */
-.ice-blizzard {
-  width: calc(var(--size, 4px) * 4.5);
-  border-radius: 50%;
+.fall-p::after {
+  content: '';
+  position: absolute; left: 6%; top: 6%; width: 88%; height: 88%;
+  background: linear-gradient(135deg, transparent 47%, rgba(58,29,11,.30) 50%, transparent 53%);
+  pointer-events: none;
 }
+/* 잎 종류 — 단풍·은행·갈잎 */
+.fall-maple  { --leaf-a: #D65A2A; --leaf-b: #9E2E12; }
+.fall-ginkgo { --leaf-a: #F2BC3B; --leaf-b: #CE8A10; }
+.fall-oak    { --leaf-a: #B07E3E; --leaf-b: #7A5220; }
 
-/* 냉기 베일 — 강풍·폭설일 때 화면을 훑고 지나가는 서늘한 바람의 결 */
-.ice-veil {
+/* 가을 바람결 — 돌풍·낙엽비일 때 화면을 훑는 따뜻한 금빛 결 */
+.fall-veil {
   position: absolute; top: -10%; bottom: -10%;
   width: 46vw;
   pointer-events: none;
   background: linear-gradient(100deg,
     transparent 0%,
-    rgba(214,240,250,.42) 30%,
-    rgba(127,214,239,.55) 50%,
-    rgba(214,240,250,.42) 70%,
+    rgba(247, 232, 205, .40) 30%,
+    rgba(232, 163, 23, .34) 50%,
+    rgba(247, 232, 205, .40) 70%,
     transparent 100%);
   filter: blur(14px);
   opacity: 0;
 }
-.ice-veil.storm { width: 78vw; filter: blur(20px); }
-.ice-veil.from-left  { left: -60vw;  animation: iceVeilL 2.6s cubic-bezier(.32,.06,.28,.98) both; }
-.ice-veil.from-right { right: -60vw; animation: iceVeilR 2.6s cubic-bezier(.32,.06,.28,.98) both; }
-.ice-veil.storm.from-left  { animation-duration: 3.1s; }
-.ice-veil.storm.from-right { animation-duration: 3.1s; }
-@keyframes iceVeilL {
+.fall-veil.storm { width: 78vw; filter: blur(20px); }
+.fall-veil.from-left  { left: -60vw;  animation: fallVeilL 2.6s cubic-bezier(.32,.06,.28,.98) both; }
+.fall-veil.from-right { right: -60vw; animation: fallVeilR 2.6s cubic-bezier(.32,.06,.28,.98) both; }
+.fall-veil.storm.from-left  { animation-duration: 3.1s; }
+.fall-veil.storm.from-right { animation-duration: 3.1s; }
+@keyframes fallVeilL {
   0%   { transform: translate3d(0,0,0) skewX(-9deg);        opacity: 0; }
   22%  { opacity: .95; }
   78%  { opacity: .8; }
   100% { transform: translate3d(190vw,0,0) skewX(-9deg);    opacity: 0; }
 }
-@keyframes iceVeilR {
+@keyframes fallVeilR {
   0%   { transform: translate3d(0,0,0) skewX(9deg);         opacity: 0; }
   22%  { opacity: .95; }
   78%  { opacity: .8; }
   100% { transform: translate3d(-190vw,0,0) skewX(9deg);    opacity: 0; }
 }
 
-/* 눈보라 — 화면을 가로질러 몰아친다(위아래로 살짝 흔들림) */
-.ice-blizzard {
-  animation: iceBlizzard var(--dur, 4s) linear var(--delay, 0s) 1 both;
+/* 낙하 — 나뭇가지에서 놓여난 잎이 좌우로 몸을 뒤집으며 떨어진다 */
+.fall-drop {
+  animation: autumnDrop var(--dur, 9s) cubic-bezier(.36,.1,.3,.9) var(--delay, 0s) 1 both;
 }
-@keyframes iceBlizzard {
+@keyframes autumnDrop {
+  0%   { transform: translate3d(0,0,0) rotate(var(--a0, 0deg));                 opacity: 0; }
+  8%   { opacity: var(--peak, .9); }
+  30%  { transform: translate3d(calc(var(--dx) * .3 + var(--sway, 16px)), 32vh, 0) rotate(calc(var(--a0, 0deg) + var(--spin) * .3)); }
+  55%  { transform: translate3d(calc(var(--dx) * .55 - var(--sway, 16px)), 58vh, 0) rotate(calc(var(--a0, 0deg) + var(--spin) * .55)); }
+  80%  { transform: translate3d(calc(var(--dx) * .8 + var(--sway, 16px)), 86vh, 0) rotate(calc(var(--a0, 0deg) + var(--spin) * .8)); opacity: var(--peak, .9); }
+  100% { transform: translate3d(var(--dx), 116vh, 0) rotate(calc(var(--a0, 0deg) + var(--spin)));  opacity: 0; }
+}
+
+/* 돌풍 — 가랑잎이 바람에 실려 화면을 가로지른다 */
+.fall-gust {
+  animation: autumnGust var(--dur, 4s) linear var(--delay, 0s) 1 both;
+}
+@keyframes autumnGust {
   0%   { transform: translate3d(0,0,0) rotate(0deg);            opacity: 0; }
-  8%   { opacity: var(--peak, .8); }
-  50%  { transform: translate3d(calc(var(--dx) * .5), calc(var(--dy) * .5 + var(--sway, 12px)), 0) rotate(calc(var(--spin) * .5)); }
-  88%  { opacity: var(--peak, .8); }
+  8%   { opacity: var(--peak, .85); }
+  50%  { transform: translate3d(calc(var(--dx) * .5), calc(var(--dy) * .5 + var(--sway, 14px)), 0) rotate(calc(var(--spin) * .5)); }
+  88%  { opacity: var(--peak, .85); }
   100% { transform: translate3d(var(--dx), var(--dy), 0) rotate(var(--spin)); opacity: 0; }
 }
 
-/* 흩날림 — 느리고 부드럽게 떠간다 */
-.ice-drift {
-  animation: iceDriftP var(--dur, 9s) cubic-bezier(.36,.1,.3,.9) var(--delay, 0s) 1 both;
+/* 회오리 — 낙엽이 한 점을 중심으로 반경을 키우며 감아 올라간다 */
+.fall-whirl {
+  animation: autumnWhirl var(--dur, 5s) cubic-bezier(.22,.7,.3,1) var(--delay, 0s) 1 both;
 }
-@keyframes iceDriftP {
-  0%   { transform: translate3d(0,0,0);                          opacity: 0; }
-  12%  { opacity: calc(var(--peak, .7) * .8); }
-  40%  { transform: translate3d(calc(var(--dx) * .4), calc(var(--dy) * .35 - var(--sway, 14px)), 0); }
-  70%  { transform: translate3d(calc(var(--dx) * .72), calc(var(--dy) * .74 + var(--sway, 14px)), 0); }
-  90%  { opacity: calc(var(--peak, .7) * .6); }
-  100% { transform: translate3d(var(--dx), var(--dy), 0);        opacity: 0; }
-}
-
-/* 돌개바람 — 한 점을 중심으로 반경을 키우며 감아 올라간다 */
-.ice-whirl {
-  animation: iceWhirl var(--dur, 5s) cubic-bezier(.22,.7,.3,1) var(--delay, 0s) 1 both;
-}
-@keyframes iceWhirl {
+@keyframes autumnWhirl {
   0% {
     transform: rotate(var(--a0, 0deg)) translateX(0) rotate(calc(var(--a0, 0deg) * -1)) translateY(0) scale(.6);
     opacity: 0;
   }
-  12% { opacity: var(--peak, .85); }
-  72% { opacity: calc(var(--peak, .85) * .8); }   /* 감아 도는 동안 충분히 보이게 */
+  12% { opacity: var(--peak, .9); }
+  72% { opacity: calc(var(--peak, .9) * .8); }   /* 감아 도는 동안 충분히 보이게 */
   100% {
     transform:
       rotate(calc(var(--a0, 0deg) + 720deg))
@@ -228,40 +247,40 @@ body::after {
   }
 }
 
-/* 모바일에서는 입자를 조금 더 작게(성능·시야 확보) */
+/* 모바일에서는 그림자를 가볍게(성능) */
 @media (max-width: 640px) {
-  .ice-p { box-shadow: 0 0 4px rgba(255,255,255,.7); }
+  .fall-p { box-shadow: 0 1px 2px rgba(58,29,11,.22); }
 }
 
-/* ══ 스크롤바 — 얼음 ═══════════════════════════════════════════════ */
+/* ══ 스크롤바 — 단풍 ═══════════════════════════════════════════════ */
 ::-webkit-scrollbar             { width: 10px; height: 10px; }
-::-webkit-scrollbar-track       { background: rgba(24,168,216,.08); border-radius: 10px; }
-::-webkit-scrollbar-thumb       { background: linear-gradient(180deg, #7FD6EF, #18A8D8); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #18A8D8, #0E7FA8); background-clip: padding-box; }
+::-webkit-scrollbar-track       { background: rgba(168,82,16,.08); border-radius: 10px; }
+::-webkit-scrollbar-thumb       { background: linear-gradient(180deg, #E8A317, #A85210); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #A85210, #5A2A0C); background-clip: padding-box; }
 
-/* ══ 얼음판 카드(.glass) ═══════════════════════════════════════════
-   두께감의 정체 : 위쪽 흰 하이라이트(inset) + 아래쪽 물빛 그림자.
-   내용 가독성을 위해 불투명도 95%로 충분히 불투명하게 유지한다. */
+/* ══ 한지 카드(.glass) ═════════════════════════════════════════════
+   두께감의 정체 : 위쪽 흰 하이라이트(inset) + 아래쪽 따뜻한 그림자.
+   내용 가독성을 위해 불투명도 96%로 충분히 불투명하게 유지한다. */
 .glass {
   position: relative;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.99) 0%, rgba(246,252,255,.95) 100%);
+    linear-gradient(180deg, rgba(255,253,248,.99) 0%, rgba(253,246,232,.95) 100%);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--card-bd);
   border-radius: 20px;
-  box-shadow: var(--sh-ice-2);
+  box-shadow: var(--sh-fall-2);
   transition: box-shadow .26s cubic-bezier(.4,0,.2,1), transform .26s cubic-bezier(.4,0,.2,1);
 }
-/* 얼음 표면의 빛 — 상단 가장자리 */
+/* 한지 표면의 빛 — 상단 가장자리 */
 .glass::before {
   content: '';
   position: absolute; inset: 0 0 auto 0; height: 42%;
   border-radius: 20px 20px 60% 60% / 20px 20px 22% 22%;
-  background: linear-gradient(180deg, rgba(255,255,255,.65), rgba(255,255,255,0));
+  background: linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,0));
   pointer-events: none;
 }
-.glass:hover { box-shadow: var(--sh-ice-3); transform: translateY(-2px); }
+.glass:hover { box-shadow: var(--sh-fall-3); transform: translateY(-2px); }
 
 /* 상단 고정 바 — .glass가 position:relative를 쓰므로(::before 기준) Tailwind의
    sticky 유틸이 덮인다. 고정이 필요한 곳은 이 클래스를 쓴다. */
@@ -271,141 +290,142 @@ body::after {
   transition: box-shadow .2s ease;
 }
 .ws-sticky:hover { transform: none; }          /* 고정 바는 뜨지 않게 */
-.ws-sticky.is-stuck { box-shadow: var(--sh-ice-3); }
+.ws-sticky.is-stuck { box-shadow: var(--sh-fall-3); }
 
-/* 심해 카드 — 흰 글씨용 */
+/* 밤하늘 카드 — 흰 글씨용 */
 .glass-dark {
   background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 58%, var(--grad-3) 100%);
   border: 1px solid rgba(255,255,255,.28);
   border-radius: 20px;
-  box-shadow: var(--sh-ice-2);
+  box-shadow: var(--sh-fall-2);
   color: #fff;
 }
 
-/* ══ 얼음 큐브 버튼 — 3D ══════════════════════════════════════════ */
+/* ══ 원목 큐브 버튼 — 3D (명명은 ICEBERG 유산 — 정의만 가을) ══════ */
 .btn-sky {
   position: relative;
-  /* 위가 밝고 아래가 깊은 얼음 큐브. 단, 가장 밝은 윗면도 흰 글씨 4.5:1을 지킨다 */
-  background: linear-gradient(180deg, #0F7DA5 0%, #0B6F94 52%, #084C68 100%);
+  /* 위가 밝고 아래가 깊은 단풍 원목. 가장 밝은 윗면도 흰 글씨 4.5:1을 지킨다 */
+  background: linear-gradient(180deg, #A85210 0%, #8A3D0A 52%, #5A2A0C 100%);
   box-shadow:
-    0 5px 0 #0A5F82,                       /* 얼음 두께 */
-    0 10px 22px rgba(10, 95, 130, .34),    /* 물에 비친 그림자 */
-    inset 0 1px 0 rgba(255,255,255,.55),   /* 윗면 광택 */
-    inset 0 -2px 6px rgba(8, 76, 104, .25);/* 아랫면 굴절 */
+    0 5px 0 #6E3009,                       /* 원목 두께 */
+    0 10px 22px rgba(110, 48, 9, .34),     /* 들녘에 드리운 그림자 */
+    inset 0 1px 0 rgba(255,255,255,.5),    /* 윗면 광택 */
+    inset 0 -2px 6px rgba(58, 29, 11, .25);/* 아랫면 음영 */
   color: #fff;
   font-weight: 800;
   border-radius: 14px;
   overflow: hidden;
   transition: transform .16s cubic-bezier(.34,1.56,.64,1), box-shadow .16s ease;
 }
-/* 표면을 스치는 빛 */
+/* 표면을 스치는 달빛 */
 .btn-sky::after {
   content: '';
   position: absolute; top: -60%; left: -40%;
   width: 36%; height: 220%;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent);
+  background: linear-gradient(100deg, transparent, rgba(255,240,200,.45), transparent);
   transform: rotate(14deg);
   transition: left .5s ease;
 }
 .btn-sky:hover::after { left: 130%; }
 .btn-sky:hover {
-  background: linear-gradient(180deg, #128BB6 0%, #0C769D 52%, #084C68 100%);
-  box-shadow: 0 7px 0 #0A5F82, 0 14px 30px rgba(10,95,130,.42), inset 0 1px 0 rgba(255,255,255,.6), inset 0 -2px 6px rgba(8,76,104,.22);
+  background: linear-gradient(180deg, #B95E14 0%, #94430C 52%, #5A2A0C 100%);
+  box-shadow: 0 7px 0 #6E3009, 0 14px 30px rgba(110,48,9,.42), inset 0 1px 0 rgba(255,255,255,.55), inset 0 -2px 6px rgba(58,29,11,.22);
   transform: translateY(-2px);
 }
 .btn-sky:active {
-  box-shadow: 0 1px 0 #0A5F82, 0 3px 8px rgba(10,95,130,.3), inset 0 3px 8px rgba(8,76,104,.35);
+  box-shadow: 0 1px 0 #6E3009, 0 3px 8px rgba(110,48,9,.3), inset 0 3px 8px rgba(58,29,11,.35);
   transform: translateY(4px);
 }
-.btn-sky:disabled { opacity: .5; box-shadow: 0 2px 0 #0A5F82; transform: none; cursor: not-allowed; }
+.btn-sky:disabled { opacity: .5; box-shadow: 0 2px 0 #6E3009; transform: none; cursor: not-allowed; }
 
 /* ══ 브랜드 그라디언트 면 — 흰 글씨/아이콘 전용 ═══════════════════
-   CI 원색(#18A8D8)은 흰 글씨 대비가 2.7:1뿐이라 본문 면에 쓰지 않는다.
    테마를 바꿀 땐 --grad-1/2/3 세 값만 고치면 전 화면이 함께 바뀐다. */
 .ws-grad      { background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 55%, var(--grad-3) 100%); color: #fff; }
 .ws-grad-soft { background: linear-gradient(160deg, var(--grad-3) 0%, var(--grad-2) 45%, var(--grad-1) 100%); color: #fff; }
 .ws-grad svg, .ws-grad-soft svg { color: #fff; }
 
-/* ══ 빙산 히어로 — 각 페이지 머리 ════════════════════════════════ */
+/* ══ 보름달 히어로 — 각 페이지 머리 ══════════════════════════════ */
 .sky-hero {
   position: relative;
   overflow: hidden;
   border-radius: 22px;
   color: #fff;
   background:
-    /* 수면 아래 푸른 깊이 — 전 구간 흰 글씨 4.5:1 이상 */
-    linear-gradient(135deg, #062F44 0%, var(--grad-1) 32%, var(--grad-2) 68%, var(--grad-3) 100%);
-  box-shadow: 0 14px 34px rgba(8, 76, 104, .30), inset 0 1px 0 rgba(255,255,255,.34);
+    /* 달무리 — 우상단에 은은한 금빛 */
+    radial-gradient(circle 220px at 88% 18%, rgba(255,238,190,.28), transparent 70%),
+    /* 추석 밤하늘 → 노을 지평선 — 전 구간 흰 글씨 4.5:1 이상 */
+    linear-gradient(135deg, #241536 0%, #3A1D0B 38%, var(--grad-1) 62%, var(--grad-2) 84%, var(--grad-3) 100%);
+  box-shadow: 0 14px 34px rgba(58, 29, 11, .30), inset 0 1px 0 rgba(255,240,200,.30);
 }
-/* 빙벽 상단 설선(雪線) */
+/* 지평선의 달빛 금선 */
 .sky-hero::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,220,140,.85), transparent);
   pointer-events: none;
 }
-/* 빙하 위를 천천히 지나가는 빛 */
+/* 들녘 위를 천천히 지나가는 달빛 */
 .sky-hero::after {
   content: '';
   position: absolute; top: -60%; left: -30%;
   width: 42%; height: 220%;
-  background: linear-gradient(100deg, transparent, rgba(214, 240, 250, .22), transparent);
+  background: linear-gradient(100deg, transparent, rgba(255, 238, 190, .18), transparent);
   transform: rotate(12deg);
-  animation: glacierShine 9s ease-in-out infinite;
+  animation: moonShine 9s ease-in-out infinite;
   pointer-events: none;
 }
-@keyframes glacierShine { 0%, 70% { left: -30%; } 100% { left: 125%; } }
+@keyframes moonShine { 0%, 70% { left: -30%; } 100% { left: 125%; } }
 
-/* ══ 탭 — 얼음 조각 pill ═════════════════════════════════════════ */
+/* ══ 탭 — 단풍 조각 pill ═════════════════════════════════════════ */
 .tab-active {
   background: linear-gradient(180deg, var(--grad-3) 0%, var(--grad-2) 55%, var(--grad-1) 100%);
-  box-shadow: 0 4px 0 #084C68, 0 8px 18px rgba(10,95,130,.32), inset 0 1px 0 rgba(255,255,255,.42);
+  box-shadow: 0 4px 0 #4A2208, 0 8px 18px rgba(110,48,9,.32), inset 0 1px 0 rgba(255,240,200,.4);
   color: #fff !important;
   transform: translateY(-2px);
 }
 .tab-active svg { color: #fff !important; }
 
-/* ══ 폼 — 얼음 위에 새긴 입력창 ══════════════════════════════════ */
+/* ══ 폼 — 한지 위에 새긴 입력창 ══════════════════════════════════ */
 input, select, textarea { color: var(--ink-900); border-radius: 12px; }
 input:focus, textarea:focus, select:focus {
   outline: none !important;
-  border-color: var(--ci-cyan) !important;
-  box-shadow: 0 0 0 3px rgba(24,168,216,.24), inset 0 1px 3px rgba(10,95,130,.10) !important;
+  border-color: var(--maple-amber) !important;
+  box-shadow: 0 0 0 3px rgba(232,163,23,.30), inset 0 1px 3px rgba(110,48,9,.10) !important;
 }
-::placeholder { color: #7C99AC !important; opacity: 1; }
-:focus-visible { outline: 3px solid rgba(24,168,216,.5); outline-offset: 2px; }
+::placeholder { color: #957A52 !important; opacity: 1; }
+:focus-visible { outline: 3px solid rgba(232,163,23,.55); outline-offset: 2px; }
 
 /* ══ 모션 유틸 ════════════════════════════════════════════════════ */
 @keyframes fade-in   { from { opacity: 0 } to { opacity: 1 } }
 @keyframes slide-up  { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes wsPop     { 0% { transform: scale(.94); opacity: 0 } 60% { transform: scale(1.02) } 100% { transform: scale(1); opacity: 1 } }
-@keyframes iceFloat  { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
-.anim-in   { animation: slide-up .42s cubic-bezier(.34,1.56,.64,1) both; }
-.anim-pop  { animation: wsPop .28s cubic-bezier(.34,1.56,.64,1) both; }
-.ice-float { animation: iceFloat 5s ease-in-out infinite; }
+@keyframes moonFloat { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+.anim-in    { animation: slide-up .42s cubic-bezier(.34,1.56,.64,1) both; }
+.anim-pop   { animation: wsPop .28s cubic-bezier(.34,1.56,.64,1) both; }
+.moon-float { animation: moonFloat 5s ease-in-out infinite; }
 
 /* ══ 로딩 표현 ════════════════════════════════════════════════════
-   ① 얼음 링 스피너 — 회전은 transform만 사용(리플로우 없음)
+   ① 황금 링 스피너 — 회전은 transform만 사용(리플로우 없음)
    ② 스켈레톤 — 최종 레이아웃을 미리 차지해 화면 흔들림(CLS)을 막는다 */
-.ice-spinner {
+.harvest-spinner {
   width: 54px; height: 54px; border-radius: 50%;
-  background: conic-gradient(from 0deg, rgba(24,168,216,0) 0deg, #7FD6EF 140deg, #0E7FA8 300deg, rgba(24,168,216,0) 360deg);
+  background: conic-gradient(from 0deg, rgba(232,163,23,0) 0deg, #E8A317 140deg, #8A3D0A 300deg, rgba(232,163,23,0) 360deg);
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px));
           mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px));
-  animation: iceSpin 1.05s linear infinite;
-  box-shadow: 0 6px 18px rgba(10,95,130,.18);
+  animation: harvestSpin 1.05s linear infinite;
+  box-shadow: 0 6px 18px rgba(110,48,9,.18);
 }
-@keyframes iceSpin { to { transform: rotate(360deg) } }
+@keyframes harvestSpin { to { transform: rotate(360deg) } }
 
 .skel {
   position: relative; overflow: hidden;
-  background: linear-gradient(180deg, #FFFFFF, #F3FAFE);
-  border: 1px solid rgba(24,168,216,.14);
+  background: linear-gradient(180deg, #FFFDF8, #FBF2E2);
+  border: 1px solid rgba(168,82,16,.14);
 }
 .skel::after {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(100deg, transparent 20%, rgba(214,240,250,.75) 50%, transparent 80%);
+  background: linear-gradient(100deg, transparent 20%, rgba(247,232,205,.8) 50%, transparent 80%);
   transform: translateX(-100%);
   animation: skelSweep 1.35s ease-in-out infinite;
 }
@@ -415,50 +435,51 @@ input:focus, textarea:focus, select:focus {
 .code-editor {
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
   font-size: 12.5px; line-height: 1.65;
-  background: #F2FAFE; color: #0B2E44;
-  border: 1px solid rgba(24,168,216,.3);
+  background: #FDF6E8; color: #3A2410;
+  border: 1px solid rgba(168,82,16,.3);
   border-radius: 12px; padding: 14px; resize: vertical;
-  caret-color: var(--ci-cyan);
+  caret-color: var(--maple-amber);
 }
-.code-editor:focus { border-color: var(--ci-cyan) !important; box-shadow: 0 0 0 3px rgba(24,168,216,.22) !important; }
+.code-editor:focus { border-color: var(--maple-amber) !important; box-shadow: 0 0 0 3px rgba(232,163,23,.26) !important; }
 
 /* ══════════════════════════════════════════════════════════════════
    FINANCE — 정산·결제 표 (집중 구역: 애니메이션 최소)
    ══════════════════════════════════════════════════════════════════ */
 
-/* 상태 토큰 — 파스텔 얼음 배경 + 진한 글씨(전부 4.5:1 이상) */
+/* 상태 토큰 — 파스텔 가을 배경 + 진한 글씨(전부 4.5:1 이상).
+   issued(발행)만 서늘한 청회색을 남긴다 — requested(주황)와 한눈에 구분되도록. */
 :root {
-  --st-wait-bg:      #EDF3F7;  --st-wait-fg:      #445A6B;  --st-wait-bd:      #C9DBE6;
+  --st-wait-bg:      #F3EDE2;  --st-wait-fg:      #5E4C36;  --st-wait-bd:      #DCCFB8;
   --st-requested-bg: #FFF2E3;  --st-requested-fg: #A34B00;  --st-requested-bd: #FFD4AA;
-  --st-issued-bg:    #E1F3FB;  --st-issued-fg:    #0A6285;  --st-issued-bd:    #A6DDF1;
-  --st-done-bg:      #E4F6F2;  --st-done-fg:      #0A6B4B;  --st-done-bd:      #A6E2D3;
+  --st-issued-bg:    #E7EEF8;  --st-issued-fg:    #35507A;  --st-issued-bd:    #C4D3EA;
+  --st-done-bg:      #E9F4E6;  --st-done-fg:      #2F6B1E;  --st-done-bd:      #BFDDB4;
   --st-paid-bg:      #E6F6E9;  --st-paid-fg:      #1B6B2B;  --st-paid-bd:      #A9DFB2;
 }
 
 /* 금액 — 고정폭으로 자릿수 정렬(눈이 금액에 머물게) */
 .fin-num { font-variant-numeric: tabular-nums; letter-spacing: -.01em; font-feature-settings: 'tnum' 1; }
 
-/* 정산 카드 — 살짝 떠 있는 얼음판 */
+/* 정산 카드 — 살짝 떠 있는 한지판 */
 .fin-card {
-  background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(244,251,255,.96));
+  background: linear-gradient(180deg, rgba(255,253,248,.99), rgba(253,246,232,.96));
   border: 1px solid var(--card-bd);
   border-radius: 18px;
-  box-shadow: var(--sh-ice-1);
+  box-shadow: var(--sh-fall-1);
   transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s ease;
 }
-.fin-card:hover { transform: translateY(-3px); box-shadow: var(--sh-ice-3); }
+.fin-card:hover { transform: translateY(-3px); box-shadow: var(--sh-fall-3); }
 
-/* 정산 표 — 헤더는 심해, 본문은 눈 */
+/* 정산 표 — 헤더는 군밤, 본문은 한지 */
 .fin-table { border-collapse: separate; border-spacing: 0; background: #fff; }
 .fin-table thead th {
   background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 55%, var(--grad-3) 100%);
   color: #fff; font-weight: 800;
   position: sticky; top: 0; z-index: 1;
-  box-shadow: 0 2px 6px rgba(8,76,104,.22);
+  box-shadow: 0 2px 6px rgba(58,29,11,.22);
 }
 .fin-table tbody tr { transition: background .12s; }
-.fin-table tbody tr:hover > * { background: #E4F3FB !important; }   /* 읽는 줄 강조 */
-.fin-zebra:nth-child(even) > * { background: #F5FBFE; }
+.fin-table tbody tr:hover > * { background: #FAEBD2 !important; }   /* 읽는 줄 강조 */
+.fin-zebra:nth-child(even) > * { background: #FCF5E8; }
 
 /* 상태 배지 */
 .fin-badge {
@@ -474,18 +495,20 @@ input:focus, textarea:focus, select:focus {
 .confirm-scrim { animation: fade-in .2s ease-out both; }
 
 /* ══════════════════════════════════════════════════════════════════
-   [가독성 승격] 옅은 유틸리티를 실측 기반으로 끌어올린다.
-   흰 카드뿐 아니라 옅은 틴트 배경(sky-50/100·slate-50/100·red-50·
-   rose-50·amber-50·violet-50) 위에서도 전부 4.5:1 이상 나오는
-   최소 명도를 골랐다.
+   [가독성 승격 + 계절 전환] 옅은 유틸리티를 실측 기반으로 끌어올리고,
+   ICEBERG 시절 컴포넌트에 새겨진 하늘/파랑 유틸을 가을빛으로 되비춘다.
+   흰 카드뿐 아니라 옅은 틴트 배경 위에서도 전부 4.5:1 이상.
    ⚠️ text-white·text-sky-100·text-sky-200 (진한 배경 위 글씨)은 제외.
    ⚠️ 새 색을 쓸 때 4.5:1 미만이면 반드시 여기에 추가할 것.
    ══════════════════════════════════════════════════════════════════ */
 .text-sky-300, .text-sky-400, .text-sky-500, .text-blue-400, .text-blue-500,
-.text-cyan-400, .text-cyan-500, .text-teal-400, .text-teal-500 { color: #0C7396 !important; }
-.text-sky-600, .text-blue-600, .text-cyan-600, .text-teal-600 { color: #0A6285 !important; }
-.text-slate-300, .text-gray-300, .text-slate-400, .text-gray-400 { color: #556E80 !important; }
-.text-slate-500, .text-gray-500 { color: #4E6C82 !important; }
+.text-cyan-400, .text-cyan-500, .text-teal-400, .text-teal-500 { color: #9C4A08 !important; }
+.text-sky-600, .text-blue-600, .text-cyan-600, .text-teal-600 { color: #7E3A08 !important; }
+.text-sky-700, .text-blue-700 { color: #7E3A08 !important; }
+.text-sky-800, .text-blue-800 { color: #66300B !important; }
+.text-sky-900 { color: #4A2410 !important; }
+.text-slate-300, .text-gray-300, .text-slate-400, .text-gray-400 { color: #6E5A42 !important; }
+.text-slate-500, .text-gray-500 { color: #62492D !important; }
 .text-emerald-400, .text-emerald-500, .text-emerald-600, .text-green-400, .text-green-500 { color: #0A6B4B !important; }
 .text-red-400, .text-red-500, .text-red-600, .text-rose-400, .text-rose-500, .text-rose-600 { color: #C2263F !important; }
 .text-amber-400, .text-amber-500, .text-amber-600,
@@ -494,18 +517,37 @@ input:focus, textarea:focus, select:focus {
 .text-violet-400, .text-violet-500, .text-purple-400, .text-purple-500,
 .text-indigo-400, .text-indigo-500 { color: #8C288C !important; }
 
+/* 하늘빛 표면 유틸 → 가을 한지빛 (컴포넌트 25곳을 안 바꾸고 전 화면 전환) */
+.bg-sky-50, .bg-blue-50, .bg-cyan-50 { background-color: #FCF3E2 !important; }
+.bg-sky-100, .bg-blue-100 { background-color: #F7E8CD !important; }
+.bg-sky-200, .bg-blue-200 { background-color: #EFDBB9 !important; }
+.bg-sky-500, .bg-sky-600 { background-color: #9C4A08 !important; }
+.bg-slate-50  { background-color: #FAF5EC !important; }
+.bg-slate-100 { background-color: #F3EBDC !important; }
+.bg-slate-200 { background-color: #E9DDC8 !important; }
+.border-sky-100, .border-blue-100 { border-color: #F0DFC2 !important; }
+.border-sky-200, .border-blue-200 { border-color: #E4CDA4 !important; }
+.border-sky-300 { border-color: #D3B27E !important; }
+.hover\:bg-sky-50:hover  { background-color: #FCF3E2 !important; }
+.hover\:bg-sky-100:hover { background-color: #F7E8CD !important; }
+.from-sky-500 { --tw-gradient-from: #9C4A08 !important; }
+.to-sky-400   { --tw-gradient-to: #C97F0B !important; }
+
 /* 예외 ① 다크 로그 콘솔 안의 초록 글씨는 원래 밝기 유지 */
 .bg-slate-900.text-green-400, .bg-slate-900 .text-green-400,
 .bg-slate-800.text-green-400, .bg-slate-800 .text-green-400 { color: #4ADE80 !important; }
+/* 다크 콘솔 표면은 승격 대상이 아니다 — 어두운 배경 유지 */
+.bg-slate-900 { background-color: #241A10 !important; }
+.bg-slate-800 { background-color: #332515 !important; }
 
-/* 예외 ② 진한 배경(히어로·심해카드·활성탭) 안에서는 승격을 되돌린다 */
+/* 예외 ② 진한 배경(히어로·밤하늘카드·활성탭) 안에서는 승격을 되돌린다 */
 .ws-grad [class*="text-sky-3"], .ws-grad [class*="text-sky-4"], .ws-grad [class*="text-sky-5"],
 .sky-hero [class*="text-sky-3"], .sky-hero [class*="text-sky-4"], .sky-hero [class*="text-sky-5"],
 .glass-dark [class*="text-sky-3"], .glass-dark [class*="text-sky-4"], .glass-dark [class*="text-sky-5"],
-.tab-active [class*="text-sky-"] { color: #DCF2FB !important; }
+.tab-active [class*="text-sky-"] { color: #F7E4C2 !important; }
 .ws-grad [class*="text-slate-3"], .ws-grad [class*="text-slate-4"],
 .sky-hero [class*="text-slate-3"], .sky-hero [class*="text-slate-4"],
-.glass-dark [class*="text-slate-3"], .glass-dark [class*="text-slate-4"] { color: #E6EEF4 !important; }
+.glass-dark [class*="text-slate-3"], .glass-dark [class*="text-slate-4"] { color: #F0E6D6 !important; }
 
 /* ══════════════════════════════════════════════════════════════════
    [밀도 압축] 한 화면에 더 많은 데이터를 담는다 (데스크톱 전용)
@@ -573,7 +615,8 @@ input:focus, textarea:focus, select:focus {
   .overflow-x-auto { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
   .fixed.bottom-6 { bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
   .text-\[9px\], .text-\[10px\] { font-size: 11px !important; }
-  body::after { display: none; }                                /* 반짝임 생략(성능) */
+  /* 보름달은 폰에서도 뜬다 — 반짝임 애니메이션만 생략(성능) */
+  body::after { animation: none; opacity: .85; }
 }
 
 /* 모션 최소화 선호 존중 */

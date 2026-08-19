@@ -338,7 +338,7 @@ export default function Navbar({
         {isGearOpen && (
           <div
             className="glass rounded-2xl overflow-hidden mb-2"
-            style={{ minWidth: 160, boxShadow: '0 12px 40px rgba(24,168,216,.3)' }}
+            style={{ minWidth: 160, boxShadow: '0 12px 40px rgba(168,82,16,.3)' }}
           >
             {gearTabs.map(t => (
               <button

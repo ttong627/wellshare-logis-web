@@ -8,7 +8,7 @@ import ConflictModal from './components/layout/ConflictModal';
 import LoginForm from './components/auth/LoginForm';
 import ErrorBoundary from './components/ErrorBoundary';
 import InstallPWAButton from './components/InstallPWAButton';
-import IceWeather from './components/IceWeather';
+import AutumnWeather from './components/AutumnWeather';
 import { XlsxApi } from './types';
 
 // Tab components — 코드 스플리팅(탭별 청크 분리로 초기 번들 축소)
@@ -93,7 +93,7 @@ function AppContent() {
   const loadingScreen = (msg: string) => (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
       <div className="glass rounded-3xl px-12 py-14 text-center max-w-sm mx-4 relative z-10 anim-in">
-        <div className="ice-spinner mx-auto mb-6" role="status" aria-label={msg} />
+        <div className="harvest-spinner mx-auto mb-6" role="status" aria-label={msg} />
         <p className="text-sky-700 font-black text-lg tracking-tight">{msg}</p>
         <p className="text-slate-400 text-xs font-bold mt-1.5">잠시만 기다려 주세요</p>
       </div>
@@ -238,7 +238,7 @@ export default function App() {
     <AppProvider>
       <AppContent />
       <InstallPWAButton />
-      <IceWeather />
+      <AutumnWeather />
     </AppProvider>
   );
 }
