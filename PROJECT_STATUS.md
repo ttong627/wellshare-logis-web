@@ -1,5 +1,5 @@
 # 📋 PROJECT STATUS — wellshare-logis-web
-> 자동 생성: /확인 스킬 · 갱신 2026-08-19 (규칙 수술 반영)
+> 자동 생성: /확인 스킬 · 갱신 2026-08-20 09:24 KST (로컬 PC FF 47커밋 동기화)
 
 ## 🔧 2026-08-18 모바일 저장 실패 수술 (형 지시: "폰·탭·패드 웹 저장 안 됨 철저 수정")
 **근본 원인 = "8/14 격리 규칙·부모필드 제거 이후에도 구 저장경로(부모 문서 직접 쓰기)를 실행하는 클라이언트"** — 3갈래:
@@ -70,17 +70,20 @@
 | `ecount-gateway/README.md` | ECOUNT 전표 연동 규격 |
 
 ## 작업환경
-- node v24.15.0 / npm 11.12.1 / gh✓ gcloud✓ firebase✓ · 핵심 4앱 의존성 설치 OK
+- node v24.15.0 / npm 11.12.1 / gh✓ gcloud✓ firebase✓ · 핵심 4앱 의존성 설치 OK (이 PC: ecount-gateway·mobile 2026-08-20 자동 설치)
 - 시크릿(존재 여부만): `.env`, `.env.example` — 값 비노출·커밋 금지
 - 실행: `npm run dev` (Vite, port 5173)
 
 ## 동기화
-- 본앱: main = origin/main = `7941a31`+docs · 워킹트리 clean
-- 플랫폼: main = origin/main = `9b67e02` · clean · **미push 9건도 이번에 push 완료**(89ea86a..9b67e02)
-- 마지막 fetch/push/배포: 2026-08-19 00:45 KST (owner 토큰 주입) · 본앱 `7d4c488`(모바일 수술)까지 push·호스팅 배포 완료
+- 본앱: main = origin/main = `f1281d3`(v2.17.8 한가위 테마 기록) · 워킹트리 clean
+- 이 PC(I:) 2026-08-20: **behind 47 → FF-only 최신화 완료**(owner 토큰 주입). 충돌 untracked 3건(구 PROJECT_STATUS·launch.json·메일핸드오프)은 원격과 동일/구버전 검증 후 스크래치패드 백업하고 원격판 채택 — 유실 0
+- 플랫폼: main = origin/main = `9b67e02` · clean (8/19 기준)
+- 마지막 fetch: 2026-08-20 09:2x KST · 마지막 push/배포: 2026-08-19 (다른 세션)
 - ⚠️**병행 세션 주의(8/18 실증)**: 다른 PC/세션이 같은 파일을 고쳐 push하는 일이 실제로 있었다(ecountSales 중복 수정 → 원격판 채택). **push 전 fetch로 diverge 확인** 습관화.
 
 ## 리스크
+- 🟢 (해결 2026-08-20 09:5x) **회원사 명단 다운로드 전멸 — Storage 크로스서비스 IAM 누락**: storage.rules의 `regionAllowed()`가 쓰는 `firestore.get()`에 필요한 롤 `roles/firebaserules.firestoreServiceAgent`가 `service-528541497350@gcp-sa-firebasestorage`에 한 번도 부여된 적 없어(IAM 이력 40일 0건) 8/14 규칙 강화부터 회원사 다운로드 전 거부(관리자는 isAdminEmail 단락이라 무증상). 8/20 미소 33회 실패로 표면화. **형 승인 후 롤 부여 → 임시계정 실검증: 매핑 없음 403(규칙 정상)·미소 매핑 200(복구 증명)·테스트 흔적 완전 원상복구**. 교훈: 크로스서비스 규칙 배포 시 CLI가 이 롤 자동부여를 묻는데 REST/CI 배포면 누락된다 — storage.rules에 firestore.get 추가하는 배포는 IAM 바인딩 확인 필수
+- 🟡 (발견 2026-08-20) **서초구 명단 1건 모순**: adminOnly=False·allowed=[행복나눔]인데 행복나눔 담당지역에 서초구 없음 → 목록엔 보이나 다운로드는 지역매핑에서 거부될 문서. 의도면 partnerRegions에 서초구 추가, 실수면 adminOnly 전환 필요
 - 🟢 (해결 2026-08-19) **나라미 APK 격리 이식 완료** — v1.0.14 배포·게이트 상향으로 전 기기 강제 자가 업데이트. 3원인 전부 종결
 - 🟡 (완화 2026-08-19) **폰 구탭 고착**: 원인="첫 화면 / 요청이 1시간 캐시 + 가드 이전 좀비 탭". 조치: 전역 no-cache 헤더(양쪽 실측 확인)·본앱 v2.16.2 SW 갱신·플랫폼 1.4.2 배포로 UpdateGate(8/11 이후 탭)·SW(v2.15.2 이후 탭) 보유 탭 전부 자동 새로고침 발동. **잔여: 가드 이전 좀비 탭만 "탭 닫고 새로 열기" 1회 안내 필요**
 - 🟡 **발행요청 취소 merge 잔존 의심(양쪽 공통)**: PaymentTab `handleClearPublishRequest`가 whole-map saveField(merge) — merge는 삭제된 키를 못 지워 취소가 서브독에 안 남을 수 있음(화면은 지워져 보이나 재로드 시 부활 가능). 실측 후 서브독 deleteField로 교정 검토
