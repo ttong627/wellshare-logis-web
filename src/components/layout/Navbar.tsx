@@ -4,7 +4,7 @@ import {
   FileSignature, CreditCard, ReceiptText, Contact, ShieldCheck,
   DatabaseBackup, HelpCircle, FileText, Calendar, LogOut,
   Bell, Users, ChevronLeft, ChevronRight, BarChart3,
-  ClipboardList, Lock, Unlock, FolderOpen, RotateCw,
+  ClipboardList, Lock, Unlock, FolderOpen, RotateCw, Landmark,
 } from 'lucide-react';
 import { Notification } from '../../types';
 import { safeRender } from '../../lib/utils';
@@ -13,7 +13,7 @@ import { APP_VERSION } from '../../constants/version';
 
 export type TabId =
   | 'profile' | 'account' | 'prices' | 'orders' | 'performance'
-  | 'delivery' | 'billing' | 'payment' | 'partner_billing'
+  | 'delivery' | 'billing' | 'payment' | 'settlement' | 'partner_billing'
   | 'statistics' | 'contacts' | 'users' | 'backup' | 'schedule' | 'docs' | 'roster';
 
 interface Tab { id: TabId; label: string; icon: React.ReactNode; visible: boolean; inGear?: boolean; }
@@ -66,6 +66,8 @@ export default function Navbar({
     { id: 'delivery',       label: '배송완료',   icon: <CheckSquare size={16} />,      visible: isAdmin || partnerCompany !== null },
     { id: 'billing',        label: '계산서발급', icon: <FileSignature size={16} />,    visible: isAdmin },
     { id: 'payment',        label: '결제내역',   icon: <CreditCard size={16} />,       visible: isAdmin },
+    // 발행한 계산서가 실제로 입금됐는지 대사 — 매출·미수금이 보이므로 본사 전용
+    { id: 'settlement',     label: '입금대사',   icon: <Landmark size={16} />,         visible: isAdmin },
     { id: 'partner_billing',label: '내역확인',   icon: <ReceiptText size={16} />,      visible: isAdmin || partnerCompany !== null },
     { id: 'roster',         label: '명단',       icon: <ClipboardList size={16} />,    visible: isAdmin || partnerCompany !== null },
     { id: 'statistics',     label: '통계자료',   icon: <BarChart3 size={16} />,        visible: isAdmin || partnerCompany !== null },
