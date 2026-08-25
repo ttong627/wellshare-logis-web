@@ -65,6 +65,26 @@ jobs:
           fi
           echo "시크릿 확인 완료."
 
+      # package.json 과 sw.js 캐시명이 어긋나면 배포는 "성공"하는데
+      # 폰·태블릿엔 옛 화면이 그대로 남는다 — 아무도 모르는 조용한 사고다.
+      # (배포.bat 은 사람이 눈으로 대조하게 했다. 자동배포는 여기서 막는다)
+      - name: 버전 일치 확인
+        run: |
+          set -euo pipefail
+          PKG=$(node -p "require('./package.json').version")
+          SW=$(grep -oE 'wellshare-pwa-v[0-9]+\.[0-9]+\.[0-9]+' public/sw.js | head -1 | sed 's/^wellshare-pwa-v//')
+          echo "package.json = ${PKG}"
+          echo "public/sw.js = ${SW:-(못 찾음)}"
+          if [ -z "${SW:-}" ]; then
+            echo "::error title=sw.js 캐시명 형식 이상::public/sw.js 에서 wellshare-pwa-v#.#.# 를 찾지 못했습니다. const CACHE 값을 확인하세요."
+            exit 1
+          fi
+          if [ "$PKG" != "$SW" ]; then
+            echo "::error title=버전 불일치::package.json($PKG) 과 public/sw.js($SW) 가 다릅니다. 버전은 두 곳을 같이 올려야 폰·태블릿에 새 화면이 뜹니다."
+            exit 1
+          fi
+          echo "버전 일치 확인 완료: v${PKG}"
+
       # VITE_* 값은 빌드 시점에 번들로 들어간다. .env 가 없으면 앱이 Firebase 에 붙지 못한다.
       - name: .env 만들기
         env:
