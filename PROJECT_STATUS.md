@@ -21,7 +21,7 @@
 - 호스팅: Firebase Hosting (public: `dist`, SPA rewrites, `/app`→download.html, APK 헤더)
 - 빌드: `npm run build` (= `tsc --noEmit && vite build`, 루트) / 배포: `firebase deploy --only hosting`
 - 커밋·푸시: main 기준 / 계정 **ttong627** (owner 토큰 주입 — 전역 gh 계정 전환 금지)
-- 현재 앱 버전: **v2.17.8** (sw 캐시명 동기) · **테마: 한가위 HARVEST MOON 확정**(가을·추석 — 2026-08-19 전면 교체+8차 다듬기, ICEBERG 대체)
+- 현재 앱 버전: **v2.18.0** (sw 캐시명 동기 — `public/sw.js` CACHE 는 수동 동기다. 배포 시 반드시 함께 올릴 것) · **테마: 한가위 HARVEST MOON 확정**(가을·추석 — 2026-08-19 전면 교체+8차 다듬기, ICEBERG 대체)
   - 최종 장면: **달 뜨는 저녁의 단풍 공원** — 밝은 어스름 황혼 바탕 + 반투명(50%) 수채 공원 씬(능선·단풍/은행나무·달빛 산책로·가로등·기러기) + 또렷한 상아빛 보름달 + 은은한 반딧불. 카드=등불 대비
   - 낙엽: 당단풍(왕·진홍 그라디언트)/은행(순노랑 부채)/넓은단풍(주황금)/갈잎 4종 SVG, 크기 3계층 원근(10~48px), 몸통 하강+::after 진자(leafSway) 이중 타이밍, 잎별 색조 변주. 12~26초 간격 소량(잔잔)
   - 형 피드백 이력(재발 방지 주석 박제): 태양 오해→은상아 원판+무맥동 / 베일 기둥 금지 / 단풍 골 깊으면 폭죽 / 은행 윗변 오목하면 초승달 / 고만고만하면 티끌 / 흙색은 한국 가을이 아니다
@@ -45,9 +45,10 @@
 - ⚠️8/11의 "기능 격차 사실상 없음" 평가는 **틀렸었다** — 4탭이 saveField 리팩터(7/29) 미이식 상태로 부모에 직접 쓰고 있었다. "격차 없음" 결론은 저장 경로까지 대조한 뒤에만 내릴 것.
 - 잔여 기존 격차(기능 무관·보류): RosterTab 업로드 표준 파일명(`standardRosterFileName`, 형 규칙 7/26) 플랫폼 미이식 — wslos에서 명단 업로드 시 파일명 표준화 안 됨.
 
-**메인 웹앱 탭 17종**: Orders / Schedule / DeliveryCompletion / Billing / PartnerBilling / Payment / Performance / Statistics / Prices / Roster / Docs / Backup / Contacts / Users / Account / Profile
+**메인 웹앱 탭 18종**: Orders / Schedule / DeliveryCompletion / Billing / PartnerBilling / Payment / **Settlement(입금대사)** / Performance / Statistics / Prices / Roster / Docs / Backup / Contacts / Users / Account / Profile
 
 ## 마지막 작업 (2026-08-18~19)
+- 본앱 `19e6db8`~(2026-08-25): **[입금대사] 탭 신설 + Hosting 자동배포 CI (v2.17.8→v2.18.0)** — 홈택스·이카운트·은행 엑셀 3종을 브라우저에서 대사해 입금/미입금·미수금 Aging·엑셀 리포트 산출. 대사 규칙 6종(완전일치·오차허용·합산·분할·순차충당·금액만일치), 신뢰도 낮으면 [확인 필요]로 사람 판단에 넘김. 홈택스↔이카운트 교차검증(장부 미입력/세금계산서 미발행 의심)까지. **엔진은 외부 라이브러리 0개** — xlsx(ZIP+XML)를 DecompressionStream 으로 직접 읽고 리포트는 CRC32·ZIP 헤더를 직접 만든다(package.json 의존성 무변동). **Firestore·Storage 미사용** — 파일도 결과도 서버로 안 간다(규칙 변경 불필요). 본사 전용(`visible: isAdmin`). lazy 청크 71kB(gzip 22kB). CI(`.github/workflows/deploy.yml`)는 시크릿(ENV_FILE + FIREBASE_TOKEN|SERVICE_ACCOUNT) 등록 전까지 배포 전에 멈춘다 — 절차 = `docs/배포_설정.md`. ⚠️wslos 미이식(저장 로직이 없어 데이터 동기화 이슈는 없음 — 필요하면 탭 파일만 이식)
 - 본앱 `cecf53c`~`870016b`(본 세션): **한가위 가을 테마 전면 교체+8차 다듬기(v2.17.0→v2.17.8)** — 위 배포환경 테마 항목 참조. 전 기기 SW 자동 갱신
 - 본앱 `cecf53c`(본 세션): **한가위 가을 테마 전면 교체(v2.17.0)** — 군밤·감·단풍 그라디언트, 보름달+반딧불, 낙엽 기상(AutumnWeather), sky/blue 유틸 계절 재매핑(25컴포넌트 무수정), 배포·라이브 실측 완료. ⚠️wslos는 다크 테마 독립 — 테마 이식 금지 원칙 유지
 - 본앱 `0bea341`·플랫폼 `a7774a0`(본 세션): **첫 화면 no-cache 헤더 교정 + v2.16.2/1.4.2 — 폰 구탭 강제 갱신 발동**
