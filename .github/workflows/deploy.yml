@@ -1,0 +1,123 @@
+# Firebase Hosting 자동 배포
+#
+#   main 에 머지되면 자동으로, 또는 Actions 탭에서 [Run workflow] 로 수동 실행.
+#   빌드가 깨지면 배포하지 않는다 — lint·타입검사·빌드를 통과해야 올라간다.
+#
+# 처음 한 번 저장소 시크릿 2개를 넣어야 동작한다 (docs/배포_설정.md 참고):
+#   ENV_FILE                  로컬 .env 내용 통째로
+#   FIREBASE_TOKEN            `firebase login:ci` 결과 토큰
+#     (또는 FIREBASE_SERVICE_ACCOUNT — 서비스계정 JSON. 둘 중 하나만 있으면 된다)
+#
+# ⚠️ hosting 만 배포한다. functions·firestore·storage 규칙은 건드리지 않는다 —
+#    의도치 않은 규칙 배포는 운영 사고로 이어진다. 그쪽은 수동으로.
+
+name: 배포 (Firebase Hosting)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 배포는 겹치면 안 된다. 진행 중인 건 끝까지 두고 새 건 대기시킨다.
+concurrency:
+  group: firebase-hosting-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: 빌드 후 배포
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: 소스 받기
+        uses: actions/checkout@v4
+
+      - name: Node 준비
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # 시크릿이 없으면 여기서 명확히 알려주고 멈춘다.
+      # (없는 채로 진행하면 "Firebase 설정 undefined" 인 죽은 사이트가 배포된다)
+      - name: 시크릿 확인
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          missing=""
+          if [ -z "$ENV_FILE" ]; then
+            missing="$missing ENV_FILE"
+          fi
+          if [ -z "$FIREBASE_TOKEN" ] && [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            missing="$missing FIREBASE_TOKEN(또는 FIREBASE_SERVICE_ACCOUNT)"
+          fi
+          if [ -n "$missing" ]; then
+            echo "::error title=저장소 시크릿 없음::다음 시크릿을 추가하세요 →$missing"
+            echo "Settings → Secrets and variables → Actions → New repository secret"
+            echo "자세한 절차: docs/배포_설정.md"
+            exit 1
+          fi
+          echo "시크릿 확인 완료."
+
+      # VITE_* 값은 빌드 시점에 번들로 들어간다. .env 가 없으면 앱이 Firebase 에 붙지 못한다.
+      - name: .env 만들기
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: |
+          printf '%s\n' "$ENV_FILE" > .env
+          # 값은 절대 찍지 않는다 — 개수만 확인한다 (grep 은 0건일 때 1을 반환하므로 || true)
+          count=$(grep -c '^VITE_' .env || true)
+          echo "VITE_ 키 ${count}개 생성됨"
+          if [ "$count" -eq 0 ]; then
+            echo "::error title=ENV_FILE 내용 이상::VITE_ 로 시작하는 키가 하나도 없습니다. .env 전체를 붙여 넣었는지 확인하세요."
+            exit 1
+          fi
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: 검사 (eslint + tsc)
+        run: npm run lint
+
+      - name: 빌드
+        run: npm run build
+
+      - name: Firebase Hosting 배포
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          if [ -n "${FIREBASE_SERVICE_ACCOUNT:-}" ]; then
+            printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+            export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+            unset FIREBASE_TOKEN
+            echo "인증: 서비스계정"
+          else
+            echo "인증: CI 토큰"
+          fi
+          npx --yes firebase-tools@15 deploy \
+            --only hosting \
+            --project wellshare-logis \
+            --non-interactive \
+            --message "GitHub Actions · ${GITHUB_SHA::7}"
+
+      - name: 자격증명 파일 정리
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
+
+      - name: 배포 결과
+        if: success()
+        run: |
+          echo "### 배포 완료 ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- 사이트: https://wellshare-logis.web.app" >> $GITHUB_STEP_SUMMARY
+          echo "- 커밋: \`${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "문제가 있으면 Firebase 콘솔 → Hosting → 이전 버전에서 **롤백**하면 즉시 되돌아갑니다." >> $GITHUB_STEP_SUMMARY
