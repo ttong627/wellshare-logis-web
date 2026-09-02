@@ -11,6 +11,7 @@ import { useApp } from '../../context/AppContext';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { DocType, DocTemplate, DocPageFormat, DocHistoryItem, DocFormatSettings } from '../../types';
 import { safeRender } from '../../lib/utils';
+import CiDocument, { WS_CI, NARAMI_CI } from '../docs/CiDocument';
 
 // ── 글꼴 목록 ─────────────────────────────────────────────────────────────────
 
@@ -134,6 +135,50 @@ const BUILTIN_TEMPLATES: DocTemplate[] = [
     postalCode: '18293', tel: '031-8043-5906', fax: '031-8043-5907',
     email: 'wsl@wssc.kr', themeColor: '#1e293b', publicStatus: '공개',
     logoUrl: '', sealUrl: '', format: { ...DEFAULT_FORMAT },
+  },
+
+  // ── 2026-09-02 CI 서식 (한/글 공문 양식과 같은 조판) ────────────────────────
+  //    기존 A·B 를 바꾸지 않고 나란히 둔다 — 쓰던 공문이 깨지지 않게.
+  {
+    id: DocType.A_CI, name: '웰쉐어 사회적협동조합 · CI 서식', docPrefix: '웰쉐어 사협', isBuiltIn: true,
+    design: 'ci2026', ciColors: WS_CI, ciLogoHeightMm: 12.8, ciOrgNameSize: 24, ciApprovalTitle: '이사장',
+    orgName: '웰쉐어사회적협동조합',
+    orgSlogan: '가치를 살리는 협동, 행복을 키우는 나눔',
+    manager: '손영우',
+    representative: '김기흥', representativeTitle: '이사장',
+    address: '경기도 수원시 권선구 권선로 472, 6층(세지빌딩)',
+    postalCode: '16591', tel: '070-7760-1077', fax: '031-225-1077',
+    email: 'wssc@wssc.kr', themeColor: '#8C288C', publicStatus: '공개',
+    logoUrl: '/docs/coop-logo.png', sealUrl: '/docs/coop-seal.png',
+    format: { ...DEFAULT_FORMAT },
+  },
+  {
+    id: DocType.B_CI, name: '㈜웰쉐어로지스 · CI 서식', docPrefix: '웰쉐어로지스', isBuiltIn: true,
+    design: 'ci2026', ciColors: WS_CI, ciLogoHeightMm: 14.2, ciOrgNameSize: 25, ciApprovalTitle: '대표',
+    orgName: '㈜웰쉐어로지스',
+    orgSlogan: '행복을 키우는 물류네트워크',
+    manager: '김기흥',
+    representative: '손한국', representativeTitle: '대표이사',
+    address: '경기도 화성시 비봉면 주석로 457-15',
+    postalCode: '18293', tel: '031-8043-5906', fax: '031-8043-5907',
+    email: 'wsl@wssc.kr', themeColor: '#18A8D8', publicStatus: '공개',
+    logoUrl: '/docs/logis-logo.png', sealUrl: '/docs/logis-seal.png',
+    format: { ...DEFAULT_FORMAT },
+  },
+  {
+    // 형(김기흥)의 희망나르미 경기본부장 명의 — 웰쉐어와 별개 발행주체.
+    // 하단 기관정보는 웰쉐어 사협 사무실 기준(경기본부 전용 주소가 생기면 교체).
+    id: DocType.N_CI, name: '희망나르미 경기본부 · CI 서식', docPrefix: '희망경기', isBuiltIn: true,
+    design: 'ci2026', ciColors: NARAMI_CI, ciLogoHeightMm: 13.5, ciOrgNameSize: 21, ciApprovalTitle: '본부장',
+    orgName: '희망나르미사회적협동조합',
+    orgSlogan: '따뜻한 배송을 통한 지역사회 기여와 일자리 창출',
+    manager: '',
+    representative: '김기흥', representativeTitle: '경기본부장',
+    address: '경기도 수원시 권선구 권선로 472, 6층(세지빌딩)',
+    postalCode: '16591', tel: '070-7760-1077', fax: '031-225-1077',
+    email: 'ttong@wssc.kr', themeColor: '#F04F3C', publicStatus: '공개',
+    logoUrl: '/docs/narami-logo.png', sealUrl: '/docs/narami-seal.png',
+    format: { ...DEFAULT_FORMAT },
   },
 ];
 
@@ -526,13 +571,36 @@ export default function DocsTab() {
     if (!content) return;
     const win = window.open('', '_blank');
     if (!win) return showToast('팝업이 차단되었습니다.');
-    win.document.write(`<!DOCTYPE html><html><head><title>공문 - ${template.orgName}</title><style>
+
+    const isCi = template.design === 'ci2026';
+    // ⚠️ 새 창은 about:blank 라 baseURI 가 없다 — `/docs/...` 로고·직인이 깨지므로 <base> 를 준다.
+    // ⚠️ CI 서식은 명조(Noto Serif KR)와 CI 3색 띠를 쓴다 → 웹폰트를 다시 불러오고
+    //    print-color-adjust 로 색이 인쇄에서 빠지지 않게 한다.
+    const fontLink = isCi
+      ? '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700'
+        + '&family=Noto+Serif+KR:wght@500;600;700&display=swap" rel="stylesheet">'
+      : '';
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+      <base href="${window.location.origin}/">
+      <title>공문 - ${template.orgName}</title>${fontLink}<style>
       @page{size:A4;margin:0}*{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
+      html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      body{font-family:${isCi
+        ? "'Noto Sans KR','Malgun Gothic',sans-serif"
+        : "'Malgun Gothic','Apple SD Gothic Neo',sans-serif"}}
+      img{max-width:100%}
       ${fmt.customCss}
     </style></head><body>${content}</body></html>`);
     win.document.close(); win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 500);
+
+    // 웹폰트·이미지가 다 뜬 뒤에 인쇄한다 (먼저 찍으면 명조가 고딕으로 나간다).
+    const go = () => { win.print(); win.close(); };
+    const ready = (win.document as Document & { fonts?: FontFaceSet }).fonts;
+    if (ready && ready.ready) {
+      ready.ready.then(() => setTimeout(go, isCi ? 400 : 200)).catch(() => setTimeout(go, 800));
+    } else {
+      setTimeout(go, isCi ? 1200 : 500);
+    }
   };
 
   const handleLoadHistory = (item: DocHistoryItem) => {
@@ -601,7 +669,27 @@ export default function DocsTab() {
 
   // ── Preview document ───────────────────────────────────────────────────────────
 
-  const PreviewDocument = () => (
+  const PreviewDocument = () => {
+    // CI 서식은 한/글 양식과 같은 조판을 그대로 쓴다 — 기존 서식 편집기는 건드리지 않는다.
+    if (template.design === 'ci2026') {
+      return (
+        <div ref={printRef}>
+          <CiDocument
+            template={template}
+            data={{
+              receiver: form.receiver,
+              via: form.via,
+              subject: form.subject,
+              bodies: [form.body1, form.body2, form.body3, form.body4].filter((b, i) => i < 2 || b),
+              items: form.items,
+              docNumber: form.docNumber || `${template.docPrefix} ${form.docNo.year} - ${form.docNo.num}`,
+              date: form.date ? form.date.replace(/-/g, '. ') + '.' : '',
+            }}
+          />
+        </div>
+      );
+    }
+    return (
     <div ref={printRef} style={{
       width: '210mm', minHeight: '297mm',
       padding: `${fmt.marginTop}mm ${fmt.marginRight}mm ${fmt.marginBottom}mm ${fmt.marginLeft}mm`,
@@ -904,6 +992,7 @@ export default function DocsTab() {
       })()}
     </div>
   );
+  };
 
   // ── Format editor sections ────────────────────────────────────────────────────
 

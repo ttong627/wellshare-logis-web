@@ -71,7 +71,14 @@ export interface Notification {
 export enum DocType {
   A = 'WELSHARE_SOCIETY',
   B = 'WELSHARE_LOGIS',
+  // 2026-09-02 CI 디자인판 — 기존 A·B 는 그대로 두고 새 서식을 나란히 둔다
+  A_CI = 'WELSHARE_SOCIETY_CI',
+  B_CI = 'WELSHARE_LOGIS_CI',
+  N_CI = 'NARAMI_GYEONGGI_CI',
 }
+
+/** 문서 서식 계열 — 'classic'(기존 편집기) / 'ci2026'(한글 양식과 동일 조판) */
+export type DocDesign = 'classic' | 'ci2026';
 
 export interface DocPageFormat {
   // ── 페이지 여백 ──────────────────────────────────────
@@ -206,6 +213,16 @@ export interface DocTemplate {
   headerExtraLines?: string[];
   footerExtraLines?: string[];
   format: DocPageFormat;
+  /** 없으면 'classic' — 기존 문서가 깨지지 않게 기본값을 유지한다 */
+  design?: DocDesign;
+  /** ci2026 전용: 상·하단 띠 색 (웰쉐어 3색 / 나르미 5색) */
+  ciColors?: string[];
+  /** ci2026 전용: 로고 높이(mm) — 한글 양식과 같은 값 */
+  ciLogoHeightMm?: number;
+  /** ci2026 전용: 법인명 글자 크기(pt) */
+  ciOrgNameSize?: number;
+  /** ci2026 전용: 결재란 직함 — 발신명의는 '대표이사', 결재란은 '대표'가 공문 관례 */
+  ciApprovalTitle?: string;
   createdAt?: string;
   updatedAt?: string;
 }
