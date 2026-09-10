@@ -78,8 +78,18 @@ html, body {
   color: var(--ink-700);
   font-family: 'Noto Sans KR', 'Pretendard', -apple-system, BlinkMacSystemFont,
                'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 글자 뭉개짐 방지 (형 지적 2026-08-26: "글자가 넘치거나 뭉개짐")
+   -webkit-font-smoothing: antialiased 는 macOS 에서 너무 두꺼운 글자를 얇게 만드는 속성인데,
+   Windows 에서 켜면 ClearType(서브픽셀 렌더링)이 꺼진다. 획이 많은 한글은 그때
+   얇고 흐릿하게 번져 보인다 — 일반 모니터(1x)에서 특히 심하다.
+   ⇒ 서브픽셀 이득이 없는 고해상도(2x 이상)에서만 켠다. 그 아래는 브라우저 기본에 맡긴다. */
+@media (min-resolution: 2dppx) {
+  html, body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
 /* 어둑어둑해지는 저녁 하늘 — 남보라 황혼에서 노을 잔광, 단풍 공원의 땅으로.

@@ -1,5 +1,5 @@
 # 📋 PROJECT STATUS — wellshare-logis-web
-> 자동 생성: /확인 스킬 · 갱신 2026-08-20 09:24 KST (로컬 PC FF 47커밋 동기화)
+> 자동 생성: /확인 스킬 · 갱신 2026-09-10 10:19 KST (동기화 최신 0/0 · 라이브 v2.19.0 실측)
 
 ## 🔧 2026-08-18 모바일 저장 실패 수술 (형 지시: "폰·탭·패드 웹 저장 안 됨 철저 수정")
 **근본 원인 = "8/14 격리 규칙·부모필드 제거 이후에도 구 저장경로(부모 문서 직접 쓰기)를 실행하는 클라이언트"** — 3갈래:
@@ -17,16 +17,20 @@
 - 로컬 경로: `I:\ttong_project\wellshare-logis-web`
 
 ## 배포 환경
-- 접속 URL: https://wellshare-logis.web.app → **200 OK** · 라이브 sw `v2.16.1` 실측(2026-08-18 20:5x)
+- 접속 URL: https://wellshare-logis.web.app → **200 OK** · 라이브 sw `v2.19.0` 실측(2026-09-10 10:19) = HEAD 와 일치
 - 호스팅: Firebase Hosting (public: `dist`, SPA rewrites, `/app`→download.html, APK 헤더)
 - 빌드: `npm run build` (= `tsc --noEmit && vite build`, 루트) / 배포: `firebase deploy --only hosting`
-- 커밋·푸시: main 기준 / 계정 **ttong627** (owner 토큰 주입 — 전역 gh 계정 전환 금지)
-- 현재 앱 버전: **v2.18.0** (sw 캐시명 동기 — `public/sw.js` CACHE 는 수동 동기다. 배포 시 반드시 함께 올릴 것) · **테마: 한가위 HARVEST MOON 확정**(가을·추석 — 2026-08-19 전면 교체+8차 다듬기, ICEBERG 대체)
+- 커밋·푸시: main 기준 / 계정 **ttong627**
+  - ⚠️**push 하면 곧바로 라이브로 나간다** — `.github/workflows/deploy.yml` 이 `on: push: branches:[main]`. "커밋만 하고 배포는 나중에" 가 성립하지 않는다(hosting 만 배포 · functions·규칙은 건드리지 않음)
+  - ⚠️**push 권한 함정(2026-09-10 실측)**: gh 활성 계정이 `ttong0627` 이면 이 repo 는 `permissions.push = false` 다. repo 가 **public** 이라 fetch·clone 은 아무 계정으로나 되므로 **fetch 성공은 push 권한의 증거가 아니다**. push 직전에 둘 중 하나:
+    ① `gh auth switch --user ttong627` (프로젝트 `CLAUDE.md` 의 지침 — 가장 확실)
+    ② owner 토큰 주입 `GH_TOKEN=$(gh auth token --user ttong627) git -c credential.helper='!gh auth git-credential' push` (전역 활성 계정을 안 건드려 다른 세션·자동 pull 과 안 부딪힌다)
+- 현재 앱 버전: **v2.19.0** (package.json ↔ `public/sw.js` CACHE 일치 실측 · CI 는 배포 전 **두 값이 같은지만** 검사한다(`deploy.yml` 71~86행) — 즉 **bump 를 안 해도 CI 는 통과**한다. bump 가 필요한 진짜 이유는 CI 가 아니라 **SW 캐시명 갱신**(폰·태블릿 구세션 고착 방지)이다 — `1f66487`) (sw 캐시명 동기 — `public/sw.js` CACHE 는 수동 동기다. 배포 시 반드시 함께 올릴 것) · **테마: 한가위 HARVEST MOON 확정**(가을·추석 — 2026-08-19 전면 교체+8차 다듬기, ICEBERG 대체)
   - 최종 장면: **달 뜨는 저녁의 단풍 공원** — 밝은 어스름 황혼 바탕 + 반투명(50%) 수채 공원 씬(능선·단풍/은행나무·달빛 산책로·가로등·기러기) + 또렷한 상아빛 보름달 + 은은한 반딧불. 카드=등불 대비
   - 낙엽: 당단풍(왕·진홍 그라디언트)/은행(순노랑 부채)/넓은단풍(주황금)/갈잎 4종 SVG, 크기 3계층 원근(10~48px), 몸통 하강+::after 진자(leafSway) 이중 타이밍, 잎별 색조 변주. 12~26초 간격 소량(잔잔)
   - 형 피드백 이력(재발 방지 주석 박제): 태양 오해→은상아 원판+무맥동 / 베일 기둥 금지 / 단풍 골 깊으면 폭죽 / 은행 윗변 오목하면 초승달 / 고만고만하면 티끌 / 흙색은 한국 가을이 아니다
   - 상단바 = 한가위 밤 파노라마(잔별·크레이터 보름달·밤구름·능선·억새·기러기·잔낙엽). 테마 SSOT=index.css(그라디언트 --grad-1/2/3), 기상=AutumnWeather.tsx. **wslos(다크 테마)는 이식 금지 유지**
-- CLI 계정: firebase `ttong627@gmail.com` ✓ · gcloud `ttong627@gmail.com` ✓
+- CLI 계정: firebase `ttong627@gmail.com` ✓ · gcloud `ttong627@gmail.com` ✓ (⚠️gcloud 활성 **프로젝트**는 `wssc-nutrition` — 다른 프로젝트다. 이 repo 배포는 `.firebaserc` 기본값 `wellshare-logis` 를 쓰므로 무해하나, `gcloud` 로 직접 리소스를 건드릴 땐 `--project wellshare-logis` 를 붙일 것)
 
 ## 앱 구성
 | 앱/패키지 | 경로 | 역할 | 스택 |
@@ -45,9 +49,13 @@
 - ⚠️8/11의 "기능 격차 사실상 없음" 평가는 **틀렸었다** — 4탭이 saveField 리팩터(7/29) 미이식 상태로 부모에 직접 쓰고 있었다. "격차 없음" 결론은 저장 경로까지 대조한 뒤에만 내릴 것.
 - 잔여 기존 격차(기능 무관·보류): RosterTab 업로드 표준 파일명(`standardRosterFileName`, 형 규칙 7/26) 플랫폼 미이식 — wslos에서 명단 업로드 시 파일명 표준화 안 됨.
 
-**메인 웹앱 탭 18종**: Orders / Schedule / DeliveryCompletion / Billing / PartnerBilling / Payment / **Settlement(입금대사)** / Performance / Statistics / Prices / Roster / Docs / Backup / Contacts / Users / Account / Profile
+**메인 웹앱 탭 17종** (`src/components/tabs/*.tsx` 17개 실측 — 이전 문서의 "18종" 은 오기였다): Orders / Schedule / DeliveryCompletion / Billing / PartnerBilling / Payment / **Settlement(입금대사)** / Performance / Statistics / Prices / Roster / Docs / Backup / Contacts / Users / Account / Profile
 
-## 마지막 작업 (2026-08-18~19)
+## 마지막 작업 (최신 = 2026-09-02)
+- 본앱 `2fc093a`(2026-09-02 20:35): **[문서] 탭 CI 공문 서식 3종 추가 (v2.19.0)** — 사회적협동조합·로지스·희망나르미 경기본부. 로고·직인 이미지 6장(`public/docs/`)과 `CiDocument.tsx`(261줄 신규)를 붙이고 `DocsTab`·`types.ts` 확장. package.json·sw.js 동시 bump → 라이브 v2.19.0 배포 완료 실측
+- 본앱 `1f66487`(2026-08-26): CI 에 **버전 일치 검사** 추가 — `package.json` ↔ `public/sw.js` 가 어긋나면 배포 전에 멈춘다(구세션 고착 재발 방지)
+
+### 이전 이력 (2026-08-18~19)
 - 본앱 `19e6db8`~(2026-08-25): **[입금대사] 탭 신설 + Hosting 자동배포 CI (v2.17.8→v2.18.0)** — 홈택스·이카운트·은행 엑셀 3종을 브라우저에서 대사해 입금/미입금·미수금 Aging·엑셀 리포트 산출. 대사 규칙 6종(완전일치·오차허용·합산·분할·순차충당·금액만일치), 신뢰도 낮으면 [확인 필요]로 사람 판단에 넘김. 홈택스↔이카운트 교차검증(장부 미입력/세금계산서 미발행 의심)까지. **엔진은 외부 라이브러리 0개** — xlsx(ZIP+XML)를 DecompressionStream 으로 직접 읽고 리포트는 CRC32·ZIP 헤더를 직접 만든다(package.json 의존성 무변동). **Firestore·Storage 미사용** — 파일도 결과도 서버로 안 간다(규칙 변경 불필요). 본사 전용(`visible: isAdmin`). lazy 청크 71kB(gzip 22kB). CI(`.github/workflows/deploy.yml`)는 시크릿(ENV_FILE + FIREBASE_TOKEN|SERVICE_ACCOUNT) 등록 전까지 배포 전에 멈춘다 — 절차 = `docs/배포_설정.md`. ⚠️wslos 미이식(저장 로직이 없어 데이터 동기화 이슈는 없음 — 필요하면 탭 파일만 이식)
 - 본앱 `cecf53c`~`870016b`(본 세션): **한가위 가을 테마 전면 교체+8차 다듬기(v2.17.0→v2.17.8)** — 위 배포환경 테마 항목 참조. 전 기기 SW 자동 갱신
 - 본앱 `cecf53c`(본 세션): **한가위 가을 테마 전면 교체(v2.17.0)** — 군밤·감·단풍 그라디언트, 보름달+반딧불, 낙엽 기상(AutumnWeather), sky/blue 유틸 계절 재매핑(25컴포넌트 무수정), 배포·라이브 실측 완료. ⚠️wslos는 다크 테마 독립 — 테마 이식 금지 원칙 유지
@@ -76,15 +84,23 @@
 - 실행: `npm run dev` (Vite, port 5173)
 
 ## 동기화
-- 본앱: main = origin/main = `f1281d3`(v2.17.8 한가위 테마 기록) · 워킹트리 clean
-- 이 PC(I:) 2026-08-20: **behind 47 → FF-only 최신화 완료**(owner 토큰 주입). 충돌 untracked 3건(구 PROJECT_STATUS·launch.json·메일핸드오프)은 원격과 동일/구버전 검증 후 스크래치패드 백업하고 원격판 채택 — 유실 0
-- 플랫폼: main = origin/main = `9b67e02` · clean (8/19 기준)
-- 마지막 fetch: 2026-08-20 09:2x KST · 마지막 push/배포: 2026-08-19 (다른 세션)
-- ⚠️**병행 세션 주의(8/18 실증)**: 다른 PC/세션이 같은 파일을 고쳐 push하는 일이 실제로 있었다(ecountSales 중복 수정 → 원격판 채택). **push 전 fetch로 diverge 확인** 습관화.
+- 본앱: main = origin/main = `2fc093a` · **behind 0 / ahead 0 = 이미 최신**(2026-09-10 10:19 fetch, owner 토큰 주입 — 전역 gh 계정 전환 안 함)
+- 워킹트리: **미커밋 2건** — `src/index.css` (+12/-2) · `PROJECT_STATUS.md`(이 문서 자체). index.css 는 — 형 지적 "글자 뭉개짐" 수술. `-webkit-font-smoothing: antialiased` 를 **2dppx 이상 고해상도에서만** 켜도록 미디어쿼리로 가둠(Windows 1x 모니터에서 ClearType 이 꺼져 한글이 흐려지던 문제). **아직 커밋·배포 안 됨 → 라이브에는 반영 없음**
+- 이 PC(I:) 2026-08-20: behind 47 → FF-only 최신화 완료 · 유실 0
+- 마지막 fetch: 2026-09-10 10:19 KST · 마지막 커밋: 2026-09-02 20:35
+- ⚠️**병행 세션 주의(8/18 실증)**: 다른 PC/세션이 같은 파일을 고쳐 push 하는 일이 실제로 있었다. **push 전 fetch 로 diverge 확인** 습관화
 
 ## 리스크
+- 🔴 **(2026-09-10 발생·미해결) ECOUNT 세금계산서 발행 전면 불가 — 게이트웨이 GCP 프로젝트가 삭제 대기**: `gen-lang-client-0075547354`(logis-TMS, 번호 673351301105) 의 `lifecycleState = DELETE_REQUESTED`. 그 위의 Cloud Run `ecount-gateway` 가 즉시 503(Google Frontend) → 503 엔 CORS 헤더가 없어 브라우저는 프리플라이트부터 막히고 화면엔 "Failed to fetch" 만 뜬다. **프론트 버그 아님**
+  - 복구: `gcloud projects undelete gen-lang-client-0075547354` (삭제 요청 후 **30일 내**만 가능 — 콘솔 「IAM 및 관리자 → 리소스 관리 → 삭제 대기 중」에서 예정 삭제일 확인). 결제 연결은 자동 복구가 안 되므로 `gcloud billing projects link` 로 다시 붙여야 한다
+  - **다른 프로젝트로 옮기면 안 되는 이유**: NAT 고정 IP `34.64.190.54` 가 ECOUNT ERP IP 화이트리스트에 등록돼 있다. 새 프로젝트 = 새 IP = ECOUNT 거부 → 형이 ERP 에서 IP 재등록을 해야 한다
+  - ⚠️**재배포 시 함정**: `ecount-gateway/README.md` 의 배포 명령이 낡았다 — 폐기된 `ECOUNT_COM_CODE` 방식인데 코드(`config.ts`)는 `ECOUNT_COMPANIES` JSON 을 요구한다. README 그대로 배포하면 기동 실패로 또 503
+  - ⚠️`.env` 에 `VITE_ECOUNT_GATEWAY_URL` 이 **없다** → `ecountGateway.ts` 하드코딩 기본값이 번들에 박힌다. 게이트웨이를 다른 URL 로 살리면 `.env` 와 CI `ENV_FILE` 시크릿을 함께 고치고 재빌드해야 한다
+- 🟠 (2026-09-10 코난·제시 발견 · **이번 수정과 무관한 기존 문제 — 미해결**) 게이트웨이 중복 전표 위험 3건: ①`ecount.ts` 12초 타임아웃에 걸리면 ECOUNT 는 전표를 만들었는데 서버가 `markFailed` → 다음 요청이 force 없이 통과 ②`SalePayload` 에 `ioDate` 가 없어 `validate.ts` 가 **오늘 날짜로 대체** → 작년 12월분을 올해 정산하면 전표 일자·멱등성 키가 올해로 찍힘 ③`ecount.ts` 가 `SuccessCnt>=1` 이면 `FailCnt>0` 이어도 `done` 으로 잠금
+- 🟡 (재확인 2026-09-10) **이 저장소는 public 이다**: 정산·회원사 데이터를 다루는 앱이라 코드 공개 자체를 형이 알고 계셔야 한다. 시크릿 유출은 없음 실측(`.env` 는 `.gitignore` 등재·미추적, 추적되는 건 `.env.example` 뿐, 키 패턴 0건). 다만 **fetch 가 누구나 되므로 fetch 성공을 권한 증거로 삼지 말 것**
+- 🟡 (2026-09-10) **미커밋 2건 — 글꼴 렌더링 수술이 배포 안 됨**: `src/index.css` 의 font-smoothing 수정이 로컬에만 있다. 형이 "글자 뭉개짐" 으로 지적하신 건이라, 커밋·배포하지 않으면 형 화면은 그대로다. 커밋 시 버전 bump(package.json + public/sw.js 동시)를 함께 할 것 — CI 통과 때문이 아니라 **폰·태블릿 구세션의 SW 캐시를 갈아끼우기 위해서**다. CSS 문법은 검증됨(postcss 파싱 OK · 중괄호 244/244). 보충 여지: Safari 15 이하는 `min-resolution: 2dppx` 를 모른다 — `-webkit-min-device-pixel-ratio: 2` 병기하면 그 기기도 덮는다(안 해도 깨지지 않고 미적용될 뿐)
 - 🟢 (해결 2026-08-20 09:5x) **회원사 명단 다운로드 전멸 — Storage 크로스서비스 IAM 누락**: storage.rules의 `regionAllowed()`가 쓰는 `firestore.get()`에 필요한 롤 `roles/firebaserules.firestoreServiceAgent`가 `service-528541497350@gcp-sa-firebasestorage`에 한 번도 부여된 적 없어(IAM 이력 40일 0건) 8/14 규칙 강화부터 회원사 다운로드 전 거부(관리자는 isAdminEmail 단락이라 무증상). 8/20 미소 33회 실패로 표면화. **형 승인 후 롤 부여 → 임시계정 실검증: 매핑 없음 403(규칙 정상)·미소 매핑 200(복구 증명)·테스트 흔적 완전 원상복구**. 교훈: 크로스서비스 규칙 배포 시 CLI가 이 롤 자동부여를 묻는데 REST/CI 배포면 누락된다 — storage.rules에 firestore.get 추가하는 배포는 IAM 바인딩 확인 필수
-- 🟡 (발견 2026-08-20) **서초구 명단 1건 모순**: adminOnly=False·allowed=[행복나눔]인데 행복나눔 담당지역에 서초구 없음 → 목록엔 보이나 다운로드는 지역매핑에서 거부될 문서. 의도면 partnerRegions에 서초구 추가, 실수면 adminOnly 전환 필요
+- 🟡 (발견 2026-08-20 · **2026-09-10 재확인 안 함 — 해결 여부 미상**) **서초구 명단 1건 모순**: adminOnly=False·allowed=[행복나눔]인데 행복나눔 담당지역에 서초구 없음 → 목록엔 보이나 다운로드는 지역매핑에서 거부될 문서. 의도면 partnerRegions에 서초구 추가, 실수면 adminOnly 전환 필요
 - 🟢 (해결 2026-08-19) **나라미 APK 격리 이식 완료** — v1.0.14 배포·게이트 상향으로 전 기기 강제 자가 업데이트. 3원인 전부 종결
 - 🟡 (완화 2026-08-19) **폰 구탭 고착**: 원인="첫 화면 / 요청이 1시간 캐시 + 가드 이전 좀비 탭". 조치: 전역 no-cache 헤더(양쪽 실측 확인)·본앱 v2.16.2 SW 갱신·플랫폼 1.4.2 배포로 UpdateGate(8/11 이후 탭)·SW(v2.15.2 이후 탭) 보유 탭 전부 자동 새로고침 발동. **잔여: 가드 이전 좀비 탭만 "탭 닫고 새로 열기" 1회 안내 필요**
 - 🟡 **발행요청 취소 merge 잔존 의심(양쪽 공통)**: PaymentTab `handleClearPublishRequest`가 whole-map saveField(merge) — merge는 삭제된 키를 못 지워 취소가 서브독에 안 남을 수 있음(화면은 지워져 보이나 재로드 시 부활 가능). 실측 후 서브독 deleteField로 교정 검토
