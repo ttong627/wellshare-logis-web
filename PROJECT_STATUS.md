@@ -95,12 +95,40 @@
   - 새 주소 `https://ecount-gateway-528541497350.asia-northeast3.run.app` · NAT 고정 IP **`34.64.142.198`**(`ecount-gw-ip`/`ecount-gw-router`/`ecount-gw-nat`) · **형이 ECOUNT 두 법인(631989·156855)에 IP 추가 등록 완료(2026-09-13)**
   - 인증키 시크릿 10개 이관(쓰는 건 `ecount-key-ttong`→`ECOUNT_KEY_631989`, `ecount-key-156855-ttong`→`ECOUNT_KEY_156855`) · 환경변수는 `ALLOWED_ORIGINS` 에서 TMS 두 주소 제거, `TMS_FIREBASE_PROJECT_ID` 제거(선택값이라 부팅 영향 없음)
   - `ecount_sales` 34건 이관 · 전환 직전 옛/새 재대조 **34=34, 차이 0**(9/10 이후 옛 게이트웨이 발행 없음)
-  - 앱 v2.19.2 에서 기본 주소 전환. **옛 게이트웨이는 새 쪽 실발행 확인 전까지 살려 둔다**
-- 🟠 **(2026-09-13 발견) logis-TMS(`gen-lang-client-0075547354`)는 아직 지우면 안 된다 — 외부 쓰기가 계속 들어온다**
+  - 앱 v2.19.2 에서 기본 주소 전환 — **라이브 실측**: CI run 34729959901 success · sw `v2.19.2` · `BillingTab-1yePmXJ5.js` 새 주소 1건/옛 주소 0건(CI `ENV_FILE` 이 기본값을 덮지 않음 확인)
+  - **바깥 IP 실측**: wellshare-logis 에 같은 VPC egress 설정의 1회용 Cloud Run Job(curl ipify)을 띄워 `34.64.142.198` 확인 후 삭제
+  - ⚠️**옛 게이트웨이 입구 닫기 미완(권한 차단)** — 옛·새가 멱등성 저장소(`ecount_sales`)를 **각자 프로젝트 DB 에** 따로 쓴다(`idempotency.ts` 의 `new Firestore()`). 새로고침 안 한 탭(`useMonthData.ts:123` 이 월 문서를 `getDoc` 한 번만 읽음)이나 **APK(`mobile/src/lib/ecountGateway.ts:6` 옛 URL 고정, ecountSales 미사용)** 가 옛 쪽으로 `force=false` 발행하면 새 쪽은 몰라서 **전표 두 장**. ⇒ `gcloud run services update ecount-gateway --project gen-lang-client-0075547354 --region asia-northeast3 --ingress internal` 로 닫고(되돌리기 `--ingress all`) 닫은 뒤 `ecount_sales` 재대조
+  - 첫 실발행 전: 정산 화면 띄워 둔 탭 전부 새로고침 · APK 에서 발행 금지(OTA 전) · 「이미 발행됨」 없는 지역 하나로 확인. 502 면 재클릭 전에 로그 `ecount saveSale failed` 부터
+- 🟢 **(2026-09-13 14:01 KST 삭제 완료) logis-TMS(`gen-lang-client-0075547354`) — 옮길 것 옮기고 보관한 뒤 철거. 복구 기한 2026-10-13**
+  - 삭제 직전 가드: ecount_sales 34=34 차이 0 · 옛 게이트웨이 발행 성공 0건(10:05 이후) · 형이 ECOUNT 두 법인에서 옛 IP 34.64.190.54 제거 확인
+  - **삭제 후 실측**: 새 게이트웨이 200 · 프리플라이트 `wellshare-logis.web.app`·`wslos.kr` 204 · 구 PHP→새 게이트웨이 400(인증 통과) · 옛 게이트웨이 500 · **ECOUNT 실로그인 두 법인 모두 세션 발급**(1회용 Cloud Run Job, egress 34.64.142.198, 전표 없음, Job 삭제) · 사이트 wellshare-logis·wslos.kr·admin.wslogis.co.kr 200
+  - 참고: 옛 호스팅 `gen-lang-client-0075547354.web.app`·`wellshare-tms-app.web.app` 는 삭제 직후에도 200(구글이 삭제 프로젝트 자원을 순차 정리) — DB·게이트웨이는 이미 끊겨 기능 없음
+  - 아래는 삭제 전 경위 기록
   - Cloud Monitoring 주별 Firestore 쓰기: 8/16 29만 · 8/23 29.6만 · 8/30 30.3만 · 9/6 30.5만 · 9/13 26.4만(진행 중). 읽기도 주 10~35만
   - `orders`·`entry_exit`·`entry_exit_detail` 최신 수정이 **정각+2초**(예 2026-09-11T05:00:02Z) → 외부 크론 동기화. `_sync_metadata`·`syncdeltatofirestore` 는 7/14 이후 멈춤이라 **그것과 다른 쓰기 주체**
   - 창고 TMS(`tms-local-frontend`, `wellshare-tms-app.web.app` 200)의 `.firebaserc` 가 여전히 이 프로젝트. 형 설명: TMS 는 AWS 로 통합, 동기화는 몰라도 불필요
-  - ⇒ 지우려면 ①쓰기 주체(외부 크론) 중지 ②TMS 웹앱 실사용자 없음 확인 ③새 게이트웨이 실발행 확인 뒤
+  - 창고 TMS 의 이카운트 발행(`tms-local-frontend/src/services/ecountApi.js:12`)은 옛 프로젝트의 `tms---` 태그 주소를 부르고, 서버키 경로(`/ecount/sale-server`, 리비전 00014-cip)도 **옛 프로젝트에만** 있다. 새 게이트웨이는 `TMS_*` 설정이 없어 sale-tms 500 · sale-server 503
+  - ⇒ 지우려면 ①쓰기 주체(외부 크론) 중지 ②TMS 웹앱 실사용자 없음 확인 ③새 게이트웨이 실발행 확인 ④TMS 발행·서버키 경로를 안 쓰는지 확인(쓴다면 AWS 쪽으로 이관) 뒤
+  - **(2026-09-13 진행)** 쓰기 주체 확정·중지: AWS `3.37.252.125` 의 **pm2 프로세스 `ws-sync`**(`/home/ubuntu/sync/sync_to_firestore.cjs`, 7/14~, 2시간마다 3,740건). 9/9 세션은 crontab 만 봐서 놓쳤다. `pm2 stop/delete ws-sync && pm2 save --force` 로 끔(되돌리기: `cd /home/ubuntu/sync && pm2 start sync_to_firestore.cjs --name ws-sync && pm2 save`)
+  - 백업 로컬 보관: `T:\TTong_total\_cloud_archive\logis-TMS_gen-lang-client-0075547354_20260913\` — db-backups 61·images 4·migbackup-20260726 38·mirror-daily-20260908 37(원격과 개수 일치, 최신 DB gzip OK) + ai-studio DB + Auth 사용자
+  - **제시 FAIL(삭제 보류) — 남은 의존**: ①wslos.kr 라이브 번들 `LogisApp→BillingTab` 가 옛 게이트웨이, `SettlementTabs→ClientBilling` 가 `tms---` 태그 주소, `GenlangApp`(`?view=genlang`) 이 이 프로젝트 Firebase ②`mobile/src/lib/ecountGateway.ts:6` 옛 주소 ③AWS PHP `/var/www/html/admin/ecount_config.php:3` 옛 주소(서버키 경로, 새 게이트웨이엔 `TMS_SERVER_KEY` 없음) ④9/11 16:04 genlang 사용자 토큰 갱신 + 그 오후 읽기 약 10만 ⑤이 프로젝트 Gemini 키 = `D:\Gemma4\.env` `GEMINI_API_KEY_6`(tongtong_studio 순환키) ⑥감시 오경보: `wellshare-platform/backend/app/services/monitor.py:41,45`·`_wellshare-hub/_tools/healthcheck.sh:19` ⑦삭제 후 `backup_db.sh` 로그가 계속 「local + GCS」로 거짓 기록
+  - **(2026-09-13 형 결정·실행) 남은 의존 처리** — 계획서 `~/.claude/plans/logis-tms-teardown-20260913.md`
+    - ①wslos.kr: 정산 발행 → 새 게이트웨이, genlang 모듈 82파일 삭제, CSP 새 주소, 기본 감시 3곳 제외, 버전 1.22.1 (wellshare-platform `5b1e538` + 뒷정리 커밋)
+    - ②모바일 `ecountGateway.ts` 새 주소 커밋 `a8ba1e1`(다음 APK 빌드 반영)
+    - ③구 PHP 관리자: `ecount_config.php` → 새 게이트웨이 + **새 서버키**(Secret `ecount-server-key`, 해시 앞 be8d91541e8a). 옛 PHP 키는 게이트웨이 키와 원래 불일치(6414… ≠ 69e6…)였다. 서버발 빈 요청 400(인증 통과·전표 없음). 옛 키 백업 `.bak` shred 삭제
+    - ④새 게이트웨이: `ALLOWED_ORIGINS` 에 `https://wslos.kr`·`https://directed-line-434014-h0.web.app` 추가, `TMS_SERVER_KEY` 연결(리비전 00002-gws). wslos 프리플라이트 204
+    - ⑤구 원장 DB 바깥 백업 → **AWS S3** `wslogis-db-backup-609890503948`(ap-northeast-2, 퍼블릭 차단·버전관리·AES256). IAM `wslogis-backup-uploader`(List/Put/Get 이 버킷만 + **발신 IP 3.37.252.125/32 조건**), 키는 서버 `/root/.aws`(600)만. 서버에 aws CLI v2 설치. `backup_db.sh`·`archive_images.sh` S3 로 교체(원본 `.bak_20260913115454`) — 실행 확인 「local + S3」, 기존 GCS 백업 61개 S3 업로드. ⚠️`aws s3 ls` 는 `--only-show-errors` 를 받지 않는다(첫 교체 때 확인 단계가 거짓 실패) → `AWSLS` 분리
+    - ⑥헬스체크 `wellshare-hub/_tools/healthcheck.sh` gen-lang 줄 삭제 `2bce938`
+    - ⑦12:00 KST 이후 Firestore 쓰기 0 확인(마지막 10:08 구간 3,740)
+    - ⑧로컬 예약작업 `WellshareMirrorAudit`(비활성) 등록 해제, `mirror_audit.py` 삭제
+    - ⑨ Gemini 키: 형이 권한 모드 전환 후 제거 — `gemini_api_keys.txt` 10→9개, `.env` `GEMINI_API_KEY_6` 줄 삭제(둘 다 `.bak_20260913_logisTMS` 백업). 번호순으로 읽는 코드 없음 확인
+    - ⑩ 삭제 전 추가 보관(코난 조건): `(default)` DB 관리형 내보내기(서울 버킷) · ai-studio DB 관리형 내보내기(**대만 버킷 필요** — 서울 버킷은 `INVALID_ARGUMENT`) · Auth 해시 설정(SCRYPT, signerKey 등)·`firebase auth:export` 12명 · AI Studio 앱 `ttong`(v91)·`wellshare`(v2) 빌드본. 보관본 **195파일** 로컬 + S3 `s3://wslogis-db-backup-609890503948/archive-logis-TMS-20260913/` 사본 195 일치
+    - ⑪ 이 PC `I:\ttong_project\wellshare-platform` 체크아웃을 `cbce27d` 로 ff-merge(옛 판에서 배포하면 genlang·옛 게이트웨이가 되살아남). 다른 세션 미커밋 8개 보존. 작업용 워크트리·브랜치 정리
+    - ⑫ 형 확인(2026-09-13): 창고 TMS 안드로이드 앱(`com.wellshare.tms`, `server.url` = 이 프로젝트 `/mobile`) 안 씀 · AI Studio 앱 필요 없음
+  - ✏️**정정**: ①「9월 사용자는 형 본인뿐」 → 형 두 계정(9/11·9/9) 외에 **8/19·8/18 두 계정**이 마지막 사용 ②「백업 원격과 개수 일치」는 **받은 폴더끼리만** — `gen-lang-0075547354-db-backup` 원격 1,127개(일일 미러 약 40회분) 중 migbackup·최신 mirror 두 폴더만 보관(최신본 있음) ③wslos 청크 전수는 73개(제시 재집계 75)
+  - ⚖️**삭제 전 판정**: 제시 보충필요(삭제 막을 사유 없음) · 코난 조건부(Codex 10,751토큰 — Codex 원판정은 「막힘」, 코난 이견: Expo 앱·MySQL 복원은 삭제 차단 사유 아님). 조건 = **ECOUNT 두 법인에서 옛 IP `34.64.190.54` 를 삭제 전에 제거**(반납 IP 재할당 위험 + 옛 게이트웨이 발행 경로 차단)
+  - ⏸️**남은 것**: wslos 운영 DB 감시 행 3개 — 운영 백엔드가 아직 옛 DEFAULT_TARGETS 라 **백엔드 1.22.1 배포 후** 지워야 재생성 안 됨(`ensure_targets`) · Expo 앱 OTA/APK · `ecount-gateway/README.md` 옛 프로젝트 배포 명령
+  - 🔴**코코 보안 지적(이번 작업 밖, 기존)**: H2 게이트웨이 `requireAdmin` 이 `email_verified` 를 안 본다 + wellshare-logis Auth 셀프가입 열림 + `src/constants/members.ts` 에 관리자 이메일 노출 · H3 이 PC `~/.aws` 프로필 `wssc` 가 **AWS 루트 액세스키**, CloudTrail 없음 · M2 게이트웨이가 Editor 권한 기본 SA 로 실행
 - ⚪ (2026-09-13) 9/9 비용 절감 세션이 이름만 보고 지운 3곳 처리: **logis-TMS** 복구(위) · **miso-tms** 400일 지표상 사용 0 → 재삭제 · **wellshare-erp**(9개 단체 회의실 예약·회의록 `mdpj`, 영플 아님) 실사용 흔적 있었으나 **형 결정으로 삭제**(코드는 GitHub `ttong627/-wellshare-erp` 보존, DB 1.87MB 는 결제 끊김으로 백업 못 함, **복구 기한 2026-10-13**)
 - 🟢 **(2026-09-10 발생·같은 날 12:11 KST 복구완료) ECOUNT 세금계산서 발행 전면 불가 — 게이트웨이 GCP 프로젝트가 삭제 대기 + 결제 끊김**: `gen-lang-client-0075547354`(logis-TMS, 번호 673351301105) 의 `lifecycleState = DELETE_REQUESTED`. 그 위의 Cloud Run `ecount-gateway` 가 즉시 503(Google Frontend) → 503 엔 CORS 헤더가 없어 브라우저는 프리플라이트부터 막히고 화면엔 "Failed to fetch" 만 떴다. **프론트 버그 아님**
   - **복구 절차(실제로 통한 순서 — 다음에 또 나면 이대로)**: ①`gcloud projects undelete gen-lang-client-0075547354` → ACTIVE ②그런데도 503 유지. 로그가 답을 줬다 — `gcloud logging read ... service_name="ecount-gateway"` 에 **"The request failed because billing is disabled for this project."** 가 계속 찍힌다 ③`gcloud billing projects describe` → `billingEnabled: false` ④`gcloud billing projects link` 로 재연결 ⑤**약 1분 뒤 자동으로 200 복귀**(재배포 불필요 · 서비스 Ready 는 내내 True 였다)

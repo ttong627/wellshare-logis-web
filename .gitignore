@@ -50,3 +50,6 @@ ttong/
 server/yanggok-collector/*.log
 server/yanggok-collector/alert-state.json
 scripts/billing_parent_backup.json
+
+# 에이전트 작업 기록(보안 검토 메모 포함) — 공개 저장소라 절대 올리지 않는다
+.claude/agent-memory/
