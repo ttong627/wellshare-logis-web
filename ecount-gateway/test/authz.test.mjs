@@ -30,6 +30,19 @@ test('검증 오류 분류: 공개키 조회 실패(argument-error) → 502 auth
   assert.deepEqual(classifyVerifyError('auth/argument-error', undefined), { status: 401, error: 'invalid_token' });
 });
 
+// 코난 2026-09-13: 서명 검사보다 먼저 도는 내용 검사(token-verifier.js:163)가 공격자가 넣은 aud·iss·alg 값을
+// 메시지에 그대로 옮긴다 → 문구가 「어디든 들어 있으면」 502 로 보내면 위조 토큰이 인증 서버 장애로 위장된다.
+// 진짜 조회 실패 문구는 항상 **맨 앞**에 온다(jwt.js:136·268, api-request.js:266·268).
+test('검증 오류 분류: 위조 토큰이 클레임에 조회 실패 문구를 넣어도 → 401 invalid_token', () => {
+  for (const msg of [
+    'Firebase ID token has incorrect "aud" (audience) claim. Expected "wellshare-logis" but got "Error fetching public keys". Make sure the ID token comes from the same Firebase project.',
+    'Firebase ID token has incorrect "iss" (issuer) claim. Expected "https://securetoken.google.com/wellshare-logis" but got "Error while making request".',
+    'Firebase ID token has incorrect algorithm. Expected "RS256" but got "Error fetching public keys".',
+  ]) {
+    assert.deepEqual(classifyVerifyError('auth/argument-error', msg), { status: 401, error: 'invalid_token' }, msg.slice(0, 60));
+  }
+});
+
 test('검증 오류 분류: 정지·폐기·삭제된 계정 → 401 token_revoked', () => {
   for (const code of ['auth/user-disabled', 'auth/id-token-revoked', 'auth/user-not-found']) {
     assert.deepEqual(classifyVerifyError(code), { status: 401, error: 'token_revoked' }, code);

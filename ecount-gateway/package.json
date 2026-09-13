@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "test": "tsc && node --test test/authz.test.mjs",
+    "test": "tsc && node --test test/authz.test.mjs test/firebase-admin-messages.test.mjs",
     "start": "node dist/index.js",
     "dev": "tsc --watch"
   },

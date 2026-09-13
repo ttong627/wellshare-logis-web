@@ -28,11 +28,15 @@ export type VerifyErrorClass =
 
 // 구글 공개키를 못 받아와도 firebase-admin 은 argument-error 로 바꿔 던진다(token-verifier.js:283) — 코드로는
 // 위조 토큰과 구분이 안 되니 메시지로 가른다(제시 2026-09-13). HTTP 오류 응답은 jwt.js:136, 네트워크 단절·시간초과는 api-request.js:266·268 문구.
+// ⛔**맨 앞 일치만** 본다(코난 2026-09-13): 서명 검사 전에 도는 내용 검사가 공격자가 넣은 aud·iss·alg 값을 메시지 중간에
+//   옮겨 적어서, 「포함」으로 보면 위조 토큰이 502(인증 서버 장애)로 위장된다. 내용 검사 문구는 전부 고정 문구
+//   (`Firebase ID token has …`·`verifyIdToken expects …`·`Decoding Firebase ID token failed …`)로 시작한다.
+//   실제 firebase-admin 메시지로 확인하는 시험: test/firebase-admin-messages.test.mjs (firebase-admin 을 올리면 문구가 바뀔 수 있다).
 const KEY_FETCH_FAILURE_MESSAGES = ['Error fetching public keys', 'Error while making request'];
 
 export function classifyVerifyError(code: string | undefined, message?: string): VerifyErrorClass {
   if (code && REVOKED_CODES.has(code)) return { status: 401, error: 'token_revoked' };
-  const keyFetchFailed = !!message && KEY_FETCH_FAILURE_MESSAGES.some((m) => message.includes(m));
+  const keyFetchFailed = !!message && KEY_FETCH_FAILURE_MESSAGES.some((m) => message.startsWith(m));
   if (code && INVALID_TOKEN_CODES.has(code) && !keyFetchFailed) return { status: 401, error: 'invalid_token' };
   return { status: 502, error: 'auth_lookup_failed' };
 }
