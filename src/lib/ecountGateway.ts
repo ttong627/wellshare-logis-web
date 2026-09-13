@@ -4,9 +4,12 @@ import { BillingItem } from '../types';
 import { ZONE_TO_PROD } from './ecountExport';
 import { getFullRegionName } from '../constants/regions';
 
+// 게이트웨이는 이 앱의 프로젝트(wellshare-logis) 안에서 돈다. (2026-09-13 이전)
+// 전에는 남의 프로젝트(logis-TMS · gen-lang-client-0075547354)에 얹혀 있어서, 2026-09-09 그 프로젝트가
+// 지워지자 발행이 통째로 멈췄다. ECOUNT 허용 IP 는 이 프로젝트 NAT 고정 IP 34.64.142.198 (두 법인 등록).
 const GATEWAY_URL =
   (import.meta.env.VITE_ECOUNT_GATEWAY_URL as string | undefined) ??
-  'https://ecount-gateway-673351301105.asia-northeast3.run.app';
+  'https://ecount-gateway-528541497350.asia-northeast3.run.app';
 
 // 발행 회사(COM_CODE) — 게이트웨이 ECOUNT_COMPANIES와 동일하게 유지
 export const ECOUNT_COMPANIES = [

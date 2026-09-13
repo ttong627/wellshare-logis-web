@@ -91,8 +91,22 @@
 - ⚠️**병행 세션 주의(8/18 실증)**: 다른 PC/세션이 같은 파일을 고쳐 push 하는 일이 실제로 있었다. **push 전 fetch 로 diverge 확인** 습관화
 
 ## 리스크
-- 🔴 **(2026-09-10 발생·미해결) ECOUNT 세금계산서 발행 전면 불가 — 게이트웨이 GCP 프로젝트가 삭제 대기**: `gen-lang-client-0075547354`(logis-TMS, 번호 673351301105) 의 `lifecycleState = DELETE_REQUESTED`. 그 위의 Cloud Run `ecount-gateway` 가 즉시 503(Google Frontend) → 503 엔 CORS 헤더가 없어 브라우저는 프리플라이트부터 막히고 화면엔 "Failed to fetch" 만 뜬다. **프론트 버그 아님**
-  - 복구: `gcloud projects undelete gen-lang-client-0075547354` (삭제 요청 후 **30일 내**만 가능 — 콘솔 「IAM 및 관리자 → 리소스 관리 → 삭제 대기 중」에서 예정 삭제일 확인). 결제 연결은 자동 복구가 안 되므로 `gcloud billing projects link` 로 다시 붙여야 한다
+- 🟢 **(2026-09-13) ECOUNT 게이트웨이를 이 앱 프로젝트(`wellshare-logis`)로 이전** — 형 원칙「프로젝트는 독립 운영」
+  - 새 주소 `https://ecount-gateway-528541497350.asia-northeast3.run.app` · NAT 고정 IP **`34.64.142.198`**(`ecount-gw-ip`/`ecount-gw-router`/`ecount-gw-nat`) · **형이 ECOUNT 두 법인(631989·156855)에 IP 추가 등록 완료(2026-09-13)**
+  - 인증키 시크릿 10개 이관(쓰는 건 `ecount-key-ttong`→`ECOUNT_KEY_631989`, `ecount-key-156855-ttong`→`ECOUNT_KEY_156855`) · 환경변수는 `ALLOWED_ORIGINS` 에서 TMS 두 주소 제거, `TMS_FIREBASE_PROJECT_ID` 제거(선택값이라 부팅 영향 없음)
+  - `ecount_sales` 34건 이관 · 전환 직전 옛/새 재대조 **34=34, 차이 0**(9/10 이후 옛 게이트웨이 발행 없음)
+  - 앱 v2.19.2 에서 기본 주소 전환. **옛 게이트웨이는 새 쪽 실발행 확인 전까지 살려 둔다**
+- 🟠 **(2026-09-13 발견) logis-TMS(`gen-lang-client-0075547354`)는 아직 지우면 안 된다 — 외부 쓰기가 계속 들어온다**
+  - Cloud Monitoring 주별 Firestore 쓰기: 8/16 29만 · 8/23 29.6만 · 8/30 30.3만 · 9/6 30.5만 · 9/13 26.4만(진행 중). 읽기도 주 10~35만
+  - `orders`·`entry_exit`·`entry_exit_detail` 최신 수정이 **정각+2초**(예 2026-09-11T05:00:02Z) → 외부 크론 동기화. `_sync_metadata`·`syncdeltatofirestore` 는 7/14 이후 멈춤이라 **그것과 다른 쓰기 주체**
+  - 창고 TMS(`tms-local-frontend`, `wellshare-tms-app.web.app` 200)의 `.firebaserc` 가 여전히 이 프로젝트. 형 설명: TMS 는 AWS 로 통합, 동기화는 몰라도 불필요
+  - ⇒ 지우려면 ①쓰기 주체(외부 크론) 중지 ②TMS 웹앱 실사용자 없음 확인 ③새 게이트웨이 실발행 확인 뒤
+- ⚪ (2026-09-13) 9/9 비용 절감 세션이 이름만 보고 지운 3곳 처리: **logis-TMS** 복구(위) · **miso-tms** 400일 지표상 사용 0 → 재삭제 · **wellshare-erp**(9개 단체 회의실 예약·회의록 `mdpj`, 영플 아님) 실사용 흔적 있었으나 **형 결정으로 삭제**(코드는 GitHub `ttong627/-wellshare-erp` 보존, DB 1.87MB 는 결제 끊김으로 백업 못 함, **복구 기한 2026-10-13**)
+- 🟢 **(2026-09-10 발생·같은 날 12:11 KST 복구완료) ECOUNT 세금계산서 발행 전면 불가 — 게이트웨이 GCP 프로젝트가 삭제 대기 + 결제 끊김**: `gen-lang-client-0075547354`(logis-TMS, 번호 673351301105) 의 `lifecycleState = DELETE_REQUESTED`. 그 위의 Cloud Run `ecount-gateway` 가 즉시 503(Google Frontend) → 503 엔 CORS 헤더가 없어 브라우저는 프리플라이트부터 막히고 화면엔 "Failed to fetch" 만 떴다. **프론트 버그 아님**
+  - **복구 절차(실제로 통한 순서 — 다음에 또 나면 이대로)**: ①`gcloud projects undelete gen-lang-client-0075547354` → ACTIVE ②그런데도 503 유지. 로그가 답을 줬다 — `gcloud logging read ... service_name="ecount-gateway"` 에 **"The request failed because billing is disabled for this project."** 가 계속 찍힌다 ③`gcloud billing projects describe` → `billingEnabled: false` ④`gcloud billing projects link` 로 재연결 ⑤**약 1분 뒤 자동으로 200 복귀**(재배포 불필요 · 서비스 Ready 는 내내 True 였다)
+  - ⚠️**결제 계정 함정**: 처음 시도한 `01435E-9A507E-7538B2`(Wellshare 법인 결제)는 **`QuotaFailure: Cloud billing quota exceeded`** 로 거절됐다(계정당 연결 가능 프로젝트 수 상한). → **`01F3D2-641A27-215B57`(로지스법인결제)** 로 붙여 성공. 이 계정은 `wellshare-logis` 본 프로젝트가 쓰는 것과 동일하다(형 승인 2026-09-10)
+  - 검증 실측: `GET /` → `{"ok":true,"service":"ecount-gateway"}` · Origin 붙인 OPTIONS 프리플라이트 → **204 + `access-control-allow-origin: https://wellshare-logis.web.app`**
+  - ⚠️**삭제 대기는 30일 시한**이다. 다음에 또 지워지면 콘솔 「IAM 및 관리자 → 리소스 관리 → 삭제 대기 중」에서 예정 삭제일부터 확인할 것
   - **다른 프로젝트로 옮기면 안 되는 이유**: NAT 고정 IP `34.64.190.54` 가 ECOUNT ERP IP 화이트리스트에 등록돼 있다. 새 프로젝트 = 새 IP = ECOUNT 거부 → 형이 ERP 에서 IP 재등록을 해야 한다
   - ⚠️**재배포 시 함정**: `ecount-gateway/README.md` 의 배포 명령이 낡았다 — 폐기된 `ECOUNT_COM_CODE` 방식인데 코드(`config.ts`)는 `ECOUNT_COMPANIES` JSON 을 요구한다. README 그대로 배포하면 기동 실패로 또 503
   - ⚠️`.env` 에 `VITE_ECOUNT_GATEWAY_URL` 이 **없다** → `ecountGateway.ts` 하드코딩 기본값이 번들에 박힌다. 게이트웨이를 다른 URL 로 살리면 `.env` 와 CI `ENV_FILE` 시크릿을 함께 고치고 재빌드해야 한다
