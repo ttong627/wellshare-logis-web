@@ -202,9 +202,12 @@ export default function UsersTab() {
                     {company === 'ADMIN' ? <span className="text-orange-600">👑 최고 관리자 (본사)</span> : `🏢 ${safeRender(company)}`}
                   </td>
                   <td className="p-2 sm:p-4 text-center whitespace-nowrap">
-                    <button onClick={() => setPwTarget(email)} className="bg-sky-100 hover:bg-sky-500 hover:text-white text-sky-700 font-bold py-1.5 px-3 rounded-lg transition-colors shadow-sm text-xs mr-1 inline-flex items-center gap-1">
-                      <KeyRound size={13} /> 비번설정
-                    </button>
+                    {/* 관리자 계정 비밀번호는 서버(adminSetPassword)가 거부한다 — 본인이 「계정」 탭이나 로그인 화면 「비밀번호 찾기」로 바꾼다 */}
+                    {company !== 'ADMIN' && (
+                      <button onClick={() => setPwTarget(email)} className="bg-sky-100 hover:bg-sky-500 hover:text-white text-sky-700 font-bold py-1.5 px-3 rounded-lg transition-colors shadow-sm text-xs mr-1 inline-flex items-center gap-1">
+                        <KeyRound size={13} /> 비번설정
+                      </button>
+                    )}
                     <button onClick={() => handleRemoveAccount(email)} className="bg-red-100 hover:bg-red-500 hover:text-white text-red-600 font-bold py-1.5 px-3 rounded-lg transition-colors shadow-sm text-xs">
                       해제
                     </button>
