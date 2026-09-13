@@ -20,8 +20,10 @@ service cloud.firestore {
     function existing() { return resource.data; }
 
     // 서버사이드 관리자 이메일 검증 (클라이언트 코드 우회 불가)
+    //   ★2026-09-13 코코 H2: 이메일 문자열만 비교하면 그 주소로 먼저 가입한 미인증 계정도 관리자가 된다
+    //     → **인증된 이메일**만 관리자. (회원사 판정 myCompany 는 회원사 계정 인증 흐름이 생긴 뒤 적용)
     function isAdminEmail() {
-      return isSignedIn() && (
+      return isSignedIn() && request.auth.token.email_verified == true && (
         request.auth.token.email == 'ttong@wssc.kr' ||
         request.auth.token.email == 'ttong627@gmail.com' ||
         request.auth.token.email == 'goodp1@hanmail.net'
@@ -39,8 +41,10 @@ service cloud.firestore {
     }
 
     // settings.partnerAccounts[email]=='ADMIN' 으로 동적 지정된 관리자 (앱 useAuth와 일치)
+    //   ★2026-09-13 H2: 동적 관리자도 인증된 이메일만
     function isDynamicAdmin(appId) {
       return isSignedIn()
+        && request.auth.token.email_verified == true
         && exists(/databases/$(database)/documents/artifacts/$(appId)/public/data/settings/master_settings)
         && get(/databases/$(database)/documents/artifacts/$(appId)/public/data/settings/master_settings)
              .data.get('partnerAccounts', {}).get(request.auth.token.email, '') == 'ADMIN';

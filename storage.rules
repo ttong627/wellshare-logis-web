@@ -13,8 +13,9 @@ service firebase.storage {
   match /b/{bucket}/o {
 
     function isSignedIn() { return request.auth != null; }
+    // ★2026-09-13 코코 H2: 인증된 이메일만 관리자 (firestore.rules isAdminEmail 과 동일)
     function isAdminEmail() {
-      return isSignedIn() && (
+      return isSignedIn() && request.auth.token.email_verified == true && (
         request.auth.token.email == 'ttong@wssc.kr' ||
         request.auth.token.email == 'ttong627@gmail.com' ||
         request.auth.token.email == 'goodp1@hanmail.net'

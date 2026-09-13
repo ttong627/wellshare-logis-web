@@ -66,7 +66,7 @@ MOCKS = [
 def case(name, email, doc_path, method, expect, resource=None):
     req = {'path': doc_path, 'method': method}
     if email:
-        req['auth'] = {'uid': f'uid_{email}', 'token': {'email': email}}
+        req['auth'] = {'uid': f'uid_{email}', 'token': {'email': email, 'email_verified': True}}
     tc = {'expectation': expect, 'request': req, 'functionMocks': MOCKS}
     if resource is not None:
         tc['resource'] = {'data': resource}
@@ -88,7 +88,7 @@ def log_case(name, email, method, expect, incoming=None, existing=None):
     """열람기록(append-only) 시험. create 는 request.resource, update/delete 는 resource 를 본다."""
     req = {'path': LOG, 'method': method}
     if email:
-        req['auth'] = {'uid': f'uid_{email}', 'token': {'email': email}}
+        req['auth'] = {'uid': f'uid_{email}', 'token': {'email': email, 'email_verified': True}}
     if incoming is not None:
         req['resource'] = {'data': incoming}
     tc = {'expectation': expect, 'request': req, 'functionMocks': MOCKS}
@@ -108,7 +108,7 @@ def wcase(name, email, doc_path, method, expect, incoming=None, existing=None):
     """쓰기 시험 — create/update 는 request.resource(incoming), update/delete 는 resource(existing)도 본다."""
     req = {'path': doc_path, 'method': method}
     if email:
-        req['auth'] = {'uid': f'uid_{email}', 'token': {'email': email}}
+        req['auth'] = {'uid': f'uid_{email}', 'token': {'email': email, 'email_verified': True}}
     if incoming is not None:
         req['resource'] = {'data': incoming}
     tc = {'expectation': expect, 'request': req, 'functionMocks': MOCKS}
@@ -178,6 +178,34 @@ CASES = [
     log_case('★열람기록: 삭제(관리자도 불가)',      ADMIN_EMAIL, 'delete', 'DENY', None, log_doc(EMAIL_A)),
     log_case('★열람기록: 회원사가 읽기',           EMAIL_A, 'get', 'DENY',  None, log_doc(EMAIL_B)),
     log_case('열람기록: 관리자가 읽기',            ADMIN_EMAIL, 'get', 'ALLOW', None, log_doc(EMAIL_A)),
+]
+
+
+# ── 2026-09-13 코코 H2: 인증 안 된 이메일은 관리자가 아니다 ──────────────────────
+#   이메일 문자열만 비교하면 허용목록 주소로 먼저 가입한 미인증 계정이 관리자가 된다.
+#   회원사 판정(myCompany)은 회원사 계정 인증 흐름이 생기기 전까지 현행 유지 — 그것도 시험으로 못 박는다.
+def ucase(name, email, doc_path, method, expect, data=None):
+    """미인증 이메일(email_verified=False) 토큰 시험."""
+    req = {'path': doc_path, 'method': method,
+           'auth': {'uid': f'uid_{email}', 'token': {'email': email, 'email_verified': False}}}
+    tc = {'expectation': expect, 'request': req, 'functionMocks': MOCKS}
+    if data is not None:
+        if method in ('create', 'update'):
+            req['resource'] = {'data': data}
+        if method != 'create':
+            tc['resource'] = {'data': data}
+    return (name, tc)
+
+
+DYN_ADMIN = 'dyn_admin@example.com'
+PARTNER_ACCOUNTS[DYN_ADMIN] = 'ADMIN'   # MOCKS 가 같은 dict 를 참조한다
+CASES += [
+    ucase('★미인증 하드코딩 관리자: 관리자전용 명단 읽기', ADMIN_EMAIL, R, 'get', 'DENY', ROSTER_ADMIN),
+    ucase('★미인증 하드코딩 관리자: 새 달 부모 쓰기', ADMIN_EMAIL, f'{BR}/{MONTH_NEW}', 'create', 'DENY', {'orders': {}}),
+    ucase('★미인증 하드코딩 관리자: 열람기록 읽기', ADMIN_EMAIL, LOG, 'get', 'DENY', log_doc(EMAIL_A)),
+    case('인증된 동적 관리자: 관리자전용 명단 읽기', DYN_ADMIN, R, 'get', 'ALLOW', ROSTER_ADMIN),
+    ucase('★미인증 동적 관리자: 관리자전용 명단 읽기', DYN_ADMIN, R, 'get', 'DENY', ROSTER_ADMIN),
+    ucase('회원사 판정은 현행 유지: 미인증 회원사A 자기 명단 읽기', EMAIL_A, R, 'get', 'ALLOW', ROSTER_A),
 ]
 
 ruleset = os.environ.get('RULESET', '').strip()

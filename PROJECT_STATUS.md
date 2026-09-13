@@ -91,6 +91,19 @@
 - ⚠️**병행 세션 주의(8/18 실증)**: 다른 PC/세션이 같은 파일을 고쳐 push 하는 일이 실제로 있었다. **push 전 fetch 로 diverge 확인** 습관화
 
 ## 리스크
+- 🟢 **(2026-09-13 형 「모두 고」) 코코 보안 지적 H2·H3·M2 처리**
+  - **H3 AWS(609890503948)**: IAM 사용자 `wssc-admin`(AdministratorAccess) 키 생성·검증 후 **루트 액세스키 삭제**(RootKeys 0 · 루트 MFA 켜짐). 이 PC `~/.aws` 프로필 `wssc` = wssc-admin. **CloudTrail `wssc-trail`** 전 리전·로그파일 검증, 버킷 `wssc-cloudtrail-609890503948`(퍼블릭 차단·AES256·버전관리·365일 만료), 첫 전달 14:52 오류 없음
+  - **M2 게이트웨이 실행 계정**: 기본 compute SA(프로젝트 Editor) → `ecount-gateway-sa`(`datastore.user`·`firebaseauth.viewer` + 시크릿 3개 읽기만). 1회용 Job 으로 Firestore 읽기·쓰기·삭제 200, 다른 시크릿 403 확인 후 교체. 기본 SA 의 시크릿 3개 권한 제거
+  - **H2 인증된 이메일만 관리자**:
+    - 익명 로그인 끔(가입 시도 `ADMIN_ONLY_OPERATION`). 익명 계정 24개는 2026-04 이후 활동 0이라 남김
+    - 관리자 5명(ttong@wssc.kr·ttong627@gmail.com·goodp1@hanmail.net·hb@hbnanum.com·thsduddn@wssc.kr, 동적 관리자 3명 포함) **전원 미인증이었다** → 형 결정(휴면 2명도 유지)으로 **15:01 KST 인증 처리**
+    - 게이트웨이 `src/authz.ts`: 토큰 미인증이면 `getUser` 로 현재 계정(삭제·정지·이메일 변경·미인증) 재판정 — 인증 처리 직후 옛 토큰으로 잠기지 않게. `verifyIdToken(tok, true)` 로 정지·폐기 토큰도 차단. 테스트 11건, 리비전 **00006-crb**(커밋 `ce76e90`·`f71e63f`). 배포 명령은 `ecount-gateway/README.md` 형태만(`--service-account` 명시, `--set-*` 금지)
+    - 규칙 `firestore.rules` isAdminEmail·isDynamicAdmin / `storage.rules` isAdminEmail 에 `email_verified == true`(회원사 판정은 현행 유지). **16:08 KST 배포**(인증 처리 15:01 + 66분 대기). ruleset firestore `88cef7e3-7f85-4c96-b47e-459d2e07af85` · storage `867893b4-8d7a-4e32-835f-a0562348b0ad`. 배포본 시뮬레이터 41/41
+    - ↩️**되돌리기**: 이전 ruleset firestore `fdec162f-1978-41cf-9dc8-220ffac872f6` · storage `1f3d5598-1f65-45e3-ad75-61a1f7b12b6a` (콘솔 규칙 이력에서 복원, 또는 `git show <이전 커밋>:firestore.rules` 로 재배포)
+    - ✏️정정: 동적 관리자(hb·goodp1·thsduddn)는 **Firestore 규칙에서만** 관리자다 — `storage.rules` 에는 동적 관리자 판정이 원래 없어 hb·thsduddn 은 `rosters_admin` 명단 읽기·명단 업로드 불가(이번 변경 전후 동일)
+    - ⏸️**실발행 증거 대기**: 새 게이트웨이를 끝까지 통과한 발행(POST 200)이 아직 0건 — 형 발행 1건 후 로그로 확인
+  - ⚠️**남는 위험**: 회원사 6곳 전부 미인증 + 자가가입 화면 → 앞으로 추가될 회원사 이메일은 먼저 가입해 선점 가능(회원사 인증 메일 흐름 필요) · wslos.kr SSO 는 통합계정 이메일 일치로 정산 토큰 발급(신뢰가 wslos 이메일 관리에 걸림) · `wssc-admin` MFA 없음·키 평문 · 코코 M1(서버키 권한 범위·PHP 로그인만 하면 발행)·M3(S3 업로더 GetObject)·LOW 는 이번 범위 밖 · 운영 `ALLOWED_ORIGINS` 에 `http://localhost:5173` 남음 · ECOUNT 키 시크릿이 `:latest`(버전 미고정) · `/ecount/sale-tms` 는 TMS 폐기로 항상 500(죽은 경로, 코드 정리 필요)
+  - 🧪**규칙 검증 근거**: 배포본 원문 = 작업본(firestore 88cef7e3 조건 2곳 · storage 867893b4 조건 1곳) · Firestore 배포본 시뮬레이터 41/41 · Storage 시뮬레이터 새 규칙 9/9 vs 이전 규칙 6/9(미인증 관리자 3건이 뚫리던 것을 막음)
 - 🟢 **(2026-09-13) ECOUNT 게이트웨이를 이 앱 프로젝트(`wellshare-logis`)로 이전** — 형 원칙「프로젝트는 독립 운영」
   - 새 주소 `https://ecount-gateway-528541497350.asia-northeast3.run.app` · NAT 고정 IP **`34.64.142.198`**(`ecount-gw-ip`/`ecount-gw-router`/`ecount-gw-nat`) · **형이 ECOUNT 두 법인(631989·156855)에 IP 추가 등록 완료(2026-09-13)**
   - 인증키 시크릿 10개 이관(쓰는 건 `ecount-key-ttong`→`ECOUNT_KEY_631989`, `ecount-key-156855-ttong`→`ECOUNT_KEY_156855`) · 환경변수는 `ALLOWED_ORIGINS` 에서 TMS 두 주소 제거, `TMS_FIREBASE_PROJECT_ID` 제거(선택값이라 부팅 영향 없음)
@@ -129,7 +142,7 @@
   - ⚖️**삭제 전 판정**: 제시 보충필요(삭제 막을 사유 없음) · 코난 조건부(Codex 10,751토큰 — Codex 원판정은 「막힘」, 코난 이견: Expo 앱·MySQL 복원은 삭제 차단 사유 아님). 조건 = **ECOUNT 두 법인에서 옛 IP `34.64.190.54` 를 삭제 전에 제거**(반납 IP 재할당 위험 + 옛 게이트웨이 발행 경로 차단)
   - 🔁**삭제 후 제시 보충 처리(2026-09-13)**: ①서버키가 검증 도구 출력에 한 번 찍힘 → `ecount-server-key` **v2 발급·게이트웨이 리비전 00003-46s 에 `:2` 고정·PHP 설정 교체**(해시 앞 8b48794d 일치), 옛 v1 요청 401 확인 후 **v1 비활성** ②AWS `3.37.252.125` 옛 프로젝트 자격증명 정리: `/home/ubuntu/sync/.env`(ECOUNT 키 평문)·`serviceAccountKey.json` shred, gcloud 옛 SA 인증 ubuntu·root 모두 revoke, `~/.gsutil` 삭제(크론 참조 0) ③이 PC `D:\Gemma4\_secrets\gen-lang-client-0075547354-firebase-adminsdk-…json` 삭제, `secrets_manifest.json` 항목 제거(백업 `.bak_20260913`), GCS 공유 버킷 사본 없음
   - ⏸️**남은 것**: ①wslos 운영 DB 감시 행 3개(`gen_lang`·`wellshare_tms`·`wellshare_erp`) — `ensure_targets` 가 빠진 기본 대상을 다시 채우므로 **DEFAULT_TARGETS 를 뺀 백엔드(플랫폼 main `cbce27d` 이후 커밋)가 Cloud Run `wellshare-platform-api` 에 배포된 뒤** 지운다(백엔드 버전 번호는 0.1.0 고정이라 번호로 판단 불가 — 배포 리비전의 이미지·커밋으로 확인) ②모바일 앱 새 주소 빌드(`a8ba1e1` 반영) ③`ecount-gateway/README.md` 옛 프로젝트 배포 명령 ④옛 호스팅 두 곳이 삭제 직후 아직 200 — 며칠 뒤 404 확인 ⑤S3 로 바꾼 백업의 **첫 정기 실행 = 2026-09-14 02:00 KST** → 다음 날 `backup.log` 「local + S3」 확인 · `archive_images.sh` 실제 S3 이관은 395일 넘는 사진이 생기는 2026-12 이후 첫 실행(같은 cp+ls 확인 절차는 임시 파일로 성공 확인)
-  - 🔴**코코 보안 지적(이번 작업 밖, 기존)**: H2 게이트웨이 `requireAdmin` 이 `email_verified` 를 안 본다 + wellshare-logis Auth 셀프가입 열림 + `src/constants/members.ts` 에 관리자 이메일 노출 · H3 이 PC `~/.aws` 프로필 `wssc` 가 **AWS 루트 액세스키**, CloudTrail 없음 · M2 게이트웨이가 Editor 권한 기본 SA 로 실행
+  - ✅**코코 보안 지적 H2·H3·M2 → 2026-09-13 처리 완료**(리스크 맨 위 「형 모두 고」 항목). 셀프가입은 회원사 가입 화면 때문에 유지, `members.ts` 관리자 이메일 노출은 인증 확인이 생겨 권한 탈취로 이어지지 않음
 - ⚪ (2026-09-13) 9/9 비용 절감 세션이 이름만 보고 지운 3곳 처리: **logis-TMS** 복구(위) · **miso-tms** 400일 지표상 사용 0 → 재삭제 · **wellshare-erp**(9개 단체 회의실 예약·회의록 `mdpj`, 영플 아님) 실사용 흔적 있었으나 **형 결정으로 삭제**(코드는 GitHub `ttong627/-wellshare-erp` 보존, DB 1.87MB 는 결제 끊김으로 백업 못 함, **복구 기한 2026-10-13**)
 - 🟢 **(2026-09-10 발생·같은 날 12:11 KST 복구완료) ECOUNT 세금계산서 발행 전면 불가 — 게이트웨이 GCP 프로젝트가 삭제 대기 + 결제 끊김**: `gen-lang-client-0075547354`(logis-TMS, 번호 673351301105) 의 `lifecycleState = DELETE_REQUESTED`. 그 위의 Cloud Run `ecount-gateway` 가 즉시 503(Google Frontend) → 503 엔 CORS 헤더가 없어 브라우저는 프리플라이트부터 막히고 화면엔 "Failed to fetch" 만 떴다. **프론트 버그 아님**
   - **복구 절차(실제로 통한 순서 — 다음에 또 나면 이대로)**: ①`gcloud projects undelete gen-lang-client-0075547354` → ACTIVE ②그런데도 503 유지. 로그가 답을 줬다 — `gcloud logging read ... service_name="ecount-gateway"` 에 **"The request failed because billing is disabled for this project."** 가 계속 찍힌다 ③`gcloud billing projects describe` → `billingEnabled: false` ④`gcloud billing projects link` 로 재연결 ⑤**약 1분 뒤 자동으로 200 복귀**(재배포 불필요 · 서비스 Ready 는 내내 True 였다)
