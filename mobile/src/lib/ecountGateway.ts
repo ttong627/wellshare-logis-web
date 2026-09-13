@@ -3,7 +3,8 @@
 import { getFullRegionName } from '../constants';
 import type { BillingRow } from './billing';
 
-const GATEWAY_URL = 'https://ecount-gateway-673351301105.asia-northeast3.run.app';
+// 2026-09-13 게이트웨이를 wellshare-logis 프로젝트로 이전(logis-TMS 철거). 웹 src/lib/ecountGateway.ts 와 같은 주소.
+const GATEWAY_URL = 'https://ecount-gateway-528541497350.asia-northeast3.run.app';
 
 export const ECOUNT_COMPANIES = [
   { comCode: '631989', label: '웰쉐어 로지스' },
