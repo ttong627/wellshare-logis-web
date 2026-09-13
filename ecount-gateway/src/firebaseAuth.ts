@@ -29,7 +29,8 @@ export function initAuth(config: AppConfig) {
     const tmsApp = existing ?? admin.initializeApp({ projectId: config.tmsFirebaseProjectId }, 'tms');
     tmsAuth = admin.auth(tmsApp);
   }
-  // 게이트웨이 프로젝트(gen-lang-client) 기본 DB = TMS app_users 위치(동일 프로젝트)
+  // 게이트웨이가 도는 프로젝트(wellshare-logis)의 기본 DB. requireAdminTms 의 app_users 조회용이지만
+  // TMS 는 2026-09-13 logis-TMS 철거로 폐기(TMS_FIREBASE_PROJECT_ID 없음 → /ecount/sale-tms 500).
   const db = new Firestore();
 
   function bearer(req: Request): string | null {
@@ -43,9 +44,21 @@ export function initAuth(config: AppConfig) {
     if (!tok) { res.status(401).json({ ok: false, error: 'unauthorized', message: '인증 토큰이 없습니다' }); return; }
     let decoded: admin.auth.DecodedIdToken;
     try {
-      decoded = await admin.auth().verifyIdToken(tok, false);
-    } catch {
-      res.status(401).json({ ok: false, error: 'invalid_token', message: '토큰 검증 실패' });
+      // checkRevoked=true: 정지·폐기된 계정의 남은 토큰(최대 1시간)도 막는다(제시 2026-09-13).
+      //   예전엔 토큰 발급 프로젝트의 Auth 를 조회할 권한이 없어 false 였다 — 이제 전용 SA 에 firebaseauth.viewer 가 있다.
+      decoded = await admin.auth().verifyIdToken(tok, true);
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (code === 'auth/internal-error') {
+        res.status(502).json({ ok: false, error: 'auth_lookup_failed', message: '계정 확인 실패' });
+        return;
+      }
+      const revoked = code === 'auth/user-disabled' || code === 'auth/id-token-revoked';
+      res.status(401).json({
+        ok: false,
+        error: revoked ? 'token_revoked' : 'invalid_token',
+        message: revoked ? '정지되었거나 로그인이 취소된 계정입니다. 다시 로그인하세요' : '토큰 검증 실패',
+      });
       return;
     }
     const check = checkAdminClaims(decoded, config.adminEmails);
