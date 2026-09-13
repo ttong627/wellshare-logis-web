@@ -7,6 +7,7 @@ import { Firestore } from '@google-cloud/firestore';
 import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
 import type { AppConfig } from './config';
+import { checkAdminClaims, checkAccountRecord } from './authz';
 
 export interface AuthedRequest extends Request {
   user?: { uid: string; email: string };
@@ -36,7 +37,7 @@ export function initAuth(config: AppConfig) {
     return m ? m[1] : null;
   }
 
-  // wellshare: 이메일 allowlist
+  // wellshare: **인증된** 이메일 + 관리자 allowlist (판정 규칙은 authz.ts)
   async function requireAdmin(req: AuthedRequest, res: Response, next: NextFunction): Promise<void> {
     const tok = bearer(req);
     if (!tok) { res.status(401).json({ ok: false, error: 'unauthorized', message: '인증 토큰이 없습니다' }); return; }
@@ -47,12 +48,34 @@ export function initAuth(config: AppConfig) {
       res.status(401).json({ ok: false, error: 'invalid_token', message: '토큰 검증 실패' });
       return;
     }
-    const email = (decoded.email || '').toLowerCase();
-    if (!email || !config.adminEmails.has(email)) {
+    const check = checkAdminClaims(decoded, config.adminEmails);
+    if (!check.ok) {
       res.status(403).json({ ok: false, error: 'forbidden', message: '관리자 권한이 없습니다' });
       return;
     }
-    req.user = { uid: decoded.uid, email };
+    if (check.needsVerifiedLookup) {
+      // 토큰이 발급된 뒤에 인증 처리된 계정일 수 있다(토큰 클레임은 최대 1시간 옛값) → 현재 계정 상태로 판정
+      let record: admin.auth.UserRecord | null = null;
+      try {
+        record = await admin.auth().getUser(decoded.uid);
+      } catch (e) {
+        if ((e as { code?: string })?.code !== 'auth/user-not-found') {
+          res.status(502).json({ ok: false, error: 'auth_lookup_failed', message: '계정 확인 실패' });
+          return;
+        }
+      }
+      const acc = checkAccountRecord(record, check.email);
+      if (!acc.ok) {
+        const unverified = acc.reason === 'email_not_verified';
+        res.status(403).json({
+          ok: false,
+          error: unverified ? 'email_not_verified' : 'forbidden',
+          message: unverified ? '이메일 인증이 필요합니다' : '관리자 권한이 없습니다',
+        });
+        return;
+      }
+    }
+    req.user = { uid: decoded.uid, email: check.email };
     next();
   }
 

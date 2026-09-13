@@ -1,18 +1,22 @@
 # ECOUNT 통합 게이트웨이 (Cloud Run)
 
 웰셰어 정산 데이터를 ECOUNT ERP `SaveSale`(매출등록)로 대행 전송하는 단일 게이트웨이.
-프론트(`wellshare-logis`)가 Firebase ID토큰으로 호출 → 게이트웨이가 고정 IP(`34.64.190.54`)로 ECOUNT 호출.
+프론트(정산포털 `wellshare-logis.web.app`, wslos.kr 정산 탭)가 Firebase ID토큰으로 호출 → 게이트웨이가 고정 IP(`34.64.142.198`)로 ECOUNT 호출.
 
-- 실행 프로젝트: `gen-lang-client-0075547354` (logis-TMS) / 리전 `asia-northeast3`
-- 인증: Firebase ID토큰 검증(`wellshare-logis` 프로젝트) + 관리자 이메일 allowlist
-- 멱등성: Firestore `ecount_sales/{year-month-region}` 상태머신(중복 매출전표 차단)
+- 실행 프로젝트: `wellshare-logis` (#528541497350) / 리전 `asia-northeast3` / 서비스 `ecount-gateway`
+  - 2026-09-13 logis-TMS(`gen-lang-client-0075547354`) 철거로 이전. 옛 IP `34.64.190.54` 는 ECOUNT 두 법인에서 삭제됨
+- 실행 계정: `ecount-gateway-sa@wellshare-logis.iam.gserviceaccount.com` — `roles/datastore.user` · `roles/firebaseauth.viewer` · 시크릿 3개 읽기만(2026-09-13 코코 M2)
+- 인증: Firebase ID토큰 검증(`wellshare-logis`) + 관리자 이메일 allowlist + **인증된 이메일만**(2026-09-13 코코 H2, `src/authz.ts`)
+- 멱등성: Firestore `ecount_sales/{key}` 상태머신(중복 매출전표 차단)
 
 ## 엔드포인트
 | 메서드 | 경로 | 인증 | 설명 |
 |---|---|---|---|
 | GET | `/` | 없음 | 헬스체크 |
 | GET | `/debug/ip` | 관리자 | egress IP 확인(NAT 고정 IP 검증) |
-| POST | `/ecount/sale` | 관리자 | 매출등록 대행 |
+| POST | `/ecount/sale` | 관리자 | 매출등록 대행(정산포털·wslos) |
+| POST | `/ecount/sale-server` | `x-server-key` | 구 PHP 관리자(admin.wslogis.co.kr) 서버발행 |
+| POST | `/ecount/sale-tms` | TMS 관리자 | ⛔폐기 — TMS 철거로 `TMS_FIREBASE_PROJECT_ID` 없음(500) |
 
 ### POST /ecount/sale 요청
 ```json
@@ -35,39 +39,26 @@ npm install
 npm run build   # tsc → dist/
 ```
 
-## 배포 (logis-TMS)
+## 배포 (wellshare-logis) — ⚠️반드시 이 형태
 ```bash
-# 1) API 활성화
-gcloud services enable secretmanager.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
-  --project gen-lang-client-0075547354
-
-# 2) default 서브넷 Private Google Access (all-traffic egress 안전장치)
-gcloud compute networks subnets update default --region asia-northeast3 \
-  --enable-private-ip-google-access --project gen-lang-client-0075547354
-
-# 3) 시크릿 생성 후 운영 인증키 입력 (값은 직접 입력 — 채팅/로그 노출 금지)
-gcloud secrets create ecount-api-key --project gen-lang-client-0075547354
-echo -n "<ECOUNT 운영 인증키>" | gcloud secrets versions add ecount-api-key --data-file=- \
-  --project gen-lang-client-0075547354
-
-# 4) 런타임 SA 권한
-RUNTIME_SA=$(gcloud iam service-accounts list --project gen-lang-client-0075547354 \
-  --filter="displayName:Default compute" --format="value(email)")
-gcloud secrets add-iam-policy-binding ecount-api-key --member "serviceAccount:$RUNTIME_SA" \
-  --role roles/secretmanager.secretAccessor --project gen-lang-client-0075547354
-
-# 5) 배포 (Direct VPC egress → NAT → 34.64.190.54)
+gcloud config set account ttong627@gmail.com
+npm test                       # 관리자 판정 테스트(tsc 포함)
 gcloud run deploy ecount-gateway --source . \
-  --project gen-lang-client-0075547354 --region asia-northeast3 \
-  --allow-unauthenticated --max-instances 3 --concurrency 20 \
-  --network default --subnet default --vpc-egress all-traffic \
-  --set-secrets ECOUNT_API_KEY=ecount-api-key:latest \
-  --set-env-vars "ECOUNT_BASE=https://oapiAC.ecount.com/OAPI/V2,ECOUNT_COM_CODE=631989,ECOUNT_USER_ID=ttong,ECOUNT_ZONE=AC,ECOUNT_LAN_TYPE=ko-KR,ECOUNT_CUST=490-82-00102,ECOUNT_WH_CD=100,ECOUNT_MAKE_FLAG=N,FIREBASE_PROJECT_ID=wellshare-logis,ADMIN_EMAILS=ttong@wssc.kr|ttong627@gmail.com|goodp1@hanmail.net,ALLOWED_ORIGINS=https://wellshare-logis.web.app|https://wellshare-logis.firebaseapp.com|http://localhost:5173"
+  --project wellshare-logis --region asia-northeast3 \
+  --service-account ecount-gateway-sa@wellshare-logis.iam.gserviceaccount.com
+# 배포 뒤 실행 계정·리비전 확인
+gcloud run services describe ecount-gateway --project wellshare-logis --region asia-northeast3 \
+  --format="value(spec.template.spec.serviceAccountName,status.latestReadyRevisionName)"
 ```
+- ⛔**`--set-env-vars`·`--set-secrets` 금지** — 기존 값을 **통째로 지운다**. `ECOUNT_COMPANIES`·`ECOUNT_KEY_*`·`TMS_SERVER_KEY` 가 사라져 기동 즉시 죽는다. 값 하나만 바꿀 땐 `gcloud run services update --update-env-vars` / `--update-secrets`.
+- ⛔**`--service-account` 를 빼지 말 것.** 기본 compute SA(프로젝트 Editor)로 돌아가면 M2 가 되돌아간다. 기본 SA 에 시크릿 권한을 주지 말 것(2026-09-13 제거).
+- 현재 설정(2026-09-13): env `ECOUNT_COMPANIES`(JSON, 631989·156855) · `FIREBASE_PROJECT_ID=wellshare-logis` · `ADMIN_EMAILS` · `ALLOWED_ORIGINS`(wellshare-logis.web.app · firebaseapp.com · localhost:5173 · wslos.kr · directed-line-434014-h0.web.app) / secrets `ECOUNT_KEY_631989=ecount-key-ttong:latest` · `ECOUNT_KEY_156855=ecount-key-156855-ttong:latest` · `TMS_SERVER_KEY=ecount-server-key:<버전>` / VPC egress all-traffic(default/default) → Cloud NAT `ecount-gw-nat`(주소 `ecount-gw-ip` = 34.64.142.198)
+- **서버키 교체**: `gcloud secrets versions add ecount-server-key` → `gcloud run services update ecount-gateway --update-secrets TMS_SERVER_KEY=ecount-server-key:<새 버전>` → AWS `/var/www/html/admin/ecount_config.php` 에 같은 값(www-data 600) → 옛 버전 `disable`
 
-## 운영 전 필수 (형 작업)
-1. 노출된 ECOUNT 운영 인증키 재발급 → 위 3단계로 시크릿에 입력
-2. `34.64.190.54` 를 ECOUNT 운영 API IP 화이트리스트 등록 (ERP > API인증키발급 > IP등록)
+## 운영 메모
+- ECOUNT IP 허용: 두 법인(631989·156855)에 `34.64.142.198` 등록(2026-09-13, 옛 34.64.190.54 삭제)
+- 바깥 IP·ECOUNT 로그인 확인은 **실발행 없이**: 같은 VPC egress 설정의 1회용 Cloud Run Job(curl ipify / OAPILogin) 을 띄우고 지운다
+- 관리자 계정은 **이메일 인증 상태**여야 발행된다. 새 관리자를 `ADMIN_EMAILS` 에 넣으면 그 계정도 인증 처리할 것
 
 ## 멱등성 운영 런북 (중요)
 매출전표는 비가역이라 중복 차단을 "막는 쪽"으로 설계했다. Firestore `ecount_sales/{key}`:
