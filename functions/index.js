@@ -17,28 +17,44 @@ setGlobalOptions({ region: 'asia-northeast3', maxInstances: 10 });
 // 하드코딩 관리자 이메일 (firestore.rules · src/constants/members.ts와 동일하게 유지)
 const ADMIN_EMAILS = ['ttong@wssc.kr', 'ttong627@gmail.com', 'goodp1@hanmail.net'];
 const APP_ID = 'wellshare-logis-v1-production-stable';
+// ECOUNT 게이트웨이(Cloud Run `ecount-gateway` env ADMIN_EMAILS)의 발행 관리자 — **비밀번호 변경 대상 보호 전용**.
+//   동적 관리자는 partnerAccounts 에서 ADMIN 을 빼면 회원사로 보여 대상 제한을 비껴간다(제시 2026-09-13).
+//   게이트웨이 env 를 바꾸면 여기도 같이 바꾼다.
+const GATEWAY_ADMIN_EMAILS = ['hb@hbnanum.com', 'thsduddn@wssc.kr'];
+const PROTECTED_TARGET_EMAILS = [...ADMIN_EMAILS, ...GATEWAY_ADMIN_EMAILS];
+const { callerAdminEmail, assertTargetNotAdmin } = require('./adminGuard');
 
-// 호출자가 관리자인지 검증: 하드코딩 관리자 이메일 OR partnerAccounts[email]==='ADMIN'(동적 관리자)
-async function assertCallerIsAdmin(auth) {
-  if (!auth) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
-  const email = auth.token && auth.token.email;
-  if (email && ADMIN_EMAILS.includes(email)) return email;
+async function loadPartnerAccounts() {
   try {
     const snap = await getFirestore()
       .doc(`artifacts/${APP_ID}/public/data/settings/master_settings`)
       .get();
-    const partnerAccounts = (snap.exists && snap.data() && snap.data().partnerAccounts) || {};
-    if (email && partnerAccounts[email] === 'ADMIN') return email;
+    return (snap.exists && snap.data() && snap.data().partnerAccounts) || {};
   } catch (e) {
+    // ⛔빈 목록으로 넘기면 대상 제한이 동적 관리자를 못 알아봐 그 비밀번호를 바꿀 수 있다 — 조회 실패는 막는다.
     console.error('관리자 검증 중 설정 조회 실패:', e);
+    throw new HttpsError('unavailable', '설정을 불러오지 못했습니다. 잠시 뒤 다시 시도하세요.');
+  }
+}
+
+// 호출자가 관리자인지 검증: **인증된 이메일**이면서 하드코딩 관리자 OR partnerAccounts[email]==='ADMIN'
+//   2026-09-13 코난: 인증 여부를 안 봐서 규칙·게이트웨이의 「인증된 이메일만 관리자」를 이 함수로 비껴갈 수 있었다.
+async function assertCallerIsAdmin(auth) {
+  if (!auth) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+  const partnerAccounts = await loadPartnerAccounts();
+  const email = callerAdminEmail(auth.token, ADMIN_EMAILS, partnerAccounts);
+  if (email) return { email, partnerAccounts };
+  if (auth.token && auth.token.email && auth.token.email_verified !== true) {
+    throw new HttpsError('permission-denied', '이메일 인증이 된 관리자만 사용할 수 있습니다.');
   }
   throw new HttpsError('permission-denied', '관리자만 사용할 수 있는 기능입니다.');
 }
 
 // ── 관리자가 회원사 계정의 비밀번호를 직접 설정 ─────────────────────────────
 // 클라이언트 SDK로는 남의 비번을 바꿀 수 없어 admin SDK(updateUser)로만 가능하다.
+// ⛔관리자 계정은 대상에서 제외 — 관리자 비밀번호를 여기서 바꾸면 그 계정의 발행 권한까지 넘어간다.
 exports.adminSetPassword = onCall(async (request) => {
-  const callerEmail = await assertCallerIsAdmin(request.auth);
+  const { email: callerEmail, partnerAccounts } = await assertCallerIsAdmin(request.auth);
 
   const targetEmail = (request.data && request.data.email || '').toString().trim();
   const newPassword = (request.data && request.data.newPassword || '').toString();
@@ -49,6 +65,9 @@ exports.adminSetPassword = onCall(async (request) => {
   if (newPassword.length < 6) {
     throw new HttpsError('invalid-argument', '비밀번호는 6자리 이상이어야 합니다.');
   }
+  if (!assertTargetNotAdmin(targetEmail, PROTECTED_TARGET_EMAILS, partnerAccounts)) {
+    throw new HttpsError('permission-denied', '관리자 계정의 비밀번호는 여기서 바꿀 수 없습니다. 본인이 직접 변경하세요.');
+  }
 
   const adminAuth = getAuth();
   let userRecord;
@@ -56,6 +75,10 @@ exports.adminSetPassword = onCall(async (request) => {
     userRecord = await adminAuth.getUserByEmail(targetEmail);
   } catch {
     throw new HttpsError('not-found', '해당 이메일로 가입된 계정이 없습니다.');
+  }
+  // 입력값이 아니라 **실제로 찾은 계정**의 이메일로 한 번 더 — 표기 차이로 관리자 계정이 조회되는 경우까지 막는다(코난 2026-09-13).
+  if (!assertTargetNotAdmin(userRecord.email, PROTECTED_TARGET_EMAILS, partnerAccounts)) {
+    throw new HttpsError('permission-denied', '관리자 계정의 비밀번호는 여기서 바꿀 수 없습니다. 본인이 직접 변경하세요.');
   }
 
   try {

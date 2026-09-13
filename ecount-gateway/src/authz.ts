@@ -14,6 +14,29 @@ export type AdminClaimCheck =
   | { ok: true; email: string; needsVerifiedLookup: boolean }
   | { ok: false; reason: 'anonymous' | 'no_email' | 'not_allowlisted' };
 
+// 토큰 검증(verifyIdToken checkRevoked=true) 실패 분류 — 「토큰이 나쁘다」와 「우리가 조회를 못 했다」를 가른다.
+// 권한 누락·네트워크·할당량을 401 invalid_token 으로 보내면 화면엔 "인증 만료"만 떠서 재로그인만 반복한다(코난 2026-09-13).
+// 코난 재검증: 502 목록을 늘려 가는 방식은 빠진 코드(auth/invalid-credential 등)가 또 401 로 샌다
+//   → **401 은 토큰·계정 문제로 확인된 코드만** 두고 나머지는 전부 502. 어느 쪽이든 요청은 거부된다.
+// 코드 문자열: firebase-admin 13.10.0 utils/error.js · auth/token-verifier.js(서명·kid 오류도 argument-error 로 온다).
+const INVALID_TOKEN_CODES = new Set(['auth/id-token-expired', 'auth/argument-error', 'auth/invalid-id-token']);
+const REVOKED_CODES = new Set(['auth/user-disabled', 'auth/id-token-revoked', 'auth/user-not-found']);
+
+export type VerifyErrorClass =
+  | { status: 401; error: 'invalid_token' | 'token_revoked' }
+  | { status: 502; error: 'auth_lookup_failed' };
+
+// 구글 공개키를 못 받아와도 firebase-admin 은 argument-error 로 바꿔 던진다(token-verifier.js:283) — 코드로는
+// 위조 토큰과 구분이 안 되니 메시지로 가른다(제시 2026-09-13). HTTP 오류 응답은 jwt.js:136, 네트워크 단절·시간초과는 api-request.js:266·268 문구.
+const KEY_FETCH_FAILURE_MESSAGES = ['Error fetching public keys', 'Error while making request'];
+
+export function classifyVerifyError(code: string | undefined, message?: string): VerifyErrorClass {
+  if (code && REVOKED_CODES.has(code)) return { status: 401, error: 'token_revoked' };
+  const keyFetchFailed = !!message && KEY_FETCH_FAILURE_MESSAGES.some((m) => message.includes(m));
+  if (code && INVALID_TOKEN_CODES.has(code) && !keyFetchFailed) return { status: 401, error: 'invalid_token' };
+  return { status: 502, error: 'auth_lookup_failed' };
+}
+
 export interface AccountRecord {
   email?: string;
   emailVerified?: boolean;

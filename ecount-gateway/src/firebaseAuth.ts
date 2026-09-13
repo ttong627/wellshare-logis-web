@@ -7,7 +7,7 @@ import { Firestore } from '@google-cloud/firestore';
 import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
 import type { AppConfig } from './config';
-import { checkAdminClaims, checkAccountRecord } from './authz';
+import { checkAdminClaims, checkAccountRecord, classifyVerifyError } from './authz';
 
 export interface AuthedRequest extends Request {
   user?: { uid: string; email: string };
@@ -49,16 +49,13 @@ export function initAuth(config: AppConfig) {
       decoded = await admin.auth().verifyIdToken(tok, true);
     } catch (e) {
       const code = (e as { code?: string })?.code;
-      if (code === 'auth/internal-error') {
-        res.status(502).json({ ok: false, error: 'auth_lookup_failed', message: '계정 확인 실패' });
-        return;
-      }
-      const revoked = code === 'auth/user-disabled' || code === 'auth/id-token-revoked';
-      res.status(401).json({
-        ok: false,
-        error: revoked ? 'token_revoked' : 'invalid_token',
-        message: revoked ? '정지되었거나 로그인이 취소된 계정입니다. 다시 로그인하세요' : '토큰 검증 실패',
-      });
+      const v = classifyVerifyError(code, (e as { message?: string })?.message);
+      if (v.status === 502) console.error(JSON.stringify({ severity: 'ERROR', message: 'verifyIdToken lookup failed', code }));
+      const message =
+        v.error === 'auth_lookup_failed' ? '계정 확인 실패(인증 서버 조회 오류) — 잠시 뒤 다시 시도하세요'
+          : v.error === 'token_revoked' ? '정지되었거나 로그인이 취소된 계정입니다. 다시 로그인하세요'
+            : '토큰 검증 실패';
+      res.status(v.status).json({ ok: false, error: v.error, message });
       return;
     }
     const check = checkAdminClaims(decoded, config.adminEmails);
