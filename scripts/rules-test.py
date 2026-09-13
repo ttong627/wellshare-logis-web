@@ -208,6 +208,49 @@ CASES += [
     ucase('회원사 판정은 현행 유지: 미인증 회원사A 자기 명단 읽기', EMAIL_A, R, 'get', 'ALLOW', ROSTER_A),
 ]
 
+# ── 2026-09-14 users 셀프 승격 차단(PROJECT_STATUS 「남는 위험」) ─────────────────────
+#   users/{uid} create 가 role 값을 안 막아, 로그인한 누구나 role:'ROLE_ADMIN' 으로 자기 문서를 만들면
+#   isAdmin() 으로 남의 users 수정·삭제 · invites 생성 · emergencyContacts 삭제가 됐다.
+#   ⚠️uid 에 '@' 가 들어가면 get() 경로 모의(exactValue)가 안 맞아 시험이 규칙과 무관하게 실패한다(2026-09-14 실측) → 단순 uid 사용.
+UID_A, UID_B = 'uidA', 'uidB'
+U_SELF = f'{DB}/users/{UID_A}'
+U_OTHER = f'{DB}/users/{UID_B}'
+MOCKS.append({'function': 'get', 'args': [{'exactValue': U_SELF}],
+              'result': {'value': {'data': {'uid': UID_A, 'email': EMAIL_A}}}})
+
+
+def user_case(name, path, method, expect, incoming=None, existing=None):
+    req = {'path': path, 'method': method,
+           'auth': {'uid': UID_A, 'token': {'email': EMAIL_A, 'email_verified': True}}}
+    if incoming is not None:
+        req['resource'] = {'data': incoming}
+    tc = {'expectation': expect, 'request': req, 'functionMocks': MOCKS}
+    if existing is not None:
+        tc['resource'] = {'data': existing}
+    return (name, tc)
+
+
+CASES += [
+    user_case('★자기 users 문서를 role=ROLE_ADMIN 으로 생성(셀프 승격)', U_SELF, 'create', 'DENY',
+              {'uid': UID_A, 'email': EMAIL_A, 'role': 'ROLE_ADMIN'}),
+    user_case('★자기 users 문서를 role=ROLE_EDITOR 로 생성', U_SELF, 'create', 'DENY',
+              {'uid': UID_A, 'email': EMAIL_A, 'role': 'ROLE_EDITOR'}),
+    user_case('자기 users 문서를 role 없이 생성(현행 유지)', U_SELF, 'create', 'ALLOW',
+              {'uid': UID_A, 'email': EMAIL_A}),
+    user_case('★자기 users 문서에 role 추가 수정', U_SELF, 'update', 'DENY',
+              {'uid': UID_A, 'email': EMAIL_A, 'role': 'ROLE_ADMIN'},
+              {'uid': UID_A, 'email': EMAIL_A}),
+    user_case('자기 users 문서 이름 수정(현행 유지)', U_SELF, 'update', 'ALLOW',
+              {'uid': UID_A, 'email': EMAIL_A, 'displayName': '새 이름'},
+              {'uid': UID_A, 'email': EMAIL_A}),
+    user_case('★남의 users 문서 생성', U_OTHER, 'create', 'DENY',
+              {'uid': UID_B, 'email': EMAIL_B}),
+    user_case('자기 users 하위 컬렉션 쓰기(현행 유지)', f'{U_SELF}/prefs/p1', 'create', 'ALLOW',
+              {'theme': 'dark'}),
+    user_case('★남의 users 하위 컬렉션 쓰기', f'{U_OTHER}/prefs/p1', 'create', 'DENY',
+              {'theme': 'dark'}),
+]
+
 ruleset = os.environ.get('RULESET', '').strip()
 if ruleset:
     url = f'https://firebaserules.googleapis.com/v1/projects/{PROJECT}/rulesets/{ruleset}:test'

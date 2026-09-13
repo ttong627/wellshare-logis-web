@@ -250,7 +250,8 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming(), true);
+      // ★2026-09-14 셀프 승격 차단: role 은 스스로 넣을 수 없다(isAdmin()·isEditor() 가 이 값을 믿는다)
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming(), true) && !('role' in incoming());
       allow update: if isSignedIn() && (
         (request.auth.uid == userId &&
           incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'photoUrl', 'lastActive', 'pushToken', 'displayName', 'lastLoginAt']) &&
@@ -259,7 +260,10 @@ service cloud.firestore {
       );
       allow delete: if isAdmin();
 
-      match /{allSubcollections=**} {
+      // ★2026-09-14: `{x=**}` 는 **경로 0개**에도 맞아 users/{userId} 문서 자체의 write 를 열었다
+      //   (위 create·update 검사를 건너뛰고 role 을 넣을 수 있었음 · 시뮬레이터 263줄 ALLOW 실측).
+      //   하위 컬렉션에만 맞도록 첫 조각을 필수로 둔다.
+      match /{subcollection}/{subDoc=**} {
         allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
     }
